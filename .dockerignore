@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.local
+*.log
+.git
+.gitignore
+.vscode
+.idea
+__pycache__
+*.pyc
+venv
+.venv
+data
+prono2026.db
+.jwt_secret

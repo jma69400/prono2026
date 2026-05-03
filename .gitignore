@@ -1,0 +1,74 @@
+# =====================================================
+# PRONO 2026 — .gitignore
+# =====================================================
+
+# --- Secrets & config locale ---
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- Node / Frontend ---
+node_modules/
+dist/
+build/
+.next/
+out/
+*.log
+.npm
+.yarn/
+.pnp.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Database ---
+*.sqlite
+*.sqlite3
+*.db
+prono2026.db
+.jwt_secret
+
+# --- Docker ---
+docker-data/
+volumes/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Tests / Coverage ---
+coverage/
+.coverage
+.nyc_output
+htmlcov/
+
+# --- Backups ---
+*.backup
+*.bak
+backup-*.tar.gz

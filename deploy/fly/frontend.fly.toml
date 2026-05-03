@@ -1,0 +1,35 @@
+# Configuration Fly.io — Frontend PRONO 2026
+app = "prono2026"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+  [build.args]
+    VITE_API_URL = "https://prono2026-backend.fly.dev/api"
+
+[[services]]
+  internal_port = 80
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    method = "get"
+    path = "/"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256

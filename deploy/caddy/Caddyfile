@@ -1,0 +1,16 @@
+{
+    email admin@prono2026.fr
+}
+
+# Remplace prono2026.fr par ton domaine
+prono2026.fr, www.prono2026.fr {
+    encode gzip
+    reverse_proxy frontend:80
+
+    # Headers de sécurité supplémentaires
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+}

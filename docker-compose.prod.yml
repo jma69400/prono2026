@@ -1,0 +1,77 @@
+# =====================================================
+# Configuration PRODUCTION avec HTTPS automatique (Caddy)
+# Usage : docker compose -f docker-compose.prod.yml up -d
+# Prérequis : domaine pointé sur ton serveur (A record)
+# =====================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: prono2026-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - prono_net
+    depends_on:
+      - frontend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: prono2026-backend
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - DONATION_STRIPE_LINK=${DONATION_STRIPE_LINK:-}
+      - DONATION_PAYPAL_LINK=${DONATION_PAYPAL_LINK:-}
+      - DONATION_KOFI_LINK=${DONATION_KOFI_LINK:-}
+      - CONTACT_EMAIL=${CONTACT_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+      - TURNSTILE_SECRET=${TURNSTILE_SECRET:-}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - prono_data:/app/data
+    networks:
+      - prono_net
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: prono2026-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    networks:
+      - prono_net
+
+volumes:
+  prono_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+
+networks:
+  prono_net:
+    driver: bridge

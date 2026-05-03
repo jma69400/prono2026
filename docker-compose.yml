@@ -1,0 +1,56 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: prono2026-backend
+    restart: unless-stopped
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
+      - DONATION_STRIPE_LINK=${DONATION_STRIPE_LINK:-}
+      - DONATION_PAYPAL_LINK=${DONATION_PAYPAL_LINK:-}
+      - DONATION_KOFI_LINK=${DONATION_KOFI_LINK:-}
+      - CONTACT_EMAIL=${CONTACT_EMAIL:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
+      - TURNSTILE_SECRET=${TURNSTILE_SECRET:-}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persistance de la DB SQLite et du secret JWT
+      - prono_data:/app/data
+    networks:
+      - prono_net
+    expose:
+      - "8000"
+    # Pas de "ports:" : on n'expose pas le backend directement à l'extérieur
+    # tout passe par le frontend Nginx (sécurité)
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_STRIPE_LINK: ${VITE_STRIPE_LINK:-}
+        VITE_PAYPAL_LINK: ${VITE_PAYPAL_LINK:-}
+        VITE_KOFI_LINK: ${VITE_KOFI_LINK:-}
+    container_name: prono2026-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    networks:
+      - prono_net
+
+volumes:
+  prono_data:
+    driver: local
+
+networks:
+  prono_net:
+    driver: bridge

@@ -1,0 +1,83 @@
+// Client API centralisé
+const TOKEN_KEY = 'prono26_token'
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+export const setToken = (t) => t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY)
+
+async function request(path, options = {}) {
+  const token = getToken()
+  const headers = { 'Content-Type': 'application/json', ...options.headers }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  let res
+  try {
+    res = await fetch(`/api${path}`, { ...options, headers })
+  } catch (networkErr) {
+    // Erreur réseau réelle (backend down, CORS, DNS, etc.)
+    throw new Error('Erreur réseau — le serveur backend ne répond pas. Vérifie qu\'il tourne sur http://localhost:8000')
+  }
+
+  if (res.status === 401) {
+    setToken(null)
+    throw new Error('Session expirée — reconnecte-toi')
+  }
+
+  if (!res.ok) {
+    let errMsg = `Erreur ${res.status}`
+    try {
+      const err = await res.json()
+      // Cas 1 : FastAPI HTTPException → { detail: "string" }
+      if (typeof err.detail === 'string') {
+        errMsg = err.detail
+      }
+      // Cas 2 : FastAPI validation error 422 → { detail: [{ loc, msg, type }] }
+      else if (Array.isArray(err.detail)) {
+        errMsg = err.detail.map(e => {
+          const field = e.loc?.[e.loc.length - 1] || ''
+          // Messages plus parlants pour erreurs courantes
+          if (e.type === 'value_error' && field === 'email') return 'Email invalide'
+          if (e.type === 'string_too_short' && field === 'username') return 'Pseudo trop court (min. 2 caractères)'
+          if (e.type === 'string_too_short' && field === 'password') return 'Mot de passe trop court (min. 6 caractères)'
+          return `${field}: ${e.msg}`
+        }).join(' · ')
+      }
+    } catch {
+      // pas de JSON dans la réponse
+    }
+    throw new Error(errMsg)
+  }
+
+  return res.json()
+}
+
+export const api = {
+  signup: (data) => request('/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  me: () => request('/me'),
+  matches: () => request('/matches'),
+  myPredictions: () => request('/predictions'),
+  savePrediction: (match_id, home_score, away_score) =>
+    request('/predictions', { method: 'POST', body: JSON.stringify({ match_id, home_score, away_score }) }),
+  leaderboard: () => request('/leaderboard'),
+  news: (team, lang) => {
+    const params = new URLSearchParams()
+    if (team) params.set('team', team)
+    if (lang) params.set('lang', lang)
+    const qs = params.toString()
+    return request(`/news${qs ? `?${qs}` : ''}`)
+  },
+  refreshNews: () => request('/news/refresh', { method: 'POST' }),
+  // Contact
+  contact: (data) => request('/contact', { method: 'POST', body: JSON.stringify(data) }),
+  // Admin
+  adminUsers: () => request('/admin/users'),
+  adminDeleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+  adminUserPredictions: (id) => request(`/admin/users/${id}/predictions`),
+  adminSetPrediction: (data) => request('/admin/predictions', { method: 'PUT', body: JSON.stringify(data) }),
+  adminSetScore: (match_id, home_score, away_score) =>
+    request(`/admin/matches/${match_id}/score`, { method: 'POST', body: JSON.stringify({ home_score, away_score }) }),
+  adminAuditLog: () => request('/admin/audit-log'),
+  adminContactMessages: (status) => request(`/admin/contact-messages${status ? `?status=${status}` : ''}`),
+  adminUpdateContactStatus: (id, status) => request(`/admin/contact-messages/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  adminDeleteContact: (id) => request(`/admin/contact-messages/${id}`, { method: 'DELETE' }),
+}
