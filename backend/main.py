@@ -169,7 +169,7 @@ def seed_data():
             ]
             for email, name, pwd, role in users:
                 db.execute(
-                    "INSERT INTO users (email, username, password_hash, role) VALUES (?, ?, ?, ?)",
+                    "INSERT OR IGNORE INTO users (email, username, password_hash, role) VALUES (?, ?, ?, ?)",
                     (email, name, pwd_context.hash(pwd), role),
                 )
 
