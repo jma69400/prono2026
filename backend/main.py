@@ -611,14 +611,27 @@ def is_national_team_news(text: str, source_name: str) -> bool:
 
 
 # =====================================================
-# TRADUCTION (MyMemory free API — pas de clé requise)
+# TRADUCTION (MyMemory API + circuit breaker)
+# - Sans clé : ~50000 caractères/jour par IP
+# - Avec clé : ~1M caractères/jour (gratuit, juste un email)
+#   → set MYMEMORY_EMAIL=ton@email.com dans .env
 # =====================================================
+
 # Cache mémoire pour éviter de re-traduire les mêmes textes
 _translation_cache = {}
 
+# Circuit breaker : si on reçoit un 429, on arrête de spammer pendant X temps
+_translate_blocked_until = 0  # timestamp Unix
+_translate_429_count = 0
+
+
 def translate_text(text: str, source_lang: str, target_lang: str) -> str:
-    """Traduit un texte via l'API gratuite MyMemory.
-    Limites : ~50000 caractères/jour par IP. Si erreur, retourne le texte d'origine."""
+    """Traduit un texte via MyMemory.
+    - Cache mémoire global (LRU implicite)
+    - Circuit breaker : skip pendant 1h après un 429
+    - Si erreur, retourne le texte d'origine."""
+    global _translate_blocked_until, _translate_429_count
+
     if not text or source_lang == target_lang:
         return text
 
@@ -627,17 +640,26 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
     if len(clean) > 480:
         clean = clean[:477] + "..."
 
-    # Cache pour éviter les appels redondants
-    cache_key = f"{source_lang}->{target_lang}:{clean[:100]}"
+    # Cache : c'est gratuit et instantané
+    cache_key = f"{source_lang}->{target_lang}:{clean[:120]}"
     if cache_key in _translation_cache:
         return _translation_cache[cache_key]
 
+    # === Circuit breaker : on ne tape pas l'API si on est rate-limité ===
+    if time.time() < _translate_blocked_until:
+        return clean
+
     try:
-        # MyMemory utilise des codes ISO : fr, en, es
-        params = urllib.parse.urlencode({
+        params_dict = {
             'q': clean,
             'langpair': f'{source_lang}|{target_lang}',
-        })
+        }
+        # Si l'admin a fourni un email, on l'utilise pour 10x plus de quota
+        email = os.environ.get("MYMEMORY_EMAIL")
+        if email:
+            params_dict['de'] = email
+
+        params = urllib.parse.urlencode(params_dict)
         req = urllib.request.Request(
             f'https://api.mymemory.translated.net/get?{params}',
             headers={'User-Agent': 'PRONO2026/1.0'},
@@ -645,11 +667,29 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json_lib.loads(resp.read().decode('utf-8'))
             translated = data.get('responseData', {}).get('translatedText', clean)
-            # MyMemory peut renvoyer un message d'erreur dans translatedText
+
+            # MyMemory peut renvoyer "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS"
             if 'MYMEMORY WARNING' in translated.upper() or 'INVALID' in translated.upper():
+                # Quota dépassé via le message → on bloque pour 1 heure
+                _translate_blocked_until = time.time() + 3600
+                print(f"[TRANSLATE] Quota dépassé — pause 1h")
                 return clean
+
+            # Reset compteur d'erreurs
+            _translate_429_count = 0
             _translation_cache[cache_key] = translated
             return translated
+
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            _translate_429_count += 1
+            # Backoff exponentiel : 1ère fois 5 min, 2e fois 15 min, 3e fois 1h, ensuite 2h
+            wait_seconds = min(5 * 60 * (2 ** _translate_429_count), 7200)
+            _translate_blocked_until = time.time() + wait_seconds
+            print(f"[TRANSLATE] 429 reçu — pause {wait_seconds // 60} min (essai #{_translate_429_count})")
+        else:
+            print(f"[TRANSLATE] erreur HTTP {e.code} {source_lang}->{target_lang}")
+        return clean
     except Exception as e:
         print(f"[TRANSLATE] erreur {source_lang}->{target_lang}: {e}")
         return clean
@@ -662,7 +702,8 @@ def translate_to_all_langs(text: str, source_lang: str) -> dict:
     for target in ['fr', 'en', 'es']:
         if target != source_lang and text:
             result[target] = translate_text(text, source_lang, target)
-            time.sleep(0.3)  # rate limit doux pour MyMemory
+            # Délai plus long pour éviter le rate limit (était 0.3s, maintenant 0.6s)
+            time.sleep(0.6)
     return result
 
 
@@ -673,7 +714,7 @@ def fetch_news_once(translate=True):
         try:
             feed = feedparser.parse(url)
             with get_db() as db:
-                for entry in feed.entries[:10]:  # limité à 10 par source pour limiter les traductions
+                for entry in feed.entries[:5]:  # limité à 5 par source pour ménager le quota MyMemory
                     title = getattr(entry, "title", "")
                     summary = getattr(entry, "summary", "")[:500]
                     link = getattr(entry, "link", "")

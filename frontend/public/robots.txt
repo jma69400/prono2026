@@ -1,0 +1,19 @@
+# robots.txt — PRONO 2026
+# Autoriser tous les moteurs de recherche
+
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Bloque les bots agressifs (optionnel)
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# Sitemap
+Sitemap: https://unitedpronos.com/sitemap.xml

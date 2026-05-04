@@ -18,6 +18,7 @@ services:
       - SMTP_FROM=${SMTP_FROM:-}
       - TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY:-}
       - TURNSTILE_SECRET=${TURNSTILE_SECRET:-}
+      - MYMEMORY_EMAIL=${MYMEMORY_EMAIL:-}
       - PYTHONUNBUFFERED=1
     volumes:
       # Persistance de la DB SQLite et du secret JWT
