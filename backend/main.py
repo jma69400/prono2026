@@ -393,12 +393,29 @@ def require_admin(user=Depends(get_current_user)) -> dict:
     return user
 
 
-def log_action(user_id: Optional[int], action: str, details: str = ""):
-    with get_db() as db:
-        db.execute(
-            "INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)",
-            (user_id, action, details),
-        )
+def log_action(user_id: Optional[int], action: str, details: str = "", db=None):
+    """Enregistre une action dans l'audit log.
+    Si db est fourni, réutilise la connexion existante (évite SQLite lock).
+    Sinon, ouvre une nouvelle connexion."""
+    if db is not None:
+        # Connexion existante : on l'utilise directement
+        try:
+            db.execute(
+                "INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)",
+                (user_id, action, details),
+            )
+        except Exception as e:
+            print(f"[AUDIT] erreur (avec db) : {e}")
+    else:
+        # Nouvelle connexion (utilisé en dehors de transactions)
+        try:
+            with get_db() as new_db:
+                new_db.execute(
+                    "INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)",
+                    (user_id, action, details),
+                )
+        except Exception as e:
+            print(f"[AUDIT] erreur (sans db) : {e}")
 
 
 # =====================================================
@@ -850,7 +867,7 @@ def signup(data: SignupIn):
             (data.email, data.username, pwd_context.hash(data.password), "user"),
         )
         user_id = cur.lastrowid
-        log_action(user_id, "signup", data.email)
+        log_action(user_id, "signup", data.email, db=db)  # ← réutilise la même db
         token = create_token(user_id, "user")
         return {"token": token, "user": {"id": user_id, "email": data.email, "username": data.username, "role": "user"}}
 
@@ -860,9 +877,9 @@ def login(data: LoginIn):
     with get_db() as db:
         user = db.execute("SELECT * FROM users WHERE email=?", (data.email,)).fetchone()
         if not user or not pwd_context.verify(data.password, user["password_hash"]):
-            log_action(user["id"] if user else None, "login_failed", data.email)
+            log_action(user["id"] if user else None, "login_failed", data.email, db=db)
             raise HTTPException(401, "Email ou mot de passe invalide")
-        log_action(user["id"], "login_success", data.email)
+        log_action(user["id"], "login_success", data.email, db=db)
         token = create_token(user["id"], user["role"])
         return {
             "token": token,
@@ -997,7 +1014,7 @@ def admin_delete_user(user_id: int, user=Depends(require_admin)):
         raise HTTPException(400, "Impossible de supprimer son propre compte")
     with get_db() as db:
         db.execute("DELETE FROM users WHERE id=?", (user_id,))
-        log_action(user["id"], "delete_user", str(user_id))
+        log_action(user["id"], "delete_user", str(user_id), db=db)
         return {"ok": True}
 
 
@@ -1025,7 +1042,7 @@ def admin_set_prediction(data: AdminPredictionIn, user=Depends(require_admin)):
                 "INSERT INTO predictions (user_id, match_id, home_score, away_score) VALUES (?,?,?,?)",
                 (data.user_id, data.match_id, data.home_score, data.away_score),
             )
-        log_action(user["id"], "edit_prediction", f"user={data.user_id} match={data.match_id}")
+        log_action(user["id"], "edit_prediction", f"user={data.user_id} match={data.match_id}", db=db)
         # Si le match est déjà terminé, recalcule
         m = db.execute("SELECT status FROM matches WHERE id=?", (data.match_id,)).fetchone()
         if m and m["status"] == "finished":
@@ -1043,7 +1060,7 @@ def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
             "UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?",
             (data.home_score, data.away_score, match_id),
         )
-        log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score}")
+        log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score}", db=db)
     recalc_match_points(match_id)
     return {"ok": True}
 
@@ -1394,7 +1411,7 @@ def admin_update_contact_status(msg_id: int, payload: dict, user=Depends(require
         raise HTTPException(400, "Statut invalide")
     with get_db() as db:
         db.execute("UPDATE contact_messages SET status=? WHERE id=?", (new_status, msg_id))
-        log_action(user["id"], "contact_status", f"msg={msg_id} status={new_status}")
+        log_action(user["id"], "contact_status", f"msg={msg_id} status={new_status}", db=db)
     return {"ok": True}
 
 
@@ -1402,7 +1419,7 @@ def admin_update_contact_status(msg_id: int, payload: dict, user=Depends(require
 def admin_delete_contact(msg_id: int, user=Depends(require_admin)):
     with get_db() as db:
         db.execute("DELETE FROM contact_messages WHERE id=?", (msg_id,))
-        log_action(user["id"], "contact_delete", f"msg={msg_id}")
+        log_action(user["id"], "contact_delete", f"msg={msg_id}", db=db)
     return {"ok": True}
 
 
