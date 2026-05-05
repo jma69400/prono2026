@@ -67,6 +67,18 @@ export const api = {
     return request(`/news${qs ? `?${qs}` : ''}`)
   },
   refreshNews: () => request('/news/refresh', { method: 'POST' }),
+  // Groupes
+  myGroup: () => request('/groups/me'),
+  createGroup: (data) => request('/groups', { method: 'POST', body: JSON.stringify(data) }),
+  updateGroup: (id, data) => request(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  groupMembers: (id) => request(`/groups/${id}/members`),
+  joinGroup: (code) => request(`/groups/join/${code}`, { method: 'POST' }),
+  previewGroup: (code) => request(`/groups/preview/${code}`),
+  // Admin groupes
+  adminListGroups: () => request('/admin/groups'),
+  adminDeleteGroup: (id) => request(`/admin/groups/${id}`, { method: 'DELETE' }),
+  adminRemoveMember: (groupId, userId) => request(`/admin/groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
+  adminRegenerateCode: (groupId) => request(`/admin/groups/${groupId}/regenerate-code`, { method: 'POST' }),
   // Contact
   contact: (data) => request('/contact', { method: 'POST', body: JSON.stringify(data) }),
   // Admin

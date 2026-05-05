@@ -77,8 +77,22 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user',
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            role TEXT NOT NULL DEFAULT 'solo',
+            group_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '',
+            logo_data TEXT,
+            invite_code TEXT UNIQUE NOT NULL,
+            leader_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (leader_id) REFERENCES users(id)
         );
 
         CREATE TABLE IF NOT EXISTS matches (
@@ -155,7 +169,19 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
         CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status);
         CREATE INDEX IF NOT EXISTS idx_contact_created ON contact_messages(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id);
+        CREATE INDEX IF NOT EXISTS idx_groups_invite ON groups(invite_code);
+        CREATE INDEX IF NOT EXISTS idx_groups_leader ON groups(leader_id);
         """)
+
+    # === MIGRATION : ajouter group_id à la table users si la colonne n'existe pas ===
+    with get_db() as db:
+        cols = [r["name"] for r in db.execute("PRAGMA table_info(users)").fetchall()]
+        if "group_id" not in cols:
+            print("[MIGRATION] Ajout de group_id à users")
+            db.execute("ALTER TABLE users ADD COLUMN group_id INTEGER")
+        # Migration : transformer les anciens 'user' en 'solo'
+        db.execute("UPDATE users SET role='solo' WHERE role='user'")
 
 
 def seed_data():
@@ -163,9 +189,9 @@ def seed_data():
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             users = [
                 ("admin@prono26.com", "Admin", "admin123", "admin"),
-                ("demo@prono26.com", "Démo", "demo123", "user"),
-                ("marc@prono26.com", "Marc", "marc123", "user"),
-                ("lea@prono26.com", "Léa", "lea123", "user"),
+                ("demo@prono26.com", "Démo", "demo123", "solo"),
+                ("marc@prono26.com", "Marc", "marc123", "solo"),
+                ("lea@prono26.com", "Léa", "lea123", "solo"),
             ]
             for email, name, pwd, role in users:
                 db.execute(
@@ -390,6 +416,17 @@ def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> dict:
 def require_admin(user=Depends(get_current_user)) -> dict:
     if user["role"] != "admin":
         raise HTTPException(403, "Accès admin requis")
+    return user
+
+
+def require_user(user=Depends(get_current_user)) -> dict:
+    """Tout utilisateur connecté (solo, leader, admin)."""
+    return user
+
+
+def require_leader_or_admin(user=Depends(get_current_user)) -> dict:
+    if user["role"] not in ("leader", "admin"):
+        raise HTTPException(403, "Accès leader ou admin requis")
     return user
 
 
@@ -800,6 +837,11 @@ class SignupIn(BaseModel):
     email: EmailStr
     username: str = Field(min_length=2, max_length=40)
     password: str = Field(min_length=6, max_length=100)
+    # Rôle choisi à l'inscription : 'solo' (défaut) ou 'leader'
+    # 'admin' interdit ici (créé manuellement)
+    role: Optional[str] = "solo"
+    # Si l'inscription provient d'un lien d'invitation (rejoint un groupe automatiquement)
+    invite_code: Optional[str] = None
 
 
 class LoginIn(BaseModel):
@@ -859,17 +901,37 @@ def startup():
 # --- Auth ---
 @app.post("/api/auth/signup")
 def signup(data: SignupIn):
+    # Sécurité : un visiteur ne peut s'inscrire qu'en solo ou leader
+    chosen_role = data.role if data.role in ("solo", "leader") else "solo"
+
     with get_db() as db:
         if db.execute("SELECT 1 FROM users WHERE email=?", (data.email,)).fetchone():
             raise HTTPException(400, "Email déjà utilisé")
+
+        # Si invite_code fourni : on force le rôle solo + on le rattache au groupe
+        target_group_id = None
+        if data.invite_code:
+            invite = data.invite_code.upper().strip()
+            grp = db.execute("SELECT id FROM groups WHERE invite_code=?", (invite,)).fetchone()
+            if not grp:
+                raise HTTPException(400, "Code d'invitation invalide")
+            target_group_id = grp["id"]
+            chosen_role = "solo"  # un membre est toujours 'solo' avec group_id
+
         cur = db.execute(
-            "INSERT INTO users (email, username, password_hash, role) VALUES (?,?,?,?)",
-            (data.email, data.username, pwd_context.hash(data.password), "user"),
+            "INSERT INTO users (email, username, password_hash, role, group_id) VALUES (?,?,?,?,?)",
+            (data.email, data.username, pwd_context.hash(data.password), chosen_role, target_group_id),
         )
         user_id = cur.lastrowid
-        log_action(user_id, "signup", data.email, db=db)  # ← réutilise la même db
-        token = create_token(user_id, "user")
-        return {"token": token, "user": {"id": user_id, "email": data.email, "username": data.username, "role": "user"}}
+        log_action(user_id, "signup", f"{data.email} role={chosen_role}", db=db)
+        token = create_token(user_id, chosen_role)
+        return {
+            "token": token,
+            "user": {
+                "id": user_id, "email": data.email, "username": data.username,
+                "role": chosen_role, "group_id": target_group_id,
+            },
+        }
 
 
 @app.post("/api/auth/login")
@@ -883,13 +945,19 @@ def login(data: LoginIn):
         token = create_token(user["id"], user["role"])
         return {
             "token": token,
-            "user": {"id": user["id"], "email": user["email"], "username": user["username"], "role": user["role"]},
+            "user": {
+                "id": user["id"], "email": user["email"], "username": user["username"],
+                "role": user["role"], "group_id": user["group_id"],
+            },
         }
 
 
 @app.get("/api/me")
 def me(user=Depends(get_current_user)):
-    return {"id": user["id"], "email": user["email"], "username": user["username"], "role": user["role"]}
+    return {
+        "id": user["id"], "email": user["email"], "username": user["username"],
+        "role": user["role"], "group_id": user.get("group_id"),
+    }
 
 
 # --- Matches ---
@@ -936,13 +1004,18 @@ def save_prediction(data: PredictionIn, user=Depends(get_current_user)):
 # --- Leaderboard ---
 @app.get("/api/leaderboard")
 def leaderboard():
+    """Classement global avec infos de groupe pour chaque joueur."""
     with get_db() as db:
         rows = db.execute("""
-            SELECT u.id, u.username, u.email,
+            SELECT u.id, u.username, u.email, u.role, u.group_id,
                    COALESCE(SUM(p.points), 0) AS total_points,
-                   COUNT(p.id) AS predictions_count
+                   COUNT(p.id) AS predictions_count,
+                   g.name AS group_name,
+                   g.logo_data AS group_logo,
+                   g.slug AS group_slug
             FROM users u
             LEFT JOIN predictions p ON p.user_id = u.id
+            LEFT JOIN groups g ON g.id = u.group_id
             WHERE u.role != 'admin' OR u.id IN (SELECT user_id FROM predictions)
             GROUP BY u.id
             ORDER BY total_points DESC, predictions_count DESC
@@ -1076,6 +1149,276 @@ def admin_audit_log(user=Depends(require_admin), limit: int = 100):
             (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# =====================================================
+# GROUPES — création, gestion, invitation, kick
+# - solo : pas de groupe
+# - leader : crée + gère son groupe
+# - admin : voit/gère tous les groupes
+# - membre (rôle 'solo' avec group_id != NULL) : à vie dans le groupe
+# =====================================================
+import re as _re_groups
+
+
+def slugify(text: str) -> str:
+    """Convertit 'Mon Super Groupe!' en 'mon-super-groupe'."""
+    s = text.lower().strip()
+    s = _re_groups.sub(r'[^a-z0-9]+', '-', s)
+    s = _re_groups.sub(r'-+', '-', s).strip('-')
+    return s[:60] or "groupe"
+
+
+def generate_invite_code() -> str:
+    """Code court alphanumérique majuscule, 8 caractères."""
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    # Évite les caractères ambigus (0, O, 1, I, L)
+    alphabet = ''.join(c for c in alphabet if c not in '0OI1L')
+    return ''.join(secrets.choice(alphabet) for _ in range(8))
+
+
+class GroupCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    description: Optional[str] = Field(None, max_length=500)
+    logo_data: Optional[str] = Field(None, max_length=800_000)  # base64 ~500KB max
+
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=80)
+    description: Optional[str] = Field(None, max_length=500)
+    logo_data: Optional[str] = Field(None, max_length=800_000)
+
+
+def serialize_group(row: sqlite3.Row, db) -> dict:
+    """Retourne un groupe avec infos enrichies (leader, nb membres)."""
+    g = dict(row)
+    leader = db.execute("SELECT id, username, email FROM users WHERE id=?", (g["leader_id"],)).fetchone()
+    g["leader"] = dict(leader) if leader else None
+    g["member_count"] = db.execute("SELECT COUNT(*) FROM users WHERE group_id=?", (g["id"],)).fetchone()[0]
+    return g
+
+
+@app.post("/api/groups")
+def create_group(data: GroupCreate, user=Depends(require_user)):
+    """Crée un groupe. L'utilisateur doit être 'leader' (pas solo, pas membre d'un autre groupe)."""
+    if user["role"] != "leader":
+        raise HTTPException(403, "Seul un compte leader peut créer un groupe")
+    with get_db() as db:
+        # Vérifier qu'il n'a pas déjà un groupe
+        existing = db.execute("SELECT id FROM groups WHERE leader_id=?", (user["id"],)).fetchone()
+        if existing:
+            raise HTTPException(400, "Tu as déjà un groupe")
+
+        # Générer slug unique
+        base_slug = slugify(data.name)
+        slug = base_slug
+        i = 2
+        while db.execute("SELECT 1 FROM groups WHERE slug=?", (slug,)).fetchone():
+            slug = f"{base_slug}-{i}"
+            i += 1
+
+        # Générer invite code unique
+        for _ in range(10):
+            code = generate_invite_code()
+            if not db.execute("SELECT 1 FROM groups WHERE invite_code=?", (code,)).fetchone():
+                break
+        else:
+            raise HTTPException(500, "Erreur génération code")
+
+        cur = db.execute(
+            """INSERT INTO groups (name, slug, description, logo_data, invite_code, leader_id)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (data.name, slug, data.description or "", data.logo_data, code, user["id"]),
+        )
+        group_id = cur.lastrowid
+        # Le leader rejoint son propre groupe
+        db.execute("UPDATE users SET group_id=? WHERE id=?", (group_id, user["id"]))
+        log_action(user["id"], "group_create", f"id={group_id} name={data.name}", db=db)
+
+        row = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        return serialize_group(row, db)
+
+
+@app.get("/api/groups/me")
+def my_group(user=Depends(require_user)):
+    """Retourne le groupe de l'utilisateur connecté (s'il en a un)."""
+    with get_db() as db:
+        if user["role"] == "leader":
+            row = db.execute("SELECT * FROM groups WHERE leader_id=?", (user["id"],)).fetchone()
+        elif user.get("group_id"):
+            row = db.execute("SELECT * FROM groups WHERE id=?", (user["group_id"],)).fetchone()
+        else:
+            return None
+        if not row:
+            return None
+        return serialize_group(row, db)
+
+
+@app.get("/api/groups/{group_id}/members")
+def list_group_members(group_id: int, user=Depends(require_user)):
+    """Liste les membres d'un groupe. Accessible au leader ou à l'admin."""
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+        # Vérifier les droits
+        is_leader = user["role"] == "leader" and group["leader_id"] == user["id"]
+        is_admin = user["role"] == "admin"
+        if not (is_leader or is_admin):
+            raise HTTPException(403, "Accès refusé")
+
+        rows = db.execute(
+            """SELECT u.id, u.email, u.username, u.role, u.created_at,
+                      COALESCE((SELECT SUM(p.points) FROM predictions p WHERE p.user_id=u.id), 0) AS points
+               FROM users u WHERE u.group_id=? ORDER BY points DESC, u.username""",
+            (group_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+@app.put("/api/groups/{group_id}")
+def update_group(group_id: int, data: GroupUpdate, user=Depends(require_user)):
+    """Met à jour un groupe (nom, description, logo). Leader du groupe ou admin."""
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+        is_leader = user["role"] == "leader" and group["leader_id"] == user["id"]
+        is_admin = user["role"] == "admin"
+        if not (is_leader or is_admin):
+            raise HTTPException(403, "Accès refusé")
+
+        updates = []
+        params = []
+        if data.name is not None:
+            updates.append("name=?"); params.append(data.name)
+            new_slug = slugify(data.name)
+            # éviter collision si on change le nom
+            if not db.execute("SELECT 1 FROM groups WHERE slug=? AND id!=?", (new_slug, group_id)).fetchone():
+                updates.append("slug=?"); params.append(new_slug)
+        if data.description is not None:
+            updates.append("description=?"); params.append(data.description)
+        if data.logo_data is not None:
+            updates.append("logo_data=?"); params.append(data.logo_data)
+
+        if updates:
+            params.append(group_id)
+            db.execute(f"UPDATE groups SET {', '.join(updates)} WHERE id=?", params)
+            log_action(user["id"], "group_update", f"id={group_id}", db=db)
+
+        row = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        return serialize_group(row, db)
+
+
+@app.post("/api/groups/join/{invite_code}")
+def join_group(invite_code: str, user=Depends(require_user)):
+    """Rejoint un groupe via code d'invitation. UNE FOIS rejoint, on est verrouillé."""
+    invite_code = invite_code.upper().strip()
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE invite_code=?", (invite_code,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Code d'invitation invalide")
+
+        # Si déjà dans un groupe, refuser (verrouillé à vie)
+        if user.get("group_id"):
+            if user["group_id"] == group["id"]:
+                raise HTTPException(400, "Tu fais déjà partie de ce groupe")
+            raise HTTPException(403, "Tu es déjà membre d'un autre groupe — contacte l'administrateur pour changer")
+
+        # Le leader d'un autre groupe ne peut pas rejoindre un autre groupe
+        if user["role"] == "leader":
+            existing_group = db.execute("SELECT id FROM groups WHERE leader_id=?", (user["id"],)).fetchone()
+            if existing_group:
+                raise HTTPException(403, "En tant que leader d'un autre groupe, tu ne peux pas rejoindre celui-ci")
+
+        # L'admin ne rejoint pas de groupe
+        if user["role"] == "admin":
+            raise HTTPException(403, "Un administrateur ne rejoint pas de groupe")
+
+        db.execute("UPDATE users SET group_id=? WHERE id=?", (group["id"], user["id"]))
+        log_action(user["id"], "group_join", f"group_id={group['id']}", db=db)
+        return serialize_group(group, db)
+
+
+@app.get("/api/groups/preview/{invite_code}")
+def preview_group(invite_code: str):
+    """Pré-visualise un groupe avant de le rejoindre (page d'invitation publique)."""
+    invite_code = invite_code.upper().strip()
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE invite_code=?", (invite_code,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Code d'invitation invalide")
+        g = serialize_group(group, db)
+        # On n'expose pas les infos sensibles
+        return {
+            "name": g["name"],
+            "description": g["description"],
+            "logo_data": g["logo_data"],
+            "member_count": g["member_count"],
+            "leader_username": g["leader"]["username"] if g["leader"] else None,
+        }
+
+
+# === ADMIN ENDPOINTS POUR LES GROUPES ===
+
+@app.get("/api/admin/groups")
+def admin_list_groups(user=Depends(require_admin)):
+    """Liste tous les groupes (admin only)."""
+    with get_db() as db:
+        rows = db.execute("SELECT * FROM groups ORDER BY created_at DESC").fetchall()
+        return [serialize_group(r, db) for r in rows]
+
+
+@app.delete("/api/admin/groups/{group_id}")
+def admin_delete_group(group_id: int, user=Depends(require_admin)):
+    """Supprime un groupe (admin only). Les membres redeviennent solo."""
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+        # Détacher les membres → solo
+        db.execute("UPDATE users SET group_id=NULL WHERE group_id=?", (group_id,))
+        # Le leader redevient solo aussi
+        db.execute("UPDATE users SET role='solo' WHERE id=?", (group["leader_id"],))
+        # Supprimer le groupe
+        db.execute("DELETE FROM groups WHERE id=?", (group_id,))
+        log_action(user["id"], "admin_delete_group", f"id={group_id}", db=db)
+        return {"ok": True}
+
+
+@app.delete("/api/admin/groups/{group_id}/members/{user_id}")
+def admin_remove_member(group_id: int, user_id: int, user=Depends(require_admin)):
+    """Retire un membre d'un groupe (admin only). Le membre redevient solo."""
+    with get_db() as db:
+        member = db.execute("SELECT * FROM users WHERE id=? AND group_id=?", (user_id, group_id)).fetchone()
+        if not member:
+            raise HTTPException(404, "Membre introuvable dans ce groupe")
+        # Refuser de retirer le leader (faut supprimer le groupe à la place)
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if group and group["leader_id"] == user_id:
+            raise HTTPException(400, "Impossible de retirer le leader. Supprime le groupe à la place.")
+        db.execute("UPDATE users SET group_id=NULL WHERE id=?", (user_id,))
+        log_action(user["id"], "admin_remove_member", f"user={user_id} group={group_id}", db=db)
+        return {"ok": True}
+
+
+@app.post("/api/admin/groups/{group_id}/regenerate-code")
+def admin_regenerate_code(group_id: int, user=Depends(require_admin)):
+    """Régénère le code d'invitation d'un groupe (admin only)."""
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+        for _ in range(10):
+            new_code = generate_invite_code()
+            if not db.execute("SELECT 1 FROM groups WHERE invite_code=?", (new_code,)).fetchone():
+                break
+        else:
+            raise HTTPException(500, "Erreur génération code")
+        db.execute("UPDATE groups SET invite_code=? WHERE id=?", (new_code, group_id))
+        log_action(user["id"], "regenerate_invite", f"group={group_id}", db=db)
+        return {"invite_code": new_code}
 
 
 # =====================================================

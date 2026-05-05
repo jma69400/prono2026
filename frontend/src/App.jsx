@@ -25,12 +25,13 @@ function LangSwitch() {
 // =====================================================
 // AUTH SCREEN
 // =====================================================
-function AuthScreen({ onLogin, onGuest, initialMode = 'login' }) {
+function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null, invitedGroup = null }) {
   const { t } = useTranslation()
-  const [mode, setMode] = useState(initialMode)
+  const [mode, setMode] = useState(inviteCode ? 'signup' : initialMode)
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [signupRole, setSignupRole] = useState(inviteCode ? 'solo' : 'solo')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -46,7 +47,13 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login' }) {
     setError(''); setLoading(true)
     try {
       const fn = mode === 'login' ? api.login : api.signup
-      const data = mode === 'login' ? { email, password } : { email, username, password }
+      let data
+      if (mode === 'login') {
+        data = { email, password }
+      } else {
+        data = { email, username, password, role: inviteCode ? 'solo' : signupRole }
+        if (inviteCode) data.invite_code = inviteCode
+      }
       const result = await fn(data)
       setToken(result.token)
       onLogin(result.user)
@@ -65,6 +72,25 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login' }) {
           </div>
           <p className="text-white/60">{t('auth.subtitle')}</p>
         </div>
+
+        {/* Bandeau invitation */}
+        {invitedGroup && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-orange-500/20 to-pink-500/20 border border-orange-400/30 rounded-2xl text-center">
+            <div className="flex items-center justify-center gap-3 mb-2">
+              {invitedGroup.logo_data ? (
+                <img src={invitedGroup.logo_data} alt={invitedGroup.name} className="w-12 h-12 rounded-full object-cover border-2 border-orange-400" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-orange-500/30 flex items-center justify-center text-2xl">🏆</div>
+              )}
+              <div className="text-left">
+                <div className="text-xs text-white/60">{t('signup.invitedTo')}</div>
+                <div className="font-bold text-lg">{invitedGroup.name}</div>
+              </div>
+            </div>
+            {invitedGroup.description && <p className="text-sm text-white/70">{invitedGroup.description}</p>}
+            <div className="text-xs text-white/40 mt-2">{invitedGroup.member_count} {t('group.membersCount').replace('{count} ', '')}</div>
+          </div>
+        )}
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
           <div className="flex gap-2 mb-6">
@@ -91,6 +117,46 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login' }) {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
 
+            {/* Choix du rôle (uniquement à l'inscription, sauf si invité) */}
+            {mode === 'signup' && !inviteCode && (
+              <div className="space-y-2 pt-2">
+                <label className="text-sm font-semibold text-white/70">{t('signup.chooseRole')}</label>
+                <button type="button" onClick={() => setSignupRole('solo')}
+                  className={`w-full p-3 rounded-lg border text-left transition ${
+                    signupRole === 'solo'
+                      ? 'bg-orange-500/20 border-orange-400/50'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">🏃</div>
+                    <div className="flex-1">
+                      <div className="font-semibold">{t('role.solo')}</div>
+                      <div className="text-xs text-white/60">{t('role.solo.desc')}</div>
+                    </div>
+                    {signupRole === 'solo' && <Check className="w-5 h-5 text-orange-400" />}
+                  </div>
+                </button>
+                <button type="button" onClick={() => setSignupRole('leader')}
+                  className={`w-full p-3 rounded-lg border text-left transition ${
+                    signupRole === 'leader'
+                      ? 'bg-orange-500/20 border-orange-400/50'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">👥</div>
+                    <div className="flex-1">
+                      <div className="font-semibold">{t('role.leader')}</div>
+                      <div className="text-xs text-white/60">{t('role.leader.desc')}</div>
+                    </div>
+                    {signupRole === 'leader' && <Check className="w-5 h-5 text-orange-400" />}
+                  </div>
+                </button>
+                {signupRole === 'leader' && (
+                  <p className="text-xs text-orange-300/80 italic">→ {t('signup.continueAsLeader')}</p>
+                )}
+              </div>
+            )}
+
             {error && (
               <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> <span>{error}</span>
@@ -103,17 +169,19 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login' }) {
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-white/40 text-sm text-center mb-3">{t('auth.demoAccounts')}</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => fillDemo('admin')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
-                👑 {t('auth.adminAccount')}
-              </button>
-              <button onClick={() => fillDemo('demo')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
-                👤 {t('auth.userAccount')}
-              </button>
+          {!inviteCode && (
+            <div className="mt-6 pt-6 border-t border-white/10">
+              <p className="text-white/40 text-sm text-center mb-3">{t('auth.demoAccounts')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => fillDemo('admin')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
+                  👑 {t('auth.adminAccount')}
+                </button>
+                <button onClick={() => fillDemo('demo')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
+                  👤 {t('auth.userAccount')}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Lien retour visiteur */}
           {onGuest && (
@@ -436,21 +504,34 @@ function LeaderboardTab({ leaderboard, currentUserId }) {
         <div className="text-center py-12 text-white/40">Aucun participant</div>
       ) : leaderboard.map((entry, i) => (
         <div key={entry.id}
-          className={`flex items-center gap-4 p-4 rounded-xl border transition ${
+          className={`flex items-center gap-3 p-4 rounded-xl border transition ${
             entry.id === currentUserId ? 'bg-orange-500/10 border-orange-400/40' : 'bg-white/5 border-white/10'
           }`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0 ${
             i === 0 ? 'bg-yellow-400/20 text-yellow-300' :
             i === 1 ? 'bg-gray-300/20 text-gray-200' :
             i === 2 ? 'bg-orange-700/30 text-orange-400' : 'bg-white/5 text-white/60'
           }`}>{i + 1}</div>
-          <div className="flex-1">
-            <div className="font-bold">{entry.username}</div>
-            <div className="text-xs text-white/40">
-              {entry.predictions_count} {entry.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}
+          {/* Logo du groupe si l'utilisateur en fait partie */}
+          {entry.group_logo ? (
+            <img src={entry.group_logo} alt={entry.group_name} title={entry.group_name}
+              className="w-9 h-9 rounded-lg object-cover border border-white/10 shrink-0" />
+          ) : entry.group_name ? (
+            <div className="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center text-sm shrink-0" title={entry.group_name}>
+              🏆
+            </div>
+          ) : null}
+          <div className="flex-1 min-w-0">
+            <div className="font-bold flex items-center gap-2 flex-wrap">
+              {entry.username}
+              {entry.role === 'leader' && <span className="text-xs text-purple-300">👑</span>}
+            </div>
+            <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
+              {entry.group_name && <span className="text-orange-300/70">{entry.group_name} ·</span>}
+              <span>{entry.predictions_count} {entry.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}</span>
             </div>
           </div>
-          <div className="text-2xl font-black text-orange-400">
+          <div className="text-2xl font-black text-orange-400 shrink-0">
             {entry.total_points}<span className="text-sm text-white/40 ml-1">{t('matches.points')}</span>
           </div>
         </div>
@@ -583,9 +664,12 @@ function AdminTab({ user }) {
 
   return (
     <div>
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.users')} ({users.length})
+        </button>
+        <button onClick={() => setTab('groups')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'groups' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+          👥 {t('admin.groups')}
         </button>
         <button onClick={() => setTab('contact')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'contact' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           ✉️ {t('contact.adminTitle')}
@@ -606,7 +690,11 @@ function AdminTab({ user }) {
                 <div className="font-semibold truncate">{u.username}</div>
                 <div className="text-xs text-white/40 truncate">{u.email}</div>
               </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${u.role === 'admin' ? 'bg-red-500/20 text-red-300' : 'bg-white/5 text-white/60'}`}>
+              <span className={`text-xs px-2 py-0.5 rounded ${
+                u.role === 'admin' ? 'bg-red-500/20 text-red-300' :
+                u.role === 'leader' ? 'bg-purple-500/20 text-purple-300' :
+                'bg-white/5 text-white/60'
+              }`}>
                 {u.role}
               </span>
               {u.id !== user.id && (
@@ -618,6 +706,8 @@ function AdminTab({ user }) {
           ))}
         </div>
       )}
+
+      {tab === 'groups' && <AdminGroupsPanel />}
 
       {tab === 'contact' && <AdminContactPanel />}
 
@@ -983,6 +1073,15 @@ function ContactModal({ onClose, currentUser, turnstileSiteKey }) {
               onChange={e => setMessage(e.target.value)}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 text-sm resize-none" />
 
+            {/* Compteur de caractères + indication minimum */}
+            <div className="flex justify-between items-center text-xs -mt-1">
+              <span className={message.length < 10 ? 'text-orange-400' : 'text-white/40'}>
+                {message.length < 10
+                  ? `Minimum 10 caractères (${10 - message.length} de plus)`
+                  : `${message.length} / 2000 caractères`}
+              </span>
+            </div>
+
             {/* Honeypot anti-bot, caché aux humains */}
             <input type="text" name="website" value={website} onChange={e => setWebsite(e.target.value)}
               tabIndex={-1} autoComplete="off"
@@ -1137,6 +1236,505 @@ function AdminContactPanel() {
 
 
 // =====================================================
+// GROUP CREATE SCREEN (étape post-inscription leader)
+// =====================================================
+function GroupCreateScreen({ onCreated, onSkip }) {
+  const { t } = useTranslation()
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [logoData, setLogoData] = useState(null)
+  const [logoError, setLogoError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleLogoUpload = (e) => {
+    setLogoError('')
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 500_000) {
+      setLogoError('Image trop lourde (max 500 KB)')
+      return
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setLogoError('Format non supporté (JPG, PNG ou WebP)')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => setLogoData(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError(''); setLoading(true)
+    try {
+      const group = await api.createGroup({ name, description, logo_data: logoData })
+      onCreated(group)
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
+      <div className="w-full max-w-lg">
+        <div className="text-center mb-6">
+          <Trophy className="w-12 h-12 text-orange-400 mx-auto mb-2" />
+          <h1 className="text-3xl font-black mb-2">{t('group.create.title')}</h1>
+          <p className="text-white/60">{t('group.create.subtitle')}</p>
+        </div>
+
+        <form onSubmit={submit} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-4">
+
+          {/* Logo upload */}
+          <div className="flex flex-col items-center">
+            <label className="text-sm font-semibold text-white/70 mb-2 self-start">{t('group.logo')}</label>
+            <div className="flex items-center gap-4 w-full">
+              <div className="w-24 h-24 rounded-2xl bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center overflow-hidden">
+                {logoData ? <img src={logoData} alt="Logo" className="w-full h-full object-cover" /> : <span className="text-3xl">🏆</span>}
+              </div>
+              <div className="flex-1">
+                <input id="logo-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleLogoUpload} className="hidden" />
+                <label htmlFor="logo-upload" className="cursor-pointer inline-block px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-sm font-semibold transition">
+                  {logoData ? t('group.logoChange') : t('group.logoChoose')}
+                </label>
+                {logoData && (
+                  <button type="button" onClick={() => setLogoData(null)} className="ml-2 text-sm text-red-300 hover:text-red-200">
+                    {t('group.logoRemove')}
+                  </button>
+                )}
+                <p className="text-xs text-white/40 mt-2">{t('group.logoHint')}</p>
+                {logoError && <p className="text-xs text-red-400 mt-1">{logoError}</p>}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-white/70 block mb-1">{t('group.name')}</label>
+            <input type="text" required minLength={2} maxLength={80} placeholder={t('group.namePlaceholder')} value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-white/70 block mb-1">{t('group.description')}</label>
+            <textarea maxLength={500} rows={3} placeholder={t('group.descriptionPlaceholder')} value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 resize-none" />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> <span>{error}</span>
+            </div>
+          )}
+
+          <button type="submit" disabled={loading || name.length < 2}
+            className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+            {loading ? t('group.creating') : t('group.create.cta')}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
+// JOIN GROUP SCREEN (depuis lien d'invitation)
+// =====================================================
+function JoinGroupScreen({ inviteCode, onJoined, onCancel, currentUser }) {
+  const { t } = useTranslation()
+  const [preview, setPreview] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [joining, setJoining] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.previewGroup(inviteCode)
+      .then(setPreview)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [inviteCode])
+
+  const join = async () => {
+    setJoining(true)
+    try {
+      await api.joinGroup(inviteCode)
+      const refreshedUser = await api.me()
+      onJoined(refreshedUser)
+    } catch (err) {
+      setError(err.message)
+    } finally { setJoining(false) }
+  }
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-white/60">{t('common.loading')}</div>
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-6">
+          <Trophy className="w-12 h-12 text-orange-400 mx-auto mb-2" />
+          <h1 className="text-2xl font-black">{t('group.joinTitle')}</h1>
+        </div>
+
+        {error ? (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+            <p className="text-red-300">{error}</p>
+            <button onClick={onCancel} className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm">
+              ← {t('auth.guestBack')}
+            </button>
+          </div>
+        ) : preview && (
+          <div className="bg-white/5 backdrop-blur-xl border border-orange-400/30 rounded-2xl p-6">
+            <div className="flex flex-col items-center gap-3 mb-4">
+              {preview.logo_data ? (
+                <img src={preview.logo_data} alt={preview.name} className="w-24 h-24 rounded-2xl object-cover border-2 border-orange-400/50" />
+              ) : (
+                <div className="w-24 h-24 rounded-2xl bg-orange-500/20 flex items-center justify-center text-4xl">🏆</div>
+              )}
+              <h2 className="text-2xl font-black text-center">{preview.name}</h2>
+              {preview.description && <p className="text-sm text-white/70 text-center">{preview.description}</p>}
+              <div className="flex items-center gap-3 text-xs text-white/50">
+                <span>👥 {preview.member_count} {preview.member_count > 1 ? 'membres' : 'membre'}</span>
+                {preview.leader_username && <span>👑 {preview.leader_username}</span>}
+              </div>
+            </div>
+
+            <div className="bg-orange-500/10 border border-orange-400/30 rounded-lg p-3 text-xs text-orange-200 mb-4">
+              {t('group.joinNote')}
+            </div>
+
+            {!currentUser ? (
+              <p className="text-center text-sm text-white/60 mb-4">{t('signup.invitedTo')} <strong>{preview.name}</strong>. {t('auth.signup')} pour rejoindre.</p>
+            ) : (
+              <button onClick={join} disabled={joining}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+                {joining ? '...' : t('group.joinCta')}
+              </button>
+            )}
+
+            <button onClick={onCancel} className="block mx-auto mt-3 text-sm text-white/40 hover:text-white/70">
+              ← {t('auth.guestBack')}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
+// GROUP TAB (mon groupe — leader ou membre)
+// =====================================================
+function GroupTab({ user }) {
+  const { t } = useTranslation()
+  const [group, setGroup] = useState(null)
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [logoData, setLogoData] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [savedFlash, setSavedFlash] = useState(false)
+  const [copyMsg, setCopyMsg] = useState(false)
+
+  const isLeader = user?.role === 'leader'
+  const isMember = user?.role === 'solo' && user?.group_id
+
+  const reload = async () => {
+    setLoading(true)
+    try {
+      const g = await api.myGroup()
+      setGroup(g)
+      if (g) {
+        setName(g.name); setDescription(g.description || ''); setLogoData(g.logo_data)
+        if (isLeader) {
+          const m = await api.groupMembers(g.id)
+          setMembers(m)
+        }
+      }
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { reload() }, [])
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 500_000) { alert('Image trop lourde (max 500 KB)'); return }
+    const reader = new FileReader()
+    reader.onload = (ev) => setLogoData(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const updated = await api.updateGroup(group.id, { name, description, logo_data: logoData })
+      setGroup(updated)
+      setSavedFlash(true)
+      setTimeout(() => setSavedFlash(false), 2000)
+      setEditing(false)
+    } catch (e) { alert(e.message) }
+    finally { setSaving(false) }
+  }
+
+  const copyInviteLink = () => {
+    const link = `${window.location.origin}/join/${group.invite_code}`
+    navigator.clipboard.writeText(link)
+    setCopyMsg(true)
+    setTimeout(() => setCopyMsg(false), 2000)
+  }
+
+  if (loading) return <div className="text-center py-12 text-white/40">{t('common.loading')}</div>
+
+  if (!group) {
+    return (
+      <div className="text-center py-12 text-white/40">
+        <p>Tu n'es pas dans un groupe.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Carte groupe */}
+      <div className="bg-gradient-to-br from-orange-500/10 to-pink-500/10 border border-orange-400/30 rounded-2xl p-5">
+        <div className="flex items-start gap-4 mb-4">
+          {group.logo_data ? (
+            <img src={group.logo_data} alt={group.name} className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-400/50" />
+          ) : (
+            <div className="w-20 h-20 rounded-2xl bg-orange-500/20 flex items-center justify-center text-3xl">🏆</div>
+          )}
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <input type="text" value={name} onChange={e => setName(e.target.value)} maxLength={80}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-xl font-bold mb-2" />
+            ) : (
+              <h2 className="text-2xl font-black">{group.name}</h2>
+            )}
+            {editing ? (
+              <textarea value={description} onChange={e => setDescription(e.target.value)} maxLength={500} rows={2}
+                placeholder={t('group.descriptionPlaceholder')}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm resize-none" />
+            ) : (
+              group.description && <p className="text-sm text-white/70">{group.description}</p>
+            )}
+            <div className="flex items-center gap-2 mt-2 text-xs text-white/50 flex-wrap">
+              <span>👥 {group.member_count} {t('group.membersCount').replace('{count} ', '').replace('s)', group.member_count > 1 ? 's)' : ')')}</span>
+              {group.leader && <span>👑 {group.leader.username}</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Edition (leader uniquement) */}
+        {isLeader && (
+          editing ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <input id="logo-edit-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleLogoUpload} className="hidden" />
+              <label htmlFor="logo-edit-upload" className="cursor-pointer px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-sm">
+                {t('group.logoChange')}
+              </label>
+              {logoData && <button onClick={() => setLogoData(null)} className="text-sm text-red-300">{t('group.logoRemove')}</button>}
+              <button onClick={save} disabled={saving} className="ml-auto px-4 py-1.5 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold">
+                {saving ? '...' : t('group.save')}
+              </button>
+              <button onClick={() => { setEditing(false); reload() }} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm">
+                {t('common.cancel') || 'Annuler'}
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-sm">
+              ✏️ Modifier
+            </button>
+          )
+        )}
+        {savedFlash && <p className="text-green-400 text-sm mt-2">{t('group.saved')}</p>}
+      </div>
+
+      {/* Code d'invitation (leader uniquement) */}
+      {isLeader && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h3 className="font-semibold mb-3">{t('group.inviteLink')}</h3>
+          <div className="flex items-center gap-2 mb-2">
+            <code className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-orange-300 text-sm break-all">
+              {window.location.origin}/join/{group.invite_code}
+            </code>
+            <button onClick={copyInviteLink} className="shrink-0 px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold whitespace-nowrap">
+              {copyMsg ? '✓ ' + t('group.inviteCopied') : '📋 ' + t('group.inviteCopy')}
+            </button>
+          </div>
+          <p className="text-xs text-white/40">{t('group.inviteCode')} : <strong>{group.invite_code}</strong></p>
+        </div>
+      )}
+
+      {/* Liste des membres (leader uniquement) */}
+      {isLeader && members.length > 0 && (
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h3 className="font-semibold mb-3">{t('group.members')} ({members.length})</h3>
+          <div className="space-y-2">
+            {members.map(m => (
+              <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-bold text-sm">
+                    {m.username[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm">
+                      {m.username}
+                      {m.role === 'leader' && <span className="ml-2 text-xs text-orange-300">👑 {t('group.leader')}</span>}
+                    </div>
+                    <div className="text-xs text-white/40">{m.email}</div>
+                  </div>
+                </div>
+                <div className="text-sm text-orange-300 font-bold">{m.points} {t('group.points')}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// =====================================================
+// ADMIN GROUPS PANEL
+// =====================================================
+function AdminGroupsPanel() {
+  const { t } = useTranslation()
+  const [groups, setGroups] = useState([])
+  const [expandedId, setExpandedId] = useState(null)
+  const [members, setMembers] = useState({})
+
+  const reload = async () => {
+    const g = await api.adminListGroups()
+    setGroups(g)
+  }
+
+  useEffect(() => { reload() }, [])
+
+  const toggleExpand = async (id) => {
+    if (expandedId === id) { setExpandedId(null); return }
+    setExpandedId(id)
+    if (!members[id]) {
+      try {
+        const m = await api.groupMembers(id)
+        setMembers(prev => ({ ...prev, [id]: m }))
+      } catch (e) { console.error(e) }
+    }
+  }
+
+  const deleteGroup = async (id) => {
+    if (!confirm(t('admin.deleteGroupConfirm'))) return
+    await api.adminDeleteGroup(id); reload()
+  }
+
+  const removeMember = async (groupId, userId) => {
+    if (!confirm(t('admin.removeMemberConfirm'))) return
+    await api.adminRemoveMember(groupId, userId)
+    const m = await api.groupMembers(groupId)
+    setMembers(prev => ({ ...prev, [groupId]: m }))
+    reload()
+  }
+
+  const regenerateCode = async (groupId) => {
+    if (!confirm(t('admin.regenerateCodeConfirm'))) return
+    await api.adminRegenerateCode(groupId); reload()
+  }
+
+  if (groups.length === 0) return <div className="text-center py-12 text-white/40">Aucun groupe</div>
+
+  return (
+    <div className="space-y-3">
+      {groups.map(g => (
+        <div key={g.id} className="bg-white/5 border border-white/10 rounded-xl">
+          <div className="p-4 flex items-center gap-3">
+            {g.logo_data ? <img src={g.logo_data} className="w-12 h-12 rounded-lg object-cover" alt={g.name} />
+              : <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">🏆</div>}
+            <div className="flex-1 min-w-0">
+              <div className="font-bold">{g.name}</div>
+              <div className="text-xs text-white/50 flex items-center gap-3 flex-wrap">
+                <span>👥 {g.member_count}</span>
+                <span>👑 {g.leader?.username}</span>
+                <code className="text-orange-300">{g.invite_code}</code>
+              </div>
+            </div>
+            <button onClick={() => toggleExpand(g.id)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm">
+              {expandedId === g.id ? '▼' : '▶'}
+            </button>
+            <button onClick={() => regenerateCode(g.id)} className="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-xs">
+              🔄 Code
+            </button>
+            <button onClick={() => deleteGroup(g.id)} className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+          {expandedId === g.id && members[g.id] && (
+            <div className="px-4 pb-4 space-y-1 border-t border-white/5 pt-3">
+              {members[g.id].map(m => (
+                <div key={m.id} className="flex items-center justify-between p-2 bg-white/5 rounded-lg text-sm">
+                  <div className="flex items-center gap-2">
+                    <span>{m.username}</span>
+                    <span className="text-xs text-white/40">{m.email}</span>
+                    {m.role === 'leader' && <span className="text-xs text-orange-300">👑</span>}
+                  </div>
+                  {m.role !== 'leader' && (
+                    <button onClick={() => removeMember(g.id, m.id)} className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-xs">
+                      Retirer
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+
+// =====================================================
+// AUTH SCREEN AVEC INVITATION (chargé depuis /join/CODE)
+// =====================================================
+function AuthScreenWithInvite({ inviteCode, onLogin, onCancel }) {
+  const [preview, setPreview] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.previewGroup(inviteCode)
+      .then(setPreview)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [inviteCode])
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-white/60">Chargement…</div>
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
+        <div className="max-w-md text-center bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <p className="text-red-300 mb-4">Code d'invitation invalide</p>
+          <button onClick={onCancel} className="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg">
+            ← Retour
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return <AuthScreen onLogin={onLogin} onGuest={onCancel} initialMode="signup" inviteCode={inviteCode} invitedGroup={preview} />
+}
+
+
+// =====================================================
 // MAIN APP
 // =====================================================
 export default function App() {
@@ -1159,12 +1757,27 @@ export default function App() {
   const [news, setNews] = useState([])
   const [config, setConfig] = useState({ donations: { enabled: false } })
 
+  // === GROUPES ===
+  // Si l'URL est /join/ABC123 → on affiche l'écran de rejoindre groupe
+  const [inviteCode, setInviteCode] = useState(() => {
+    const m = window.location.pathname.match(/^\/join\/([A-Z0-9]+)$/i)
+    return m ? m[1].toUpperCase() : null
+  })
+  // Si user vient de s'inscrire en leader → écran création groupe
+  const [needsGroupCreation, setNeedsGroupCreation] = useState(false)
+
   // Init : vérifier token + charger config publique
   useEffect(() => {
     fetch('/api/config').then(r => r.json()).then(setConfig).catch(() => {})
 
     if (getToken()) {
-      api.me().then(u => { setUser(u); setIsGuest(false); setShowHome(false) })
+      api.me().then(u => {
+        setUser(u); setIsGuest(false); setShowHome(false)
+        // Si leader sans groupe encore créé → afficher l'écran de création
+        if (u.role === 'leader' && !u.group_id) {
+          setNeedsGroupCreation(true)
+        }
+      })
         .catch(() => { setToken(null) })
         .finally(() => setLoading(false))
     } else {
@@ -1214,13 +1827,62 @@ export default function App() {
   const handleLogin = () => { setAuthInitialMode('login'); setShowAuth(true); setShowHome(false) }
   const handleGuest = () => { setIsGuest(true); setShowHome(false) }
 
-  const onLogin = (u) => { setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false) }
-  const logout = () => { setToken(null); setUser(null); setIsGuest(false); setShowHome(true) }
+  const onLogin = (u) => {
+    setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false)
+    // Si l'utilisateur vient de s'inscrire en leader → écran création de groupe
+    if (u.role === 'leader' && !u.group_id) {
+      setNeedsGroupCreation(true)
+    }
+    // Si on était sur /join/CODE et qu'on s'est inscrit avec invite_code → user a déjà group_id
+    if (inviteCode && u.group_id) {
+      setInviteCode(null)
+      window.history.replaceState({}, '', '/')
+    }
+  }
+  const logout = () => { setToken(null); setUser(null); setIsGuest(false); setShowHome(true); setNeedsGroupCreation(false) }
   const onGuestPrompt = () => setShowGuestPrompt(true)
   const goToAuth = () => { setShowGuestPrompt(false); setShowAuth(true); setShowHome(false) }
   const backToGuest = () => { setShowAuth(false); if (!user) setShowHome(true) }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-white/60">{t('common.loading')}</div>
+
+  // 0. URL /join/CODE → écran d'invitation (avant tout)
+  if (inviteCode) {
+    // Si user déjà connecté ET pas dans un groupe → peut rejoindre directement
+    if (user && !user.group_id && user.role !== 'leader' && user.role !== 'admin') {
+      return <JoinGroupScreen
+        inviteCode={inviteCode}
+        currentUser={user}
+        onJoined={(u) => {
+          setUser(u); setInviteCode(null)
+          window.history.replaceState({}, '', '/')
+        }}
+        onCancel={() => { setInviteCode(null); window.history.replaceState({}, '', '/') }}
+      />
+    }
+    // Si pas connecté → page d'inscription pré-remplie avec invite_code
+    if (!user) {
+      // Récupère le preview pour afficher le bandeau
+      return <AuthScreenWithInvite
+        inviteCode={inviteCode}
+        onLogin={onLogin}
+        onCancel={() => { setInviteCode(null); window.history.replaceState({}, '', '/'); setShowHome(true) }}
+      />
+    }
+    // Si user connecté mais déjà dans un groupe ou admin/leader → message d'erreur
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
+        <div className="max-w-md text-center bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <p className="text-red-300 mb-4">{t('group.joinErrorAlreadyIn')}</p>
+          <button onClick={() => { setInviteCode(null); window.history.replaceState({}, '', '/') }}
+            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg">
+            ← {t('auth.guestBack')}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   // 1. HomePage par défaut (premier visit)
   if (showHome && !user) {
@@ -1230,12 +1892,26 @@ export default function App() {
   // 2. Écran d'auth si demandé
   if (showAuth) return <AuthScreen onLogin={onLogin} onGuest={backToGuest} initialMode={authInitialMode} />
 
+  // 2.5 — Leader fraîchement inscrit → doit créer son groupe avant d'accéder à l'app
+  if (needsGroupCreation && user?.role === 'leader') {
+    return <GroupCreateScreen
+      onCreated={async (g) => {
+        const refreshed = await api.me()
+        setUser(refreshed)
+        setNeedsGroupCreation(false)
+      }}
+    />
+  }
+
   const isAdmin = user?.role === 'admin'
+  const isLeader = user?.role === 'leader'
+  const hasGroup = !!user?.group_id
 
   const tabs = [
     { id: 'matches', label: t('tabs.matches'), icon: Calendar },
     { id: 'leaderboard', label: t('tabs.leaderboard'), icon: Trophy },
     { id: 'groups', label: t('tabs.groups'), icon: Users },
+    ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
     ...(isAdmin ? [{ id: 'admin', label: t('tabs.admin'), icon: Settings }] : []),
   ]
@@ -1321,6 +1997,7 @@ export default function App() {
         )}
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} />}
         {activeTab === 'groups' && <GroupsTab />}
+        {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
