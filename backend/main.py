@@ -191,10 +191,9 @@ def seed_data():
     with get_db() as db:
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             users = [
+                # Compte admin par défaut — CHANGE LE MOT DE PASSE EN PRODUCTION !
+                # Tu peux aussi le supprimer après avoir créé ton vrai compte admin
                 ("admin@prono26.com", "Admin", "admin123", "admin"),
-                ("demo@prono26.com", "Démo", "demo123", "solo"),
-                ("marc@prono26.com", "Marc", "marc123", "solo"),
-                ("lea@prono26.com", "Léa", "lea123", "solo"),
             ]
             for email, name, pwd, role in users:
                 db.execute(
@@ -897,7 +896,7 @@ def startup():
     print("=" * 60)
     print("🏆 PRONO 2026 backend démarré")
     print(f"📁 Base : {DB_PATH}")
-    print("👤 Comptes : admin@prono26.com/admin123 — demo@prono26.com/demo123")
+    print("👤 Compte admin : admin@prono26.com (change le mot de passe !)")
     print("=" * 60)
 
 

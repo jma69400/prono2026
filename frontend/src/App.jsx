@@ -35,13 +35,6 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const fillDemo = (which) => {
-    if (which === 'admin') { setEmail('admin@prono26.com'); setPassword('admin123') }
-    else { setEmail('demo@prono26.com'); setPassword('demo123') }
-    setMode('login')
-    setError('')
-  }
-
   const submit = async (e) => {
     e.preventDefault()
     setError(''); setLoading(true)
@@ -168,20 +161,6 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
               {loading ? '...' : (mode === 'login' ? t('auth.loginBtn') : t('auth.signupBtn'))}
             </button>
           </form>
-
-          {!inviteCode && (
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <p className="text-white/40 text-sm text-center mb-3">{t('auth.demoAccounts')}</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => fillDemo('admin')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
-                  👑 {t('auth.adminAccount')}
-                </button>
-                <button onClick={() => fillDemo('demo')} className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
-                  👤 {t('auth.userAccount')}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Lien retour visiteur */}
           {onGuest && (
@@ -758,30 +737,16 @@ function GuestPrompt({ onClose, onSignin }) {
 function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
   const { t } = useTranslation()
 
-  const features = [
-    { icon: Calendar, title: t('home.feature1Title'), desc: t('home.feature1Desc'), color: 'orange' },
-    { icon: Sparkles, title: t('home.feature2Title'), desc: t('home.feature2Desc'), color: 'purple' },
-    { icon: Trophy, title: t('home.feature3Title'), desc: t('home.feature3Desc'), color: 'yellow' },
-    { icon: Newspaper, title: t('home.feature4Title'), desc: t('home.feature4Desc'), color: 'blue' },
-  ]
-
-  const colorClass = (c) => ({
-    orange: 'from-orange-500/10 to-orange-700/10 border-orange-400/20 text-orange-300',
-    purple: 'from-purple-500/10 to-purple-700/10 border-purple-400/20 text-purple-300',
-    yellow: 'from-yellow-500/10 to-yellow-700/10 border-yellow-400/20 text-yellow-300',
-    blue: 'from-blue-500/10 to-blue-700/10 border-blue-400/20 text-blue-300',
-  }[c] || '')
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
       {/* Top nav */}
-      <header className="border-b border-white/10 backdrop-blur bg-black/20">
+      <header className="border-b border-white/10 backdrop-blur bg-black/20 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Trophy className="w-7 h-7 text-orange-400" />
             <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">PRONO 2026</h1>
           </div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}} className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <LangSwitch />
             {onContact && (
               <button onClick={onContact} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5"
@@ -799,7 +764,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 via-transparent to-transparent pointer-events-none"></div>
-        <div className="relative max-w-5xl mx-auto px-4 py-20 sm:py-32 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 py-16 sm:py-24 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 bg-orange-500/10 border border-orange-400/20 rounded-full text-sm text-orange-200">
             <Zap className="w-4 h-4" /> 11 juin – 19 juillet 2026 · USA · Canada · Mexique
           </div>
@@ -808,8 +773,11 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
               {t('home.heroTitle')}
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-10">
+          <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-4">
             {t('home.heroSubtitle')}
+          </p>
+          <p className="text-base text-orange-300/90 max-w-2xl mx-auto mb-10 font-semibold">
+            {t('home.heroPitch')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={onSignup}
@@ -828,7 +796,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       </section>
 
       {/* STATS */}
-      <section className="py-12 border-y border-white/10 bg-black/20">
+      <section className="py-10 border-y border-white/10 bg-black/20">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           <div>
             <div className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">104</div>
@@ -849,21 +817,121 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         </div>
       </section>
 
-      {/* FEATURES */}
+      {/* ===== 3 MODES (le cœur de la page) ===== */}
       <section className="py-20">
-        <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {features.map((f, i) => (
-            <div key={i} className={`bg-gradient-to-br ${colorClass(f.color)} border rounded-2xl p-6`}>
-              <f.icon className="w-10 h-10 mb-4" />
-              <h3 className="text-xl font-bold mb-2">{f.title}</h3>
-              <p className="text-white/70 text-sm leading-relaxed">{f.desc}</p>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <div className="inline-block px-4 py-1.5 mb-4 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
+              {t('home.modes.badge')}
             </div>
-          ))}
+            <h2 className="text-3xl sm:text-5xl font-black mb-4">{t('home.modes.title')}</h2>
+            <p className="text-lg text-white/60 max-w-2xl mx-auto">{t('home.modes.subtitle')}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* MODE 1 — SOLO */}
+            <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-orange-400/40 transition group">
+              <div className="text-5xl mb-4">🏃</div>
+              <h3 className="text-2xl font-black mb-2">{t('home.modes.solo.title')}</h3>
+              <p className="text-orange-300 font-semibold mb-4 text-sm">{t('home.modes.solo.tagline')}</p>
+              <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.solo.desc')}</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.solo.bullet1')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.solo.bullet2')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.solo.bullet3')}</span></li>
+              </ul>
+              <button onClick={onSignup}
+                className="w-full py-3 bg-white/5 hover:bg-orange-500 border border-white/10 hover:border-orange-500 rounded-lg font-bold text-sm transition group-hover:bg-orange-500/10">
+                {t('home.modes.solo.cta')} →
+              </button>
+              <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
+            </div>
+
+            {/* MODE 2 — GROUPE (mis en avant) */}
+            <div className="relative bg-gradient-to-br from-orange-500/10 to-pink-500/10 border-2 border-orange-400/40 rounded-3xl p-8 hover:border-orange-400/60 transition group shadow-xl shadow-orange-500/10 md:scale-105">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                ⭐ {t('home.modes.popular')}
+              </div>
+              <div className="text-5xl mb-4">👥</div>
+              <h3 className="text-2xl font-black mb-2">{t('home.modes.group.title')}</h3>
+              <p className="text-orange-300 font-semibold mb-4 text-sm">{t('home.modes.group.tagline')}</p>
+              <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.group.desc')}</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet1')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet2')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet3')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet4')}</span></li>
+              </ul>
+              <button onClick={onSignup}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg font-bold text-sm transition shadow-lg shadow-orange-500/20">
+                {t('home.modes.group.cta')} →
+              </button>
+              <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
+            </div>
+
+            {/* MODE 3 — PRO ENTREPRISE */}
+            <div className="relative bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-3xl p-8 hover:border-purple-400/50 transition group">
+              <div className="text-5xl mb-4">🏢</div>
+              <h3 className="text-2xl font-black mb-2">{t('home.modes.pro.title')}</h3>
+              <p className="text-purple-300 font-semibold mb-4 text-sm">{t('home.modes.pro.tagline')}</p>
+              <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.pro.desc')}</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet1')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet2')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet3')}</span></li>
+                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet4')}</span></li>
+              </ul>
+              <button onClick={onSignup}
+                className="w-full py-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500 hover:to-blue-500 border border-purple-400/40 hover:border-purple-400 rounded-lg font-bold text-sm transition">
+                {t('home.modes.pro.cta')} →
+              </button>
+              <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
+            </div>
+
+          </div>
+
+          {/* Mention rassurante */}
+          <p className="text-center text-sm text-white/50 mt-10">
+            🔒 {t('home.modes.reassurance')}
+          </p>
+        </div>
+      </section>
+
+      {/* ===== FONCTIONNALITÉS ===== */}
+      <section className="py-20 border-t border-white/10 bg-black/20">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-black mb-3">{t('home.featuresTitle')}</h2>
+            <p className="text-white/60">{t('home.featuresSubtitle')}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-orange-500/10 to-orange-700/10 border border-orange-400/20 rounded-2xl p-6">
+              <Calendar className="w-10 h-10 mb-3 text-orange-300" />
+              <h3 className="text-xl font-bold mb-2">{t('home.feature1Title')}</h3>
+              <p className="text-white/70 text-sm leading-relaxed">{t('home.feature1Desc')}</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500/10 to-purple-700/10 border border-purple-400/20 rounded-2xl p-6">
+              <Sparkles className="w-10 h-10 mb-3 text-purple-300" />
+              <h3 className="text-xl font-bold mb-2">{t('home.feature2Title')}</h3>
+              <p className="text-white/70 text-sm leading-relaxed">{t('home.feature2Desc')}</p>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-500/10 to-yellow-700/10 border border-yellow-400/20 rounded-2xl p-6">
+              <Trophy className="w-10 h-10 mb-3 text-yellow-300" />
+              <h3 className="text-xl font-bold mb-2">{t('home.feature3Title')}</h3>
+              <p className="text-white/70 text-sm leading-relaxed">{t('home.feature3Desc')}</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-500/10 to-blue-700/10 border border-blue-400/20 rounded-2xl p-6">
+              <Newspaper className="w-10 h-10 mb-3 text-blue-300" />
+              <h3 className="text-xl font-bold mb-2">{t('home.feature4Title')}</h3>
+              <p className="text-white/70 text-sm leading-relaxed">{t('home.feature4Desc')}</p>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section className="py-20 border-t border-white/10 bg-black/20">
+      <section className="py-20 border-t border-white/10">
         <div className="max-w-3xl mx-auto px-4">
           <h2 className="text-3xl font-black text-center mb-12">{t('home.scoringTitle')}</h2>
           <div className="space-y-4">
@@ -877,8 +945,8 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
             ))}
           </div>
 
-          {/* Scoring */}
           <div className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6">
+            <p className="text-center text-sm text-white/60 mb-4 font-semibold">{t('home.scoringSystem')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div className="p-3 bg-orange-500/10 border border-orange-400/30 rounded-lg">
                 <div className="text-2xl font-black text-orange-400">15</div>
@@ -902,12 +970,13 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-20 border-t border-white/10">
+      <section className="py-20 border-t border-white/10 bg-black/20">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <Trophy className="w-16 h-16 mx-auto mb-6 text-orange-400" />
           <h2 className="text-3xl sm:text-4xl font-black mb-4">{t('home.finalCta')}</h2>
+          <p className="text-white/60 mb-8">{t('home.finalCtaSub')}</p>
           <button onClick={onSignup}
-            className="mt-6 px-10 py-5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 transition inline-flex items-center gap-2">
+            className="px-10 py-5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 transition inline-flex items-center gap-2">
             <Sparkles className="w-5 h-5" /> {t('home.signupNow')}
           </button>
           <button onClick={onContinueAsGuest} className="block mx-auto mt-4 text-sm text-white/40 hover:text-white/70 transition">
