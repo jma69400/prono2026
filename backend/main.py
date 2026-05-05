@@ -169,9 +169,6 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_news_published ON news(published_at DESC);
         CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status);
         CREATE INDEX IF NOT EXISTS idx_contact_created ON contact_messages(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id);
-        CREATE INDEX IF NOT EXISTS idx_groups_invite ON groups(invite_code);
-        CREATE INDEX IF NOT EXISTS idx_groups_leader ON groups(leader_id);
         """)
 
     # === MIGRATION : ajouter group_id à la table users si la colonne n'existe pas ===
@@ -182,6 +179,12 @@ def init_db():
             db.execute("ALTER TABLE users ADD COLUMN group_id INTEGER")
         # Migration : transformer les anciens 'user' en 'solo'
         db.execute("UPDATE users SET role='solo' WHERE role='user'")
+
+    # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
+    with get_db() as db:
+        db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_groups_invite ON groups(invite_code)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_groups_leader ON groups(leader_id)")
 
 
 def seed_data():
