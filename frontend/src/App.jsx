@@ -10,16 +10,21 @@ import { predictMatch, getMatchOdds } from './predictor.js'
 // =====================================================
 function LangSwitch() {
   const { lang, setLang } = useTranslation()
-  const flags = { fr: '🇫🇷', en: '🇬🇧', es: '🇪🇸' }
+  const flags = {
+    fr: 'https://flagcdn.com/w40/fr.png',
+    en: 'https://flagcdn.com/w40/gb.png',
+    es: 'https://flagcdn.com/w40/es.png',
+  }
+  const labels = { fr: 'Français', en: 'English', es: 'Español' }
   return (
     <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
       {['fr', 'en', 'es'].map(code => (
         <button key={code}
           onClick={() => setLang(code)}
-          title={code === 'fr' ? 'Français' : code === 'en' ? 'English' : 'Español'}
-          className={`flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-orange-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+          title={labels[code]}
+          className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-orange-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
         >
-          <span style={{fontSize: '14px'}}>{flags[code]}</span>
+          <img src={flags[code]} alt={code} style={{width: '18px', height: '13px', borderRadius: '2px'}} />
           <span>{code.toUpperCase()}</span>
         </button>
       ))}
@@ -749,7 +754,33 @@ function GuestPrompt({ onClose, onSignin }) {
 // HOMEPAGE (page d'accueil vendeuse)
 // =====================================================
 function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
+
+  // URLs SEO adaptées à la langue active
+  const seoUrls = {
+    fr: {
+      schedule: '/seo/calendrier-coupe-du-monde-2026.html',
+      groups: '/seo/groupes-coupe-du-monde-2026.html',
+      teams: '/seo/equipes-qualifiees-mondial-2026.html',
+      stadiums: '/seo/stades-coupe-du-monde-2026.html',
+      format: '/seo/format-48-equipes-mondial-2026.html',
+    },
+    en: {
+      schedule: '/seo/en/world-cup-2026-schedule.html',
+      groups: '/seo/en/world-cup-2026-groups.html',
+      teams: '/seo/en/qualified-teams-world-cup-2026.html',
+      stadiums: '/seo/en/world-cup-2026-stadiums.html',
+      format: '/seo/en/48-teams-format-world-cup-2026.html',
+    },
+    es: {
+      schedule: '/seo/es/calendario-mundial-2026.html',
+      groups: '/seo/es/grupos-mundial-2026.html',
+      teams: '/seo/es/equipos-clasificados-mundial-2026.html',
+      stadiums: '/seo/es/estadios-mundial-2026.html',
+      format: '/seo/es/formato-48-equipos-mundial-2026.html',
+    },
+  }
+  const urls = seoUrls[lang] || seoUrls.fr
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
@@ -814,41 +845,41 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-6">
             <div className="inline-block px-3 py-1 mb-2 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
-              📚 Tout savoir sur le Mondial
+              📚 {t('home.seoBadge')}
             </div>
             <h2 className="text-2xl sm:text-3xl font-black mb-2">{t('home.seoLinksTitle')}</h2>
-            <p className="text-sm text-white/50">Calendrier, groupes, équipes, stades — tout sur la Coupe du Monde 2026</p>
+            <p className="text-sm text-white/50">{t('home.seoLinksSubtitle')}</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <a href="/seo/calendrier-coupe-du-monde-2026.html"
+            <a href={urls.schedule}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">📅</div>
-              <div className="font-bold text-sm">Calendrier</div>
-              <div className="text-xs text-white/40 mt-0.5">104 matchs</div>
+              <div className="font-bold text-sm">{t('home.seoSchedule')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoScheduleSub')}</div>
             </a>
-            <a href="/seo/groupes-coupe-du-monde-2026.html"
+            <a href={urls.groups}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">👥</div>
-              <div className="font-bold text-sm">12 groupes</div>
-              <div className="text-xs text-white/40 mt-0.5">A à L</div>
+              <div className="font-bold text-sm">{t('home.seoGroups')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoGroupsSub')}</div>
             </a>
-            <a href="/seo/equipes-qualifiees-mondial-2026.html"
+            <a href={urls.teams}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">🌍</div>
-              <div className="font-bold text-sm">48 équipes</div>
-              <div className="text-xs text-white/40 mt-0.5">qualifiées</div>
+              <div className="font-bold text-sm">{t('home.seoTeams')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoTeamsSub')}</div>
             </a>
-            <a href="/seo/stades-coupe-du-monde-2026.html"
+            <a href={urls.stadiums}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">🏟️</div>
-              <div className="font-bold text-sm">16 stades</div>
-              <div className="text-xs text-white/40 mt-0.5">USA · CAN · MEX</div>
+              <div className="font-bold text-sm">{t('home.seoStadiums')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoStadiumsSub')}</div>
             </a>
-            <a href="/seo/format-48-equipes-mondial-2026.html"
+            <a href={urls.format}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">📋</div>
-              <div className="font-bold text-sm">Format 48</div>
-              <div className="text-xs text-white/40 mt-0.5">Nouveautés</div>
+              <div className="font-bold text-sm">{t('home.seoFormat')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoFormatSub')}</div>
             </a>
           </div>
         </div>
@@ -1525,17 +1556,18 @@ function ProfileTab({ currentUser, onUserUpdate }) {
           <label className="text-sm font-semibold text-white/70 block mb-2">{t('profile.lang')}</label>
           <div className="flex gap-2">
             {[
-              { code: 'fr', label: 'Français', flag: '🇫🇷' },
-              { code: 'en', label: 'English', flag: '🇬🇧' },
-              { code: 'es', label: 'Español', flag: '🇪🇸' },
+              { code: 'fr', label: 'Français', flag: 'fr' },
+              { code: 'en', label: 'English', flag: 'gb' },
+              { code: 'es', label: 'Español', flag: 'es' },
             ].map(l => (
               <button key={l.code} type="button" onClick={() => setProfileLang(l.code)}
-                className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${
                   profileLang === l.code
                     ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
                 }`}>
-                {l.flag} {l.label}
+                <img src={`https://flagcdn.com/w40/${l.flag}.png`} alt={l.code} style={{width: '20px', height: '15px', borderRadius: '2px'}} />
+                <span>{l.label}</span>
               </button>
             ))}
           </div>

@@ -1038,7 +1038,8 @@ def leaderboard():
 @app.get("/api/news")
 def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int = 50):
     """Renvoie les actus avec titre/résumé traduits dans la langue demandée.
-    Le paramètre 'lang' choisit la langue d'affichage (fr/en/es), pas la source."""
+    Le paramètre 'lang' choisit la langue d'affichage (fr/en/es), pas la source.
+    Si une traduction manque en BDD, elle est calculée à la volée et mise en cache."""
     if lang not in ('fr', 'en', 'es'):
         lang = 'fr'
 
@@ -1056,11 +1057,43 @@ def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int
         ).fetchall()
 
         result = []
+        # Limiter le nombre de traductions à la volée par requête (anti-rate-limit)
+        on_demand_translations = 0
+        MAX_ON_DEMAND = 8
+
         for r in rows:
             d = dict(r)
+            source_lang = d.get('lang') or 'fr'
+
             # Choisit la version traduite selon la langue demandée
-            translated_title = d.get(f'title_{lang}') or d['title']
-            translated_summary = d.get(f'summary_{lang}') or d['summary'] or ''
+            translated_title = d.get(f'title_{lang}')
+            translated_summary = d.get(f'summary_{lang}')
+
+            # Traduction à la volée si manquante (et budget pas dépassé)
+            need_translation = (
+                lang != source_lang and
+                (not translated_title or not translated_summary) and
+                on_demand_translations < MAX_ON_DEMAND
+            )
+            if need_translation:
+                try:
+                    if not translated_title and d.get('title'):
+                        translated_title = translate_text(d['title'], source_lang, lang) or d['title']
+                    if not translated_summary and d.get('summary'):
+                        translated_summary = translate_text(d['summary'][:300], source_lang, lang) or d['summary']
+                    # Cache en BDD pour les prochaines requêtes
+                    db.execute(
+                        f"UPDATE news SET title_{lang}=?, summary_{lang}=? WHERE id=?",
+                        (translated_title, translated_summary, d['id'])
+                    )
+                    on_demand_translations += 1
+                except Exception as e:
+                    print(f"[NEWS translate on-demand] erreur: {e}")
+
+            # Fallback final : titre/résumé original
+            translated_title = translated_title or d.get('title') or ''
+            translated_summary = translated_summary or d.get('summary') or ''
+
             result.append({
                 'id': d['id'],
                 'title': translated_title,
@@ -1071,9 +1104,9 @@ def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int
                 'sentiment': d['sentiment'],
                 'published_at': d['published_at'],
                 'fetched_at': d['fetched_at'],
-                'lang': d['lang'],         # langue d'origine
-                'displayed_lang': lang,     # langue affichée
-                'translated': d['lang'] != lang,  # true si traduit
+                'lang': source_lang,         # langue d'origine
+                'displayed_lang': lang,       # langue affichée
+                'translated': source_lang != lang,
             })
         return result
 
