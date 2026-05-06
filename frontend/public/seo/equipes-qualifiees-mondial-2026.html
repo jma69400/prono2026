@@ -8,6 +8,7 @@
   <meta name="keywords" content="équipes qualifiées coupe du monde 2026, 48 équipes mondial 2026, qualifiés FIFA 2026, sélections coupe du monde 2026, liste pays mondial 2026">
   <link rel="canonical" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html">
   <link rel="stylesheet" href="/seo/style.css">
+  <link rel="preconnect" href="https://flagcdn.com">
 
   <meta property="og:type" content="article">
   <meta property="og:title" content="Les 48 équipes qualifiées pour le Mondial 2026">
@@ -24,6 +25,39 @@
     ]
   }
   </script>
+
+  <style>
+    .team-grid {
+      display: grid; gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      margin: 16px 0;
+    }
+    .team-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; font-size: 14px;
+    }
+    .team-card img {
+      width: 28px; height: 21px; border-radius: 2px; flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    }
+    .team-card.highlighted { border-color: var(--border-orange); background: rgba(249,115,22,0.06); }
+    .team-card.host { border-color: var(--border-orange); background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.08)); }
+    .team-card.host::after { content: "🏟️"; margin-left: auto; }
+    .team-card .badge { font-size: 10px; background: var(--orange); color: white; padding: 1px 6px; border-radius: 8px; margin-left: auto; }
+    .host-grid {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin: 24px 0;
+    }
+    .host-card {
+      background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(236,72,153,0.08));
+      border: 1px solid var(--border-orange);
+      border-radius: 16px; padding: 24px; text-align: center;
+    }
+    .host-card img { width: 80px; height: auto; border-radius: 4px; margin: 0 auto 12px; display: block; box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+  </style>
 </head>
 <body>
 
@@ -63,21 +97,21 @@
 
   <section>
     <h2>🏟️ Les 3 nations hôtes (qualifiées d'office)</h2>
-    <div class="grid">
-      <div class="card card-orange" style="text-align:center">
-        <div style="font-size:48px">🇺🇸</div>
-        <h3 style="margin-top:8px">États-Unis</h3>
-        <p style="font-size:13px">Hôte principal · 78 matchs accueillis · Finale au MetLife</p>
+    <div class="host-grid">
+      <div class="host-card">
+        <img src="https://flagcdn.com/w160/us.png" alt="Drapeau USA">
+        <h3 style="margin:0">États-Unis</h3>
+        <p style="font-size:13px; margin-top:8px">Hôte principal · 78 matchs accueillis · Finale au MetLife</p>
       </div>
-      <div class="card card-orange" style="text-align:center">
-        <div style="font-size:48px">🇨🇦</div>
-        <h3 style="margin-top:8px">Canada</h3>
-        <p style="font-size:13px">Co-hôte · 13 matchs · BMO Field & BC Place</p>
+      <div class="host-card">
+        <img src="https://flagcdn.com/w160/ca.png" alt="Drapeau Canada">
+        <h3 style="margin:0">Canada</h3>
+        <p style="font-size:13px; margin-top:8px">Co-hôte · 13 matchs · BMO Field & BC Place</p>
       </div>
-      <div class="card card-orange" style="text-align:center">
-        <div style="font-size:48px">🇲🇽</div>
-        <h3 style="margin-top:8px">Mexique</h3>
-        <p style="font-size:13px">Co-hôte · 13 matchs · Estadio Azteca (ouverture)</p>
+      <div class="host-card">
+        <img src="https://flagcdn.com/w160/mx.png" alt="Drapeau Mexique">
+        <h3 style="margin:0">Mexique</h3>
+        <p style="font-size:13px; margin-top:8px">Co-hôte · 13 matchs · Estadio Azteca (ouverture)</p>
       </div>
     </div>
   </section>
@@ -85,106 +119,107 @@
   <section>
     <h2>🌍 UEFA — 16 équipes européennes</h2>
     <p>L'Europe envoie 16 nations, le quota le plus élevé après l'expansion. Les favoris habituels (France, Angleterre, Espagne, Allemagne) sont accompagnés de retours notables.</p>
-    <div class="grid">
-      <div class="group-card">
-        <h4>Têtes d'affiche</h4>
-        <ul>
-          <li>🇫🇷 France <em>(championne 2018)</em></li>
-          <li>🇦🇷 Argentine <em>(championne 2022)</em></li>
-          <li>🇪🇸 Espagne</li>
-          <li>🇩🇪 Allemagne</li>
-          <li>🇬🇧 Angleterre</li>
-          <li>🇵🇹 Portugal</li>
-          <li>🇮🇹 Italie</li>
-          <li>🇳🇱 Pays-Bas</li>
-        </ul>
-      </div>
-      <div class="group-card">
-        <h4>Autres qualifiés</h4>
-        <ul>
-          <li>🇧🇪 Belgique</li>
-          <li>🇭🇷 Croatie</li>
-          <li>🇨🇭 Suisse</li>
-          <li>🇨🇿 Tchéquie</li>
-          <li>🇸🇮 Slovénie</li>
-          <li>🏴󠁧󠁢󠁳󠁣󠁴󠁿 Écosse</li>
-          <li>🇳🇴 Norvège</li>
-          <li>+ 1 vainqueur des barrages UEFA</li>
-        </ul>
-      </div>
+    <h3>Têtes d'affiche</h3>
+    <div class="team-grid">
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/fr.png" alt="France"> France <span class="badge">2018</span></div>
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/ar.png" alt="Argentine"> Argentine <span class="badge">2022</span></div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/es.png" alt="Espagne"> Espagne</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/de.png" alt="Allemagne"> Allemagne</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/gb-eng.png" alt="Angleterre"> Angleterre</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/pt.png" alt="Portugal"> Portugal</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/it.png" alt="Italie"> Italie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/nl.png" alt="Pays-Bas"> Pays-Bas</div>
+    </div>
+
+    <h3>Autres qualifiés européens</h3>
+    <div class="team-grid">
+      <div class="team-card"><img src="https://flagcdn.com/w40/be.png" alt="Belgique"> Belgique</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/hr.png" alt="Croatie"> Croatie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/ch.png" alt="Suisse"> Suisse</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/cz.png" alt="Tchéquie"> Tchéquie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/si.png" alt="Slovénie"> Slovénie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/gb-sct.png" alt="Écosse"> Écosse</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/no.png" alt="Norvège"> Norvège</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/eu.png" alt="Barrage UEFA"> Barragiste UEFA</div>
     </div>
   </section>
 
   <section>
     <h2>🌎 CONMEBOL — 6 équipes sud-américaines</h2>
-    <ul>
-      <li>🇧🇷 <strong>Brésil</strong> — 5 fois champion du monde</li>
-      <li>🇦🇷 <strong>Argentine</strong> — Tenante du titre</li>
-      <li>🇺🇾 Uruguay</li>
-      <li>🇨🇴 Colombie</li>
-      <li>🇪🇨 Équateur</li>
-      <li>🇵🇾 Paraguay</li>
-      <li>+ 1 vainqueur des barrages intercontinentaux</li>
-    </ul>
+    <div class="team-grid">
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/br.png" alt="Brésil"> Brésil <span class="badge">5×🏆</span></div>
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/ar.png" alt="Argentine"> Argentine <span class="badge">2022</span></div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/uy.png" alt="Uruguay"> Uruguay</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/co.png" alt="Colombie"> Colombie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/ec.png" alt="Équateur"> Équateur</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/py.png" alt="Paraguay"> Paraguay</div>
+    </div>
   </section>
 
   <section>
     <h2>🌍 CAF — 9 équipes africaines</h2>
     <p>L'Afrique passe de 5 à 9 places, c'est une vraie révolution pour le football africain.</p>
-    <ul>
-      <li>🇲🇦 Maroc <em>(½ finaliste 2022)</em></li>
-      <li>🇸🇳 Sénégal</li>
-      <li>🇨🇮 Côte d'Ivoire</li>
-      <li>🇨🇲 Cameroun</li>
-      <li>🇿🇦 Afrique du Sud</li>
-      <li>🇪🇬 Égypte</li>
-      <li>🇩🇿 Algérie</li>
-      <li>🇬🇭 Ghana</li>
-      <li>🇨🇩 RD Congo</li>
-      <li>🇨🇻 Cap-Vert <em>(première qualification historique)</em></li>
-    </ul>
+    <div class="team-grid">
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/ma.png" alt="Maroc"> Maroc <span class="badge">½ 2022</span></div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/sn.png" alt="Sénégal"> Sénégal</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/ci.png" alt="Côte d'Ivoire"> Côte d'Ivoire</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/cm.png" alt="Cameroun"> Cameroun</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/za.png" alt="Afrique du Sud"> Afrique du Sud</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/eg.png" alt="Égypte"> Égypte</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/dz.png" alt="Algérie"> Algérie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/gh.png" alt="Ghana"> Ghana</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/cd.png" alt="RD Congo"> RD Congo</div>
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/cv.png" alt="Cap-Vert"> Cap-Vert <span class="badge">1ère</span></div>
+    </div>
   </section>
 
   <section>
     <h2>🌏 AFC — 8 équipes asiatiques</h2>
-    <ul>
-      <li>🇯🇵 Japon</li>
-      <li>🇰🇷 Corée du Sud</li>
-      <li>🇮🇷 Iran</li>
-      <li>🇸🇦 Arabie saoudite</li>
-      <li>🇦🇺 Australie</li>
-      <li>🇶🇦 Qatar</li>
-      <li>🇺🇿 Ouzbékistan</li>
-      <li>🇯🇴 Jordanie <em>(historique)</em></li>
-    </ul>
+    <div class="team-grid">
+      <div class="team-card"><img src="https://flagcdn.com/w40/jp.png" alt="Japon"> Japon</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/kr.png" alt="Corée du Sud"> Corée du Sud</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/ir.png" alt="Iran"> Iran</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/sa.png" alt="Arabie saoudite"> Arabie saoudite</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/au.png" alt="Australie"> Australie</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/qa.png" alt="Qatar"> Qatar</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/uz.png" alt="Ouzbékistan"> Ouzbékistan</div>
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/jo.png" alt="Jordanie"> Jordanie <span class="badge">1ère</span></div>
+    </div>
   </section>
 
   <section>
     <h2>🌎 CONCACAF — barragistes & inattendus</h2>
-    <ul>
-      <li>🇨🇼 <strong>Curaçao</strong> — Le plus petit pays jamais qualifié à un Mondial (148 000 hab.) sous la direction de Dick Advocaat</li>
-      <li>🇭🇹 Haïti</li>
-      <li>🇨🇷 Costa Rica</li>
-    </ul>
+    <div class="team-grid">
+      <div class="team-card highlighted"><img src="https://flagcdn.com/w40/cw.png" alt="Curaçao"> Curaçao <span class="badge">1ère</span></div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/ht.png" alt="Haïti"> Haïti</div>
+      <div class="team-card"><img src="https://flagcdn.com/w40/cr.png" alt="Costa Rica"> Costa Rica</div>
+    </div>
+    <p style="margin-top:16px"><strong>🇨🇼 Curaçao</strong> est le plus petit pays jamais qualifié à un Mondial (148 000 hab.) sous la direction de Dick Advocaat.</p>
   </section>
 
   <section>
     <h2>🌏 OFC — la première qualification historique</h2>
     <p>Pour la première fois, l'Océanie a une <strong>place directe</strong> au Mondial (avant, c'était toujours via les barrages).</p>
-    <ul>
-      <li>🇳🇿 Nouvelle-Zélande <em>(qualifiée d'office en tant que représentant OFC)</em></li>
-    </ul>
+    <div class="team-grid">
+      <div class="team-card"><img src="https://flagcdn.com/w40/nz.png" alt="Nouvelle-Zélande"> Nouvelle-Zélande</div>
+    </div>
   </section>
 
   <section>
     <h2>⭐ Les nouveaux venus du Mondial 2026</h2>
     <div class="card card-orange">
       <h3 style="margin-top:0">Premières participations historiques</h3>
-      <ul>
-        <li>🇨🇼 <strong>Curaçao</strong> — Le plus petit pays de l'histoire à se qualifier</li>
-        <li>🇨🇻 <strong>Cap-Vert</strong> — Une première historique pour les Tubarões Azuis</li>
-        <li>🇯🇴 <strong>Jordanie</strong> — Première qualification mondiale</li>
-        <li>🇺🇿 <strong>Ouzbékistan</strong> — Après 25 ans d'attente</li>
+      <div class="team-grid" style="margin-top:16px">
+        <div class="team-card"><img src="https://flagcdn.com/w40/cw.png" alt="Curaçao"> Curaçao</div>
+        <div class="team-card"><img src="https://flagcdn.com/w40/cv.png" alt="Cap-Vert"> Cap-Vert</div>
+        <div class="team-card"><img src="https://flagcdn.com/w40/jo.png" alt="Jordanie"> Jordanie</div>
+        <div class="team-card"><img src="https://flagcdn.com/w40/uz.png" alt="Ouzbékistan"> Ouzbékistan</div>
+      </div>
+      <ul style="margin-top:16px">
+        <li><strong>🇨🇼 Curaçao</strong> — Le plus petit pays de l'histoire à se qualifier</li>
+        <li><strong>🇨🇻 Cap-Vert</strong> — Une première historique pour les Tubarões Azuis</li>
+        <li><strong>🇯🇴 Jordanie</strong> — Première qualification mondiale</li>
+        <li><strong>🇺🇿 Ouzbékistan</strong> — Après 25 ans d'attente</li>
       </ul>
     </div>
   </section>
@@ -224,6 +259,10 @@
       <li><a href="/seo/stades-coupe-du-monde-2026.html">Les 16 stades du Mondial</a></li>
     </ul>
   </aside>
+
+  <p style="font-size:11px; color:var(--text-dim); margin-top:32px; text-align:center; font-style:italic">
+    Drapeaux fournis par flagcdn.com (libre de droits)
+  </p>
 </main>
 
 <footer>
