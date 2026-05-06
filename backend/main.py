@@ -1439,7 +1439,7 @@ def admin_regenerate_code(group_id: int, user=Depends(require_admin)):
 class ProfileUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=2, max_length=40)
     bio: Optional[str] = Field(None, max_length=140)
-    avatar_data: Optional[str] = Field(None, max_length=400_000)  # ~250 KB base64
+    avatar_data: Optional[str] = Field(None, max_length=800_000)  # ~500 KB base64
     lang: Optional[str] = Field(None, pattern="^(fr|en|es)$")
     theme: Optional[str] = Field(None, pattern="^(light|dark)$")
 

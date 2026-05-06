@@ -181,7 +181,8 @@ const TRANSLATIONS = {
     'profile.avatarChoose': 'Choisir une image',
     'profile.avatarChange': 'Changer l\'image',
     'profile.avatarRemove': 'Retirer l\'image',
-    'profile.avatarHint': 'JPG, PNG ou WebP — max 250 KB',
+    'profile.avatarHint': 'JPG, PNG ou WebP — max 500 KB',
+    'profile.avatarTooLarge': 'Image trop lourde (max 500 KB)',
     'profile.save': 'Enregistrer',
     'profile.saved': 'Modifications enregistrées',
     'profile.securityTitle': 'Sécurité',
@@ -407,7 +408,8 @@ const TRANSLATIONS = {
     'profile.avatarChoose': 'Choose an image',
     'profile.avatarChange': 'Change image',
     'profile.avatarRemove': 'Remove image',
-    'profile.avatarHint': 'JPG, PNG or WebP — max 250 KB',
+    'profile.avatarHint': 'JPG, PNG or WebP — max 500 KB',
+    'profile.avatarTooLarge': 'Image too large (max 500 KB)',
     'profile.save': 'Save',
     'profile.saved': 'Changes saved',
     'profile.securityTitle': 'Security',
@@ -633,7 +635,8 @@ const TRANSLATIONS = {
     'profile.avatarChoose': 'Elegir una imagen',
     'profile.avatarChange': 'Cambiar imagen',
     'profile.avatarRemove': 'Quitar imagen',
-    'profile.avatarHint': 'JPG, PNG o WebP — máx 250 KB',
+    'profile.avatarHint': 'JPG, PNG o WebP — máx 500 KB',
+    'profile.avatarTooLarge': 'Imagen demasiado pesada (máx 500 KB)',
     'profile.save': 'Guardar',
     'profile.saved': 'Cambios guardados',
     'profile.securityTitle': 'Seguridad',
@@ -709,7 +712,24 @@ export function I18nProvider({ children }) {
     document.documentElement.lang = lang
   }, [lang])
 
-  const setLang = (newLang) => setLangState(newLang)
+  // Quand on change la langue, on essaie aussi de la sauvegarder dans le profil
+  // (silencieusement — pas grave si l'utilisateur n'est pas connecté)
+  const setLang = (newLang) => {
+    setLangState(newLang)
+    // Sync avec backend si connecté (best-effort, silencieux)
+    const token = localStorage.getItem('prono26_token')
+    if (token) {
+      fetch((import.meta.env.VITE_API_BASE || '/api') + '/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ lang: newLang }),
+      }).catch(() => {})
+    }
+  }
+
   const t = (key, fallback) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['fr']?.[key] || fallback || key
 
   return (

@@ -10,13 +10,18 @@ import { predictMatch, getMatchOdds } from './predictor.js'
 // =====================================================
 function LangSwitch() {
   const { lang, setLang } = useTranslation()
+  const flags = { fr: '🇫🇷', en: '🇬🇧', es: '🇪🇸' }
   return (
     <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
       {['fr', 'en', 'es'].map(code => (
         <button key={code}
           onClick={() => setLang(code)}
-          className={`px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-orange-500 text-white' : 'text-white/60 hover:text-white'}`}
-        >{code.toUpperCase()}</button>
+          title={code === 'fr' ? 'Français' : code === 'en' ? 'English' : 'Español'}
+          className={`flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-orange-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+        >
+          <span style={{fontSize: '14px'}}>{flags[code]}</span>
+          <span>{code.toUpperCase()}</span>
+        </button>
       ))}
     </div>
   )
@@ -1400,7 +1405,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
     setError('')
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 250_000) { setError('Image trop lourde (max 250 KB)'); return }
+    if (file.size > 500_000) { setError(t('profile.avatarTooLarge')); return }
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setError('Format non supporté (JPG, PNG ou WebP)'); return
     }
@@ -2158,6 +2163,10 @@ export default function App() {
     if (getToken()) {
       api.me().then(u => {
         setUser(u); setIsGuest(false); setShowHome(false)
+        // Appliquer la langue préférée du profil utilisateur (si différente de l'actuelle)
+        if (u.lang && u.lang !== lang) {
+          setLang(u.lang)
+        }
         // Si leader sans groupe encore créé → afficher l'écran de création
         if (u.role === 'leader' && !u.group_id) {
           setNeedsGroupCreation(true)
@@ -2214,6 +2223,10 @@ export default function App() {
 
   const onLogin = (u) => {
     setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false)
+    // Appliquer la langue préférée du profil
+    if (u.lang && u.lang !== lang) {
+      setLang(u.lang)
+    }
     // Si l'utilisateur vient de s'inscrire en leader → écran création de groupe
     if (u.role === 'leader' && !u.group_id) {
       setNeedsGroupCreation(true)
