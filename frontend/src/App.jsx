@@ -985,6 +985,30 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         </div>
       </section>
 
+      {/* Liens SEO discrets pour le crawl Google */}
+      <section className="py-12 border-t border-white/10">
+        <div className="max-w-5xl mx-auto px-4">
+          <h3 className="text-center text-sm font-bold text-white/50 mb-4 uppercase tracking-wider">{t('home.seoLinksTitle')}</h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+            <a href="/seo/calendrier-coupe-du-monde-2026.html" className="text-center p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/70 hover:text-orange-300 transition">
+              📅 Calendrier
+            </a>
+            <a href="/seo/groupes-coupe-du-monde-2026.html" className="text-center p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/70 hover:text-orange-300 transition">
+              👥 12 groupes
+            </a>
+            <a href="/seo/equipes-qualifiees-mondial-2026.html" className="text-center p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/70 hover:text-orange-300 transition">
+              🌍 48 équipes
+            </a>
+            <a href="/seo/stades-coupe-du-monde-2026.html" className="text-center p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/70 hover:text-orange-300 transition">
+              🏟️ 16 stades
+            </a>
+            <a href="/seo/format-48-equipes-mondial-2026.html" className="text-center p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white/70 hover:text-orange-300 transition">
+              📋 Format 48
+            </a>
+          </div>
+        </div>
+      </section>
+
       <footer className="py-6 text-center text-xs text-white/30 border-t border-white/10">
         {t('common.footer')}
       </footer>

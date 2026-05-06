@@ -54,6 +54,7 @@ const TRANSLATIONS = {
     'home.finalCta': 'Prêt à pronostiquer ?',
     'home.finalCtaSub': 'Solo, en groupe ou en entreprise — la compétition commence maintenant',
     'home.signupNow': 'M\'inscrire — c\'est gratuit',
+    'home.seoLinksTitle': 'Tout sur le Mondial 2026',
     // 3 modes — section principale
     'home.modes.badge': '3 modes pour tous',
     'home.modes.title': 'Une plateforme, 3 façons de jouer',
@@ -263,6 +264,7 @@ const TRANSLATIONS = {
     'home.finalCta': 'Ready to predict?',
     'home.finalCtaSub': 'Solo, with friends or with your company — the competition starts now',
     'home.signupNow': 'Sign up — it\'s free',
+    'home.seoLinksTitle': 'Everything about the 2026 World Cup',
     'home.modes.badge': '3 modes for everyone',
     'home.modes.title': 'One platform, 3 ways to play',
     'home.modes.subtitle': 'Solo, with friends or with your company — choose your mode and dive in',
@@ -462,6 +464,7 @@ const TRANSLATIONS = {
     'home.finalCta': '¿Listo para pronosticar?',
     'home.finalCtaSub': 'Solo, con amigos o con tu empresa — la competición empieza ahora',
     'home.signupNow': 'Registrarme — es gratis',
+    'home.seoLinksTitle': 'Todo sobre el Mundial 2026',
     'home.modes.badge': '3 modos para todos',
     'home.modes.title': 'Una plataforma, 3 maneras de jugar',
     'home.modes.subtitle': 'Solo, con amigos o con tu empresa — elige tu modo y empieza',
