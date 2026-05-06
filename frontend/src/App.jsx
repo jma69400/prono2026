@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap } from 'lucide-react'
+import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User } from 'lucide-react'
 import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
@@ -491,6 +491,15 @@ function LeaderboardTab({ leaderboard, currentUserId }) {
             i === 1 ? 'bg-gray-300/20 text-gray-200' :
             i === 2 ? 'bg-orange-700/30 text-orange-400' : 'bg-white/5 text-white/60'
           }`}>{i + 1}</div>
+          {/* Avatar utilisateur (ou initiales si pas d'avatar) */}
+          {entry.avatar_data ? (
+            <img src={entry.avatar_data} alt={entry.username}
+              className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0" />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-xs font-black shrink-0">
+              {entry.username.slice(0, 2).toUpperCase()}
+            </div>
+          )}
           {/* Logo du groupe si l'utilisateur en fait partie */}
           {entry.group_logo ? (
             <img src={entry.group_logo} alt={entry.group_name} title={entry.group_name}
@@ -1350,6 +1359,268 @@ function AdminContactPanel() {
 
 
 // =====================================================
+// PROFILE TAB — espace utilisateur (avatar, bio, mot de passe, langue, thème)
+// =====================================================
+function ProfileTab({ currentUser, onUserUpdate }) {
+  const { t, lang, setLang } = useTranslation()
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [savedFlash, setSavedFlash] = useState('')
+  const [error, setError] = useState('')
+
+  // Form fields
+  const [username, setUsername] = useState('')
+  const [bio, setBio] = useState('')
+  const [avatarData, setAvatarData] = useState(null)
+  const [profileLang, setProfileLang] = useState('fr')
+  const [profileTheme, setProfileTheme] = useState('dark')
+
+  // Password
+  const [currentPwd, setCurrentPwd] = useState('')
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [pwdError, setPwdError] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdSuccess, setPwdSuccess] = useState(false)
+
+  useEffect(() => {
+    api.getProfile().then(p => {
+      setProfile(p)
+      setUsername(p.username || '')
+      setBio(p.bio || '')
+      setAvatarData(p.avatar_data)
+      setProfileLang(p.lang || 'fr')
+      setProfileTheme(p.theme || 'dark')
+    }).catch(e => setError(e.message))
+    .finally(() => setLoading(false))
+  }, [])
+
+  const handleAvatarUpload = (e) => {
+    setError('')
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 250_000) { setError('Image trop lourde (max 250 KB)'); return }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Format non supporté (JPG, PNG ou WebP)'); return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarData(ev.target.result)
+    reader.readAsDataURL(file)
+  }
+
+  const removeAvatar = () => { setAvatarData(null) }
+
+  const saveProfile = async () => {
+    setError(''); setSaving(true); setSavedFlash('')
+    try {
+      const updated = await api.updateProfile({
+        username, bio,
+        avatar_data: avatarData || '',  // string vide = retire l'avatar
+        lang: profileLang, theme: profileTheme,
+      })
+      setProfile(updated)
+      // Si la langue a changé, on bascule l'interface
+      if (profileLang !== lang) setLang(profileLang)
+      // Update parent's user
+      if (onUserUpdate) onUserUpdate({ ...currentUser, ...updated })
+      setSavedFlash(t('profile.saved'))
+      setTimeout(() => setSavedFlash(''), 3000)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const submitPassword = async (e) => {
+    e.preventDefault()
+    setPwdError(''); setPwdSuccess(false)
+    if (newPwd !== confirmPwd) {
+      setPwdError(t('profile.pwdMismatch'))
+      return
+    }
+    if (newPwd.length < 6) {
+      setPwdError(t('profile.pwdTooShort'))
+      return
+    }
+    setPwdLoading(true)
+    try {
+      await api.changePassword({ current_password: currentPwd, new_password: newPwd })
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('')
+      setPwdSuccess(true)
+      setTimeout(() => setPwdSuccess(false), 4000)
+    } catch (e) { setPwdError(e.message) }
+    finally { setPwdLoading(false) }
+  }
+
+  if (loading) return <div className="text-center py-12 text-white/40">{t('common.loading')}</div>
+  if (!profile) return <div className="text-center py-12 text-red-400">{error || 'Erreur'}</div>
+
+  // Avatar par défaut : initiales sur fond coloré généré à partir du username
+  const initials = (username || profile.email).slice(0, 2).toUpperCase()
+
+  return (
+    <div className="space-y-6 max-w-2xl mx-auto">
+      {/* SECTION PROFIL */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+        <h2 className="text-xl font-black mb-4 flex items-center gap-2">👤 {t('profile.title')}</h2>
+
+        {/* Avatar */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="relative mb-3">
+            {avatarData ? (
+              <img src={avatarData} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-orange-400/50 shadow-lg" />
+            ) : (
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-3xl font-black text-white border-4 border-orange-400/50 shadow-lg">
+                {initials}
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap justify-center">
+            <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} className="hidden" />
+            <label htmlFor="avatar-upload" className="cursor-pointer px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold transition">
+              📷 {avatarData ? t('profile.avatarChange') : t('profile.avatarChoose')}
+            </label>
+            {avatarData && (
+              <button onClick={removeAvatar} className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
+                ✕ {t('profile.avatarRemove')}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-white/40 mt-2">{t('profile.avatarHint')}</p>
+        </div>
+
+        {/* Username */}
+        <div className="mb-4">
+          <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.username')}</label>
+          <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+            minLength={2} maxLength={40}
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+        </div>
+
+        {/* Bio */}
+        <div className="mb-4">
+          <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.bio')}</label>
+          <textarea value={bio} onChange={e => setBio(e.target.value)}
+            maxLength={140} rows={2} placeholder={t('profile.bioPlaceholder')}
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 resize-none" />
+          <div className="text-xs text-white/40 text-right mt-1">{bio.length} / 140</div>
+        </div>
+
+        {/* Email (readonly) */}
+        <div className="mb-4">
+          <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.email')}</label>
+          <input type="email" value={profile.email} disabled
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white/50 cursor-not-allowed" />
+        </div>
+
+        {/* Langue */}
+        <div className="mb-4">
+          <label className="text-sm font-semibold text-white/70 block mb-2">{t('profile.lang')}</label>
+          <div className="flex gap-2">
+            {[
+              { code: 'fr', label: 'Français', flag: '🇫🇷' },
+              { code: 'en', label: 'English', flag: '🇬🇧' },
+              { code: 'es', label: 'Español', flag: '🇪🇸' },
+            ].map(l => (
+              <button key={l.code} type="button" onClick={() => setProfileLang(l.code)}
+                className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
+                  profileLang === l.code
+                    ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                }`}>
+                {l.flag} {l.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Thème */}
+        <div className="mb-4">
+          <label className="text-sm font-semibold text-white/70 block mb-2">{t('profile.theme')}</label>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setProfileTheme('dark')}
+              className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
+                profileTheme === 'dark'
+                  ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10'
+              }`}>
+              🌙 {t('profile.themeDark')}
+            </button>
+            <button type="button" onClick={() => setProfileTheme('light')}
+              className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
+                profileTheme === 'light'
+                  ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10'
+              }`}>
+              ☀️ {t('profile.themeLight')}
+            </button>
+          </div>
+          <p className="text-xs text-white/40 mt-1 italic">{t('profile.themeNote')}</p>
+        </div>
+
+        {error && (
+          <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg mb-3">
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> <span>{error}</span>
+          </div>
+        )}
+        {savedFlash && (
+          <div className="text-green-400 text-sm bg-green-500/10 p-3 rounded-lg mb-3 text-center">
+            ✓ {savedFlash}
+          </div>
+        )}
+
+        <button onClick={saveProfile} disabled={saving}
+          className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+          {saving ? '...' : '💾 ' + t('profile.save')}
+        </button>
+      </div>
+
+      {/* SECTION SÉCURITÉ */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+        <h2 className="text-xl font-black mb-4 flex items-center gap-2">🔒 {t('profile.securityTitle')}</h2>
+
+        <form onSubmit={submitPassword} className="space-y-3">
+          <div>
+            <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.currentPwd')}</label>
+            <input type="password" required value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.newPwd')}</label>
+            <input type="password" required minLength={6} value={newPwd} onChange={e => setNewPwd(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.confirmPwd')}</label>
+            <input type="password" required minLength={6} value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+          </div>
+
+          {pwdError && (
+            <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> <span>{pwdError}</span>
+            </div>
+          )}
+          {pwdSuccess && (
+            <div className="text-green-400 text-sm bg-green-500/10 p-3 rounded-lg text-center">
+              ✓ {t('profile.pwdSuccess')}
+            </div>
+          )}
+
+          <button type="submit" disabled={pwdLoading}
+            className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 disabled:opacity-50 rounded-lg font-semibold transition">
+            {pwdLoading ? '...' : '🔐 ' + t('profile.changePwd')}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // GROUP CREATE SCREEN (étape post-inscription leader)
 // =====================================================
 function GroupCreateScreen({ onCreated, onSkip }) {
@@ -2027,6 +2298,7 @@ export default function App() {
     { id: 'groups', label: t('tabs.groups'), icon: Users },
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
+    ...(user ? [{ id: 'profile', label: t('profile.title'), icon: User }] : []),
     ...(isAdmin ? [{ id: 'admin', label: t('tabs.admin'), icon: Settings }] : []),
   ]
 
@@ -2112,6 +2384,7 @@ export default function App() {
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} />}
         {activeTab === 'groups' && <GroupsTab />}
         {activeTab === 'mygroup' && <GroupTab user={user} />}
+        {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>

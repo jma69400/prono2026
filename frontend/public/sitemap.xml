@@ -2,44 +2,154 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 
-  <!-- Page d'accueil -->
+  <!-- ============ HOME ============ -->
   <url>
     <loc>https://unitedpronos.com/</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/" />
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
-  <!-- Pages SEO statiques -->
+  <!-- ============ CALENDAR / SCHEDULE / CALENDARIO ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-schedule.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/calendario-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/world-cup-2026-schedule.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-schedule.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/calendario-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/calendario-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-schedule.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/calendario-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html"/>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
+  <!-- ============ GROUPS / GROUPES / GRUPOS ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-groups.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/grupos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/world-cup-2026-groups.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-groups.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/grupos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/grupos-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-groups.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/grupos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/groupes-coupe-du-monde-2026.html"/>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
+  <!-- ============ TEAMS / EQUIPES / EQUIPOS ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/qualified-teams-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/equipos-clasificados-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/qualified-teams-world-cup-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/qualified-teams-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/equipos-clasificados-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/equipos-clasificados-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/qualified-teams-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/equipos-clasificados-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/equipes-qualifiees-mondial-2026.html"/>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
+  <!-- ============ STADIUMS / STADES / ESTADIOS ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-stadiums.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/estadios-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/world-cup-2026-stadiums.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-stadiums.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/estadios-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/estadios-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-stadiums.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/estadios-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/stades-coupe-du-monde-2026.html"/>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
+  <!-- ============ FORMAT / FORMATO ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/48-teams-format-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/formato-48-equipos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/48-teams-format-world-cup-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/48-teams-format-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/formato-48-equipos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/formato-48-equipos-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/48-teams-format-world-cup-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/formato-48-equipos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/format-48-equipes-mondial-2026.html"/>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

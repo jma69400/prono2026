@@ -179,6 +179,13 @@ def init_db():
             db.execute("ALTER TABLE users ADD COLUMN group_id INTEGER")
         # Migration : transformer les anciens 'user' en 'solo'
         db.execute("UPDATE users SET role='solo' WHERE role='user'")
+        # Migration : ajouter avatar_data, bio, lang, theme
+        if "avatar_data" not in cols:
+            print("[MIGRATION] Ajout de avatar_data, bio, lang, theme à users")
+            db.execute("ALTER TABLE users ADD COLUMN avatar_data TEXT")
+            db.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
+            db.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fr'")
+            db.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'dark'")
 
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
@@ -959,6 +966,8 @@ def me(user=Depends(get_current_user)):
     return {
         "id": user["id"], "email": user["email"], "username": user["username"],
         "role": user["role"], "group_id": user.get("group_id"),
+        "avatar_data": user.get("avatar_data"), "bio": user.get("bio") or "",
+        "lang": user.get("lang") or "fr", "theme": user.get("theme") or "dark",
     }
 
 
@@ -1009,7 +1018,7 @@ def leaderboard():
     """Classement global avec infos de groupe pour chaque joueur."""
     with get_db() as db:
         rows = db.execute("""
-            SELECT u.id, u.username, u.email, u.role, u.group_id,
+            SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
                    COALESCE(SUM(p.points), 0) AS total_points,
                    COUNT(p.id) AS predictions_count,
                    g.name AS group_name,
@@ -1421,6 +1430,84 @@ def admin_regenerate_code(group_id: int, user=Depends(require_admin)):
         db.execute("UPDATE groups SET invite_code=? WHERE id=?", (new_code, group_id))
         log_action(user["id"], "regenerate_invite", f"group={group_id}", db=db)
         return {"invite_code": new_code}
+
+
+# =====================================================
+# PROFIL utilisateur — username, avatar, bio, langue, thème, mot de passe
+# =====================================================
+
+class ProfileUpdate(BaseModel):
+    username: Optional[str] = Field(None, min_length=2, max_length=40)
+    bio: Optional[str] = Field(None, max_length=140)
+    avatar_data: Optional[str] = Field(None, max_length=400_000)  # ~250 KB base64
+    lang: Optional[str] = Field(None, pattern="^(fr|en|es)$")
+    theme: Optional[str] = Field(None, pattern="^(light|dark)$")
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=6, max_length=100)
+
+
+@app.get("/api/profile")
+def get_profile(user=Depends(require_user)):
+    """Retourne le profil complet de l'utilisateur connecté."""
+    with get_db() as db:
+        row = db.execute(
+            """SELECT id, email, username, role, group_id,
+                      avatar_data, bio, lang, theme, created_at
+               FROM users WHERE id=?""",
+            (user["id"],)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+@app.put("/api/profile")
+def update_profile(data: ProfileUpdate, user=Depends(require_user)):
+    """Met à jour le profil (username, bio, avatar, lang, theme)."""
+    with get_db() as db:
+        updates = []
+        params = []
+        if data.username is not None:
+            updates.append("username=?"); params.append(data.username)
+        if data.bio is not None:
+            updates.append("bio=?"); params.append(data.bio)
+        if data.avatar_data is not None:
+            # Si chaîne vide → on retire l'avatar
+            updates.append("avatar_data=?"); params.append(data.avatar_data if data.avatar_data else None)
+        if data.lang is not None:
+            updates.append("lang=?"); params.append(data.lang)
+        if data.theme is not None:
+            updates.append("theme=?"); params.append(data.theme)
+
+        if not updates:
+            raise HTTPException(400, "Rien à mettre à jour")
+
+        params.append(user["id"])
+        db.execute(f"UPDATE users SET {', '.join(updates)} WHERE id=?", params)
+        log_action(user["id"], "profile_update", ",".join([u.split("=")[0] for u in updates]), db=db)
+
+        # Retourne le profil mis à jour
+        row = db.execute(
+            """SELECT id, email, username, role, group_id,
+                      avatar_data, bio, lang, theme FROM users WHERE id=?""",
+            (user["id"],)
+        ).fetchone()
+        return dict(row)
+
+
+@app.put("/api/profile/password")
+def change_password(data: PasswordChange, user=Depends(require_user)):
+    """Change le mot de passe (l'ancien doit être fourni en sécurité)."""
+    with get_db() as db:
+        row = db.execute("SELECT password_hash FROM users WHERE id=?", (user["id"],)).fetchone()
+        if not row or not pwd_context.verify(data.current_password, row["password_hash"]):
+            log_action(user["id"], "password_change_failed", "wrong_old_pwd", db=db)
+            raise HTTPException(401, "Ancien mot de passe incorrect")
+        new_hash = pwd_context.hash(data.new_password)
+        db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
+        log_action(user["id"], "password_change", "ok", db=db)
+        return {"ok": True}
 
 
 # =====================================================

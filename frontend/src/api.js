@@ -67,6 +67,10 @@ export const api = {
     return request(`/news${qs ? `?${qs}` : ''}`)
   },
   refreshNews: () => request('/news/refresh', { method: 'POST' }),
+  // Profil
+  getProfile: () => request('/profile'),
+  updateProfile: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  changePassword: (data) => request('/profile/password', { method: 'PUT', body: JSON.stringify(data) }),
   // Groupes
   myGroup: () => request('/groups/me'),
   createGroup: (data) => request('/groups', { method: 'POST', body: JSON.stringify(data) }),
