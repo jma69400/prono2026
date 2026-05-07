@@ -950,10 +950,17 @@ def startup():
     # Lance l'agrégateur RSS en arrière-plan
     thread = threading.Thread(target=news_worker, daemon=True)
     thread.start()
+    # Lance le fetch des résultats Football-Data.org si la clé API est définie
+    results_thread = threading.Thread(target=results_worker, daemon=True)
+    results_thread.start()
     print("=" * 60)
     print("🏆 PRONO 2026 backend démarré")
     print(f"📁 Base : {DB_PATH}")
     print("👤 Compte admin : admin@prono26.com (change le mot de passe !)")
+    if os.environ.get("FOOTBALL_DATA_API_KEY"):
+        print("⚽ Fetch automatique des résultats : ACTIVÉ")
+    else:
+        print("⚠️  FOOTBALL_DATA_API_KEY non défini — fetch automatique désactivé")
     print("=" * 60)
 
 
@@ -1663,6 +1670,240 @@ def change_password(data: PasswordChange, user=Depends(require_user)):
         db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
         log_action(user["id"], "password_change", "ok", db=db)
         return {"ok": True}
+
+
+# =====================================================
+# RESULTS — Récupération automatique des scores via Football-Data.org
+# =====================================================
+# API gratuite : 10 requêtes/min, accès libre à la World Cup (code "WC")
+# Inscription : https://www.football-data.org/client/register
+# Doc : https://docs.football-data.org/general/v4/match.html
+# Format : GET https://api.football-data.org/v4/competitions/WC/matches
+# Header : X-Auth-Token: <token>
+# =====================================================
+
+# Mapping nom équipe Football-Data.org → nom équipe dans notre BDD
+# Si l'API renvoie "Mexico" (homeTeam.name="Mexico") on l'associe à "Mexique"
+# Cette table est essentielle car les noms diffèrent entre l'API et notre BDD FR.
+TEAM_NAME_MAPPING = {
+    # Hôtes
+    "Mexico": ["Mexique", "Mexico", "México"],
+    "Canada": ["Canada"],
+    "United States": ["États-Unis", "USA", "United States", "Estados Unidos"],
+    # Europe
+    "France": ["France", "Francia"],
+    "Germany": ["Allemagne", "Germany", "Alemania"],
+    "Spain": ["Espagne", "Spain", "España"],
+    "England": ["Angleterre", "England", "Inglaterra"],
+    "Italy": ["Italie", "Italy", "Italia"],
+    "Portugal": ["Portugal"],
+    "Netherlands": ["Pays-Bas", "Netherlands", "Países Bajos", "Holanda"],
+    "Belgium": ["Belgique", "Belgium", "Bélgica"],
+    "Croatia": ["Croatie", "Croatia", "Croacia"],
+    "Switzerland": ["Suisse", "Switzerland", "Suiza"],
+    "Czech Republic": ["Tchéquie", "Czech Republic", "Czechia", "Chequia", "République tchèque"],
+    "Slovenia": ["Slovénie", "Slovenia", "Eslovenia"],
+    "Scotland": ["Écosse", "Scotland", "Escocia"],
+    "Norway": ["Norvège", "Norway", "Noruega"],
+    # Amérique du Sud
+    "Brazil": ["Brésil", "Brazil", "Brasil"],
+    "Argentina": ["Argentine", "Argentina"],
+    "Uruguay": ["Uruguay"],
+    "Colombia": ["Colombie", "Colombia"],
+    "Ecuador": ["Équateur", "Ecuador"],
+    "Paraguay": ["Paraguay"],
+    # Afrique
+    "Morocco": ["Maroc", "Morocco", "Marruecos"],
+    "Senegal": ["Sénégal", "Senegal"],
+    "Cote d'Ivoire": ["Côte d'Ivoire", "Ivory Coast", "Costa de Marfil", "Cote d'Ivoire"],
+    "Cameroon": ["Cameroun", "Cameroon", "Camerún"],
+    "South Africa": ["Afrique du Sud", "South Africa", "Sudáfrica"],
+    "Egypt": ["Égypte", "Egypt", "Egipto"],
+    "Algeria": ["Algérie", "Algeria", "Argelia"],
+    "Ghana": ["Ghana"],
+    "DR Congo": ["RD Congo", "DR Congo", "DRC"],
+    "Cape Verde": ["Cap-Vert", "Cape Verde", "Cabo Verde"],
+    # Asie
+    "Japan": ["Japon", "Japan", "Japón"],
+    "South Korea": ["Corée du Sud", "South Korea", "Korea Republic", "Corea del Sur"],
+    "Iran": ["Iran", "Irán", "IR Iran"],
+    "Saudi Arabia": ["Arabie saoudite", "Saudi Arabia", "Arabia Saudita", "Arabia Saudí"],
+    "Australia": ["Australie", "Australia"],
+    "Qatar": ["Qatar"],
+    "Uzbekistan": ["Ouzbékistan", "Uzbekistan"],
+    "Jordan": ["Jordanie", "Jordan", "Jordania"],
+    # CONCACAF
+    "Curaçao": ["Curaçao", "Curacao", "Curazao"],
+    "Haiti": ["Haïti", "Haiti"],
+    "Costa Rica": ["Costa Rica"],
+    # Océanie
+    "New Zealand": ["Nouvelle-Zélande", "New Zealand", "Nueva Zelanda"],
+}
+
+
+def normalize_team_name(name: str) -> str:
+    """Normalise un nom d'équipe pour la comparaison : lowercase + sans accents + sans espaces."""
+    if not name:
+        return ""
+    import unicodedata
+    nfkd = unicodedata.normalize('NFKD', name)
+    no_accents = ''.join(c for c in nfkd if not unicodedata.combining(c))
+    return no_accents.lower().strip().replace(' ', '').replace('-', '').replace("'", '')
+
+
+def find_match_in_db(home_team_api: str, away_team_api: str, db) -> Optional[dict]:
+    """Trouve un match dans notre BDD à partir des noms renvoyés par l'API Football-Data.org.
+    Compare avec un mapping élargi + comparaison normalisée (sans accents/casse)."""
+    # Récupérer toutes les variantes possibles pour chaque équipe
+    home_variants = TEAM_NAME_MAPPING.get(home_team_api, [home_team_api])
+    away_variants = TEAM_NAME_MAPPING.get(away_team_api, [away_team_api])
+
+    home_norms = [normalize_team_name(v) for v in home_variants] + [normalize_team_name(home_team_api)]
+    away_norms = [normalize_team_name(v) for v in away_variants] + [normalize_team_name(away_team_api)]
+
+    rows = db.execute("SELECT id, home_team, away_team FROM matches").fetchall()
+    for r in rows:
+        h_norm = normalize_team_name(r["home_team"])
+        a_norm = normalize_team_name(r["away_team"])
+        # Match exact dans le bon sens
+        if h_norm in home_norms and a_norm in away_norms:
+            return dict(r)
+        # Match dans l'autre sens (au cas où l'API et la BDD aient inversé)
+        if h_norm in away_norms and a_norm in home_norms:
+            # On garde l'ordre BDD ; on signalera l'inversion si besoin
+            return dict(r)
+    return None
+
+
+def fetch_match_results() -> dict:
+    """Appelle l'API Football-Data.org pour la World Cup et met à jour les scores
+    des matchs terminés dans notre BDD. Recalcule automatiquement les points.
+    Retourne un dict avec les statistiques (matches_updated, errors, ...)."""
+    api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
+    if not api_key:
+        return {"ok": False, "error": "FOOTBALL_DATA_API_KEY non défini"}
+
+    stats = {"checked": 0, "updated": 0, "skipped": 0, "errors": 0, "details": []}
+    try:
+        req = urllib.request.Request(
+            "https://api.football-data.org/v4/competitions/WC/matches",
+            headers={
+                "X-Auth-Token": api_key,
+                "User-Agent": "PRONO2026/1.0",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json_lib.loads(resp.read().decode('utf-8'))
+            api_matches = data.get("matches", [])
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "error": f"HTTP {e.code}: {e.reason}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    with get_db() as db:
+        for m in api_matches:
+            stats["checked"] += 1
+            status = m.get("status")
+            # On ne traite que les matchs FINISHED ou IN_PLAY/PAUSED (pour scores live)
+            if status not in ("FINISHED", "IN_PLAY", "PAUSED", "AWARDED"):
+                continue
+
+            home_name = m.get("homeTeam", {}).get("name") or ""
+            away_name = m.get("awayTeam", {}).get("name") or ""
+            score = m.get("score", {})
+            full_time = score.get("fullTime", {})
+            home_score = full_time.get("home")
+            away_score = full_time.get("away")
+
+            # Si pas encore de score, ignore
+            if home_score is None or away_score is None:
+                continue
+
+            db_match = find_match_in_db(home_name, away_name, db)
+            if not db_match:
+                stats["errors"] += 1
+                stats["details"].append(f"⚠ Match introuvable en BDD : {home_name} vs {away_name}")
+                continue
+
+            # Vérifier si on doit vraiment update (score différent ou pas encore terminé)
+            current = db.execute(
+                "SELECT home_score, away_score, status FROM matches WHERE id=?",
+                (db_match["id"],),
+            ).fetchone()
+
+            new_status = "finished" if status in ("FINISHED", "AWARDED") else "live"
+
+            # Sécurité : ne pas écraser un match qui était déjà marqué FINISHED en BDD
+            # avec un nouveau statut "live" (l'API peut être en retard)
+            if current["status"] == "finished" and new_status == "live":
+                stats["skipped"] += 1
+                continue
+
+            need_update = (
+                current["home_score"] != home_score
+                or current["away_score"] != away_score
+                or current["status"] != new_status
+            )
+
+            if not need_update:
+                stats["skipped"] += 1
+                continue
+
+            db.execute(
+                "UPDATE matches SET home_score=?, away_score=?, status=? WHERE id=?",
+                (home_score, away_score, new_status, db_match["id"]),
+            )
+            stats["updated"] += 1
+            stats["details"].append(
+                f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status})"
+            )
+
+        # Recalculer les points pour les matchs FINISHED qui ont été mis à jour
+        # (le recalc s'occupe de mettre points=0 si le match est en cours)
+        for m in api_matches:
+            if m.get("status") in ("FINISHED", "AWARDED"):
+                full_time = m.get("score", {}).get("fullTime", {})
+                if full_time.get("home") is None or full_time.get("away") is None:
+                    continue
+                home_name = m.get("homeTeam", {}).get("name") or ""
+                away_name = m.get("awayTeam", {}).get("name") or ""
+                db_match = find_match_in_db(home_name, away_name, db)
+                if db_match:
+                    try:
+                        recalc_match_points(db_match["id"])
+                    except Exception as e:
+                        print(f"[RESULTS] recalc erreur match {db_match['id']}: {e}")
+
+    return {"ok": True, **stats}
+
+
+# Worker en arrière-plan : scan toutes les 5 minutes pendant les jours de match
+def results_worker():
+    """Tourne en boucle : scanne les résultats toutes les 5 min si la clé API est définie."""
+    if not os.environ.get("FOOTBALL_DATA_API_KEY"):
+        print("[RESULTS] Worker désactivé (FOOTBALL_DATA_API_KEY non défini)")
+        return
+    print("[RESULTS] Worker démarré — fetch toutes les 5 min")
+    while True:
+        try:
+            r = fetch_match_results()
+            if r.get("ok"):
+                if r.get("updated", 0) > 0:
+                    print(f"[RESULTS] {r['updated']} match(s) mis à jour, {r['skipped']} déjà à jour")
+            else:
+                print(f"[RESULTS] erreur: {r.get('error')}")
+        except Exception as e:
+            print(f"[RESULTS] worker erreur : {e}")
+        time.sleep(300)  # 5 minutes
+
+
+@app.post("/api/admin/results/fetch")
+def admin_fetch_results(user=Depends(require_admin)):
+    """Force la récupération des résultats depuis Football-Data.org.
+    Utile pour rafraîchir manuellement. Renvoie les stats du fetch."""
+    result = fetch_match_results()
+    log_action(user["id"], "fetch_results", str(result.get("updated", 0)))
+    return result
 
 
 # =====================================================

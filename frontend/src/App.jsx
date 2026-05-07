@@ -233,6 +233,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
   const odds = useMemo(() => ai ? getMatchOdds(ai) : null, [ai])
 
   const locked = match.status === 'finished'
+  const isLive = match.status === 'live'
 
   const save = async () => {
     if (predH === '' || predA === '' || anyTBD) return
@@ -255,7 +256,15 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               : 'bg-white/5 border-white/10 hover:bg-white/[0.07]'
     }`}>
       <div className="flex items-center justify-between mb-3 text-xs text-white/50 flex-wrap gap-2">
-        <span className="flex items-center gap-2"><Calendar className="w-3 h-3" /> {dateLabel}</span>
+        <span className="flex items-center gap-2">
+          {isLive && (
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-red-500/20 text-red-300 rounded font-bold animate-pulse">
+              <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
+              {t('matches.live')}
+            </span>
+          )}
+          <Calendar className="w-3 h-3" /> {dateLabel}
+        </span>
         <span className="flex items-center gap-2 flex-wrap justify-end">
           {match.stage !== 'group' && (
             <span className={`px-2 py-0.5 rounded font-semibold ${
@@ -271,12 +280,14 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
         <div className="flex-1 text-right">
           <div className="mb-2 flex justify-end">{homeTBD ? <TBDBadge /> : <Flag code={match.home_team} size={48} />}</div>
           <div className="font-bold">{homeTBD ? t('matches.tbd') : teamName(match.home_team, lang)}</div>
-          {odds && !locked && <div className="text-xs text-orange-300 mt-1 font-mono">@{odds.home}</div>}
+          {odds && !locked && !isLive && <div className="text-xs text-orange-300 mt-1 font-mono">@{odds.home}</div>}
         </div>
 
         <div className="text-center min-w-[120px]">
-          {locked ? (
-            <div className="text-3xl font-black text-orange-400">{match.home_score} - {match.away_score}</div>
+          {(locked || isLive) ? (
+            <div className={`text-3xl font-black ${isLive ? 'text-red-400' : 'text-orange-400'}`}>
+              {match.home_score} - {match.away_score}
+            </div>
           ) : (
             <>
               <div className="text-white/40 text-sm">{t('common.vs')}</div>
@@ -677,6 +688,8 @@ function AdminTab({ user }) {
   const [users, setUsers] = useState([])
   const [auditLog, setAuditLog] = useState([])
   const [tab, setTab] = useState('users')
+  const [fetchingResults, setFetchingResults] = useState(false)
+  const [resultsMsg, setResultsMsg] = useState('')
 
   useEffect(() => {
     api.adminUsers().then(setUsers).catch(() => {})
@@ -689,8 +702,45 @@ function AdminTab({ user }) {
     setUsers(await api.adminUsers())
   }
 
+  const handleFetchResults = async () => {
+    setFetchingResults(true); setResultsMsg('')
+    try {
+      const r = await api.fetchResults()
+      if (r.ok) {
+        setResultsMsg(`✓ ${r.updated} match(s) mis à jour, ${r.skipped} déjà à jour, ${r.errors} erreurs sur ${r.checked} vérifiés`)
+      } else {
+        setResultsMsg(`✗ ${r.error || 'Erreur'}`)
+      }
+    } catch (e) {
+      setResultsMsg('✗ ' + (e.message || 'Erreur'))
+    } finally {
+      setFetchingResults(false)
+      setTimeout(() => setResultsMsg(''), 12000)
+    }
+  }
+
   return (
     <div>
+      {/* Bouton fetch résultats — toujours visible pour l'admin */}
+      <div className="mb-4 p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 border border-orange-400/30 rounded-xl">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="font-bold text-orange-200 mb-0.5">⚽ Résultats des matchs</div>
+            <div className="text-xs text-white/50">Récupération automatique toutes les 5 min via Football-Data.org</div>
+          </div>
+          <button onClick={handleFetchResults} disabled={fetchingResults}
+            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 rounded-lg text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${fetchingResults ? 'animate-spin' : ''}`} />
+            {fetchingResults ? '...' : 'Actualiser maintenant'}
+          </button>
+        </div>
+        {resultsMsg && (
+          <div className="mt-3 p-2 bg-white/5 border border-white/10 rounded text-sm text-orange-100">
+            {resultsMsg}
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.users')} ({users.length})

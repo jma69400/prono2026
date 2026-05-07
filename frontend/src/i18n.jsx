@@ -217,7 +217,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement',
     'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.admin': 'Admin',
 
-    'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés',
+    'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
     'matches.aiPredict': 'IA prédit', 'matches.confidence': 'Confiance',
     'matches.confidenceHigh': 'élevée', 'matches.confidenceMedium': 'moyenne', 'matches.confidenceLow': 'faible',
     'matches.locked': 'Match terminé', 'matches.noPrediction': 'Pas de prono',
@@ -456,7 +456,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings',
     'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.admin': 'Admin',
 
-    'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished',
+    'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
     'matches.aiPredict': 'AI predicts', 'matches.confidence': 'Confidence',
     'matches.confidenceHigh': 'high', 'matches.confidenceMedium': 'medium', 'matches.confidenceLow': 'low',
     'matches.locked': 'Match ended', 'matches.noPrediction': 'No prediction',
@@ -695,7 +695,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación',
     'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.admin': 'Admin',
 
-    'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados',
+    'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
     'matches.aiPredict': 'IA predice', 'matches.confidence': 'Confianza',
     'matches.confidenceHigh': 'alta', 'matches.confidenceMedium': 'media', 'matches.confidenceLow': 'baja',
     'matches.locked': 'Partido terminado', 'matches.noPrediction': 'Sin pronóstico',
