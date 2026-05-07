@@ -681,13 +681,292 @@ function NewsTab({ news, onRefresh, isAdmin }) {
 }
 
 // =====================================================
+// ADMIN SCORES PANEL — Gestion rapide des scores des matchs
+// =====================================================
+function AdminScoresPanel() {
+  const { t, lang } = useTranslation()
+  const [matches, setMatches] = useState([])
+  const [filter, setFilter] = useState('today')
+  const [savingId, setSavingId] = useState(null)
+  const [scores, setScores] = useState({}) // { matchId: { h: '2', a: '1' } }
+  const [toast, setToast] = useState(null) // { type: 'success'|'error', msg: '...' }
+
+  const loadMatches = async () => {
+    try {
+      const data = await api.matches()
+      setMatches(data)
+      // Initialiser les scores avec les valeurs actuelles
+      const init = {}
+      data.forEach(m => {
+        init[m.id] = {
+          h: m.home_score !== null ? String(m.home_score) : '',
+          a: m.away_score !== null ? String(m.away_score) : ''
+        }
+      })
+      setScores(init)
+    } catch (e) {
+      showToast('error', e.message || 'Erreur de chargement')
+    }
+  }
+
+  useEffect(() => { loadMatches() }, [])
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  const updateScore = (matchId, field, value) => {
+    // Restreindre à entiers 0-20
+    if (value !== '' && (!/^\d+$/.test(value) || parseInt(value) > 20)) return
+    setScores(s => ({ ...s, [matchId]: { ...s[matchId], [field]: value } }))
+  }
+
+  const saveScore = async (match) => {
+    const s = scores[match.id]
+    if (!s || s.h === '' || s.a === '') {
+      showToast('error', 'Saisis les deux scores')
+      return
+    }
+    setSavingId(match.id)
+    try {
+      const res = await api.adminSetScore(match.id, parseInt(s.h), parseInt(s.a))
+      showToast('success', `✓ Score enregistré · ${res.predictions_recalculated || 0} pronostic(s) recalculé(s)`)
+      await loadMatches()
+    } catch (e) {
+      showToast('error', e.message || 'Erreur')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const resetScore = async (match) => {
+    if (!confirm(`Annuler le score de ${teamName(match.home_team, lang)} vs ${teamName(match.away_team, lang)} ?\nLes points des pronostiqueurs seront remis à 0.`)) return
+    setSavingId(match.id)
+    try {
+      await api.adminResetScore(match.id)
+      showToast('success', '✓ Score annulé · pronostics remis à 0')
+      await loadMatches()
+    } catch (e) {
+      showToast('error', e.message || 'Erreur')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  // Filtrage
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000)
+
+  const filtered = matches.filter(m => {
+    const d = new Date(m.match_date.replace(' ', 'T'))
+    if (filter === 'today') return d >= today && d < tomorrow
+    if (filter === 'live') return m.status === 'live' || m.status === 'in_play'
+    if (filter === 'finished') return m.status === 'finished'
+    if (filter === 'scheduled') return m.status === 'scheduled' && d >= today
+    if (filter === 'past_unfinished') {
+      // matchs passés mais pas terminés (à saisir en priorité !)
+      return d < today && m.status !== 'finished'
+    }
+    return true
+  }).sort((a, b) => new Date(a.match_date) - new Date(b.match_date))
+
+  // Stats
+  const stats = {
+    total: matches.length,
+    finished: matches.filter(m => m.status === 'finished').length,
+    today: matches.filter(m => {
+      const d = new Date(m.match_date.replace(' ', 'T'))
+      return d >= today && d < tomorrow
+    }).length,
+    pastUnfinished: matches.filter(m => {
+      const d = new Date(m.match_date.replace(' ', 'T'))
+      return d < today && m.status !== 'finished'
+    }).length
+  }
+
+  return (
+    <div>
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-2xl border max-w-md ${
+          toast.type === 'success'
+            ? 'bg-green-500/90 border-green-400 text-white'
+            : 'bg-red-500/90 border-red-400 text-white'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Stats globales */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+          <div className="text-2xl font-black text-orange-300">{stats.total}</div>
+          <div className="text-xs text-white/50 mt-0.5">Matchs total</div>
+        </div>
+        <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
+          <div className="text-2xl font-black text-green-300">{stats.finished}</div>
+          <div className="text-xs text-white/50 mt-0.5">Joués</div>
+        </div>
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
+          <div className="text-2xl font-black text-orange-300">{stats.today}</div>
+          <div className="text-xs text-white/50 mt-0.5">Aujourd'hui</div>
+        </div>
+        <div className={`border rounded-xl p-3 text-center ${
+          stats.pastUnfinished > 0 ? 'bg-red-500/10 border-red-500/40' : 'bg-white/5 border-white/10'
+        }`}>
+          <div className={`text-2xl font-black ${stats.pastUnfinished > 0 ? 'text-red-300' : 'text-white/40'}`}>
+            {stats.pastUnfinished}
+          </div>
+          <div className="text-xs text-white/50 mt-0.5">À saisir ⚠️</div>
+        </div>
+      </div>
+
+      {/* Filtres */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {[
+          { id: 'today', label: '📅 Aujourd\'hui', count: stats.today },
+          { id: 'past_unfinished', label: '⚠️ À saisir', count: stats.pastUnfinished, urgent: true },
+          { id: 'scheduled', label: '🗓 À venir', count: matches.filter(m => {
+            const d = new Date(m.match_date.replace(' ', 'T'))
+            return m.status === 'scheduled' && d >= today
+          }).length },
+          { id: 'finished', label: '✅ Terminés', count: stats.finished },
+          { id: 'all', label: 'Tous', count: stats.total },
+        ].map(f => (
+          <button key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+              filter === f.id
+                ? (f.urgent && f.count > 0 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white')
+                : f.urgent && f.count > 0
+                ? 'bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500/20'
+                : 'bg-white/5 text-white/60 hover:text-white border border-white/10'
+            }`}>
+            {f.label} <span className="ml-1 opacity-70">({f.count})</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Liste des matchs */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+          <p>Aucun match dans ce filtre</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(m => {
+            const d = new Date(m.match_date.replace(' ', 'T'))
+            const dateLabel = d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : 'en-US', {
+              weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+            })
+            const isFinished = m.status === 'finished'
+            const isPastUnfinished = d < today && !isFinished
+            const s = scores[m.id] || { h: '', a: '' }
+            const isSaving = savingId === m.id
+            const homeTBD = !m.home_team || m.home_team === 'TBD'
+            const awayTBD = !m.away_team || m.away_team === 'TBD'
+
+            return (
+              <div key={m.id} className={`p-3 rounded-xl border transition ${
+                isFinished ? 'bg-green-500/5 border-green-500/30' :
+                isPastUnfinished ? 'bg-red-500/5 border-red-500/40' :
+                'bg-white/5 border-white/10'
+              }`}>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Date + Badge */}
+                  <div className="text-xs text-white/50 min-w-[140px]">
+                    {dateLabel}
+                    {isPastUnfinished && (
+                      <div className="text-red-300 font-bold mt-1">⚠️ À saisir !</div>
+                    )}
+                    {isFinished && (
+                      <div className="text-green-300 font-bold mt-1">✓ Terminé</div>
+                    )}
+                  </div>
+
+                  {/* Match */}
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <div className="flex items-center gap-1">
+                      {!homeTBD && <Flag code={m.home_team} size={20} />}
+                      <span className="font-semibold text-sm">{homeTBD ? 'TBD' : teamName(m.home_team, lang)}</span>
+                    </div>
+                    <span className="text-white/30 text-xs">vs</span>
+                    <div className="flex items-center gap-1">
+                      {!awayTBD && <Flag code={m.away_team} size={20} />}
+                      <span className="font-semibold text-sm">{awayTBD ? 'TBD' : teamName(m.away_team, lang)}</span>
+                    </div>
+                  </div>
+
+                  {/* Inputs score */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={s.h}
+                      onChange={(e) => updateScore(m.id, 'h', e.target.value)}
+                      disabled={isSaving || homeTBD || awayTBD}
+                      placeholder="–"
+                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-orange-400 disabled:opacity-30"
+                    />
+                    <span className="text-white/40">-</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={s.a}
+                      onChange={(e) => updateScore(m.id, 'a', e.target.value)}
+                      disabled={isSaving || homeTBD || awayTBD}
+                      placeholder="–"
+                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-orange-400 disabled:opacity-30"
+                    />
+                  </div>
+
+                  {/* Boutons */}
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => saveScore(m)}
+                      disabled={isSaving || s.h === '' || s.a === '' || homeTBD || awayTBD}
+                      className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded text-sm font-bold transition flex items-center gap-1"
+                      title={isFinished ? 'Modifier le score' : 'Valider le score'}
+                    >
+                      {isSaving ? '...' : isFinished ? '✏️' : <Check className="w-4 h-4" />}
+                    </button>
+                    {isFinished && (
+                      <button
+                        onClick={() => resetScore(m)}
+                        disabled={isSaving}
+                        className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 disabled:opacity-30 rounded text-sm transition"
+                        title="Annuler le score (remettre le match comme non joué)"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="text-xs text-white/30 text-center mt-4 italic">
+        💡 Les points des pronostiqueurs sont recalculés automatiquement après chaque modification.
+      </p>
+    </div>
+  )
+}
+
+
+// =====================================================
 // ADMIN TAB
 // =====================================================
 function AdminTab({ user }) {
   const { t } = useTranslation()
   const [users, setUsers] = useState([])
   const [auditLog, setAuditLog] = useState([])
-  const [tab, setTab] = useState('users')
+  const [tab, setTab] = useState('scores')
   const [fetchingResults, setFetchingResults] = useState(false)
   const [resultsMsg, setResultsMsg] = useState('')
 
@@ -742,6 +1021,9 @@ function AdminTab({ user }) {
       </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">
+        <button onClick={() => setTab('scores')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'scores' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+          ⚽ Scores
+        </button>
         <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.users')} ({users.length})
         </button>
@@ -755,6 +1037,8 @@ function AdminTab({ user }) {
           {t('admin.audit')}
         </button>
       </div>
+
+      {tab === 'scores' && <AdminScoresPanel />}
 
       {tab === 'users' && (
         <div className="space-y-2">

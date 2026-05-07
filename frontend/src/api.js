@@ -94,6 +94,8 @@ export const api = {
   adminSetPrediction: (data) => request('/admin/predictions', { method: 'PUT', body: JSON.stringify(data) }),
   adminSetScore: (match_id, home_score, away_score) =>
     request(`/admin/matches/${match_id}/score`, { method: 'POST', body: JSON.stringify({ home_score, away_score }) }),
+  adminResetScore: (match_id) =>
+    request(`/admin/matches/${match_id}/reset-score`, { method: 'POST' }),
   adminAuditLog: () => request('/admin/audit-log'),
   adminContactMessages: (status) => request(`/admin/contact-messages${status ? `?status=${status}` : ''}`),
   adminUpdateContactStatus: (id, status) => request(`/admin/contact-messages/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),

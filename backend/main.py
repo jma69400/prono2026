@@ -484,9 +484,14 @@ def compute_points(pred_h: int, pred_a: int, real_h: int, real_a: int) -> int:
 def recalc_match_points(match_id: int):
     with get_db() as db:
         m = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
-        if not m or m["home_score"] is None or m["away_score"] is None:
+        if not m:
             return
         preds = db.execute("SELECT * FROM predictions WHERE match_id=?", (match_id,)).fetchall()
+        # Si le match n'a plus de score (reset), on remet tous les points à 0
+        if m["home_score"] is None or m["away_score"] is None:
+            for p in preds:
+                db.execute("UPDATE predictions SET points=0 WHERE id=?", (p["id"],))
+            return
         for p in preds:
             pts = compute_points(p["home_score"], p["away_score"], m["home_score"], m["away_score"])
             db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
@@ -1308,6 +1313,25 @@ def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
         )
         log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score}", db=db)
     recalc_match_points(match_id)
+    # Compter les pronostics impactés
+    with get_db() as db:
+        pred_count = db.execute("SELECT COUNT(*) as c FROM predictions WHERE match_id=?", (match_id,)).fetchone()["c"]
+    return {"ok": True, "predictions_recalculated": pred_count}
+
+
+@app.post("/api/admin/matches/{match_id}/reset-score")
+def admin_reset_score(match_id: int, user=Depends(require_admin)):
+    """Annule un score saisi : remet le match en 'scheduled' et points=0 pour tous les pronos."""
+    with get_db() as db:
+        m = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
+        if not m:
+            raise HTTPException(404, "Match introuvable")
+        db.execute(
+            "UPDATE matches SET home_score=NULL, away_score=NULL, status='scheduled' WHERE id=?",
+            (match_id,),
+        )
+        log_action(user["id"], "reset_score", f"match={match_id}", db=db)
+    recalc_match_points(match_id)  # remet points=0
     return {"ok": True}
 
 
