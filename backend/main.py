@@ -688,40 +688,21 @@ _translate_blocked_until = 0  # timestamp Unix
 _translate_429_count = 0
 
 
-def translate_text(text: str, source_lang: str, target_lang: str) -> str:
-    """Traduit un texte via MyMemory.
-    - Cache mémoire global (LRU implicite)
-    - Circuit breaker : skip pendant 1h après un 429
-    - Si erreur, retourne le texte d'origine."""
+def _try_mymemory(text: str, source_lang: str, target_lang: str):
+    """Tente une traduction via MyMemory. Retourne le texte traduit ou None."""
     global _translate_blocked_until, _translate_429_count
 
-    if not text or source_lang == target_lang:
-        return text
-
-    # Nettoyer HTML basique
-    clean = text.replace('\n', ' ').strip()
-    if len(clean) > 480:
-        clean = clean[:477] + "..."
-
-    # Cache : c'est gratuit et instantané
-    cache_key = f"{source_lang}->{target_lang}:{clean[:120]}"
-    if cache_key in _translation_cache:
-        return _translation_cache[cache_key]
-
-    # === Circuit breaker : on ne tape pas l'API si on est rate-limité ===
     if time.time() < _translate_blocked_until:
-        return clean
+        return None
 
     try:
         params_dict = {
-            'q': clean,
+            'q': text,
             'langpair': f'{source_lang}|{target_lang}',
         }
-        # Si l'admin a fourni un email, on l'utilise pour 10x plus de quota
         email = os.environ.get("MYMEMORY_EMAIL")
         if email:
             params_dict['de'] = email
-
         params = urllib.parse.urlencode(params_dict)
         req = urllib.request.Request(
             f'https://api.mymemory.translated.net/get?{params}',
@@ -729,43 +710,112 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str:
         )
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json_lib.loads(resp.read().decode('utf-8'))
-            translated = data.get('responseData', {}).get('translatedText', clean)
-
-            # MyMemory peut renvoyer "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS"
+            translated = data.get('responseData', {}).get('translatedText', '')
+            if not translated:
+                return None
             if 'MYMEMORY WARNING' in translated.upper() or 'INVALID' in translated.upper():
-                # Quota dépassé via le message → on bloque pour 1 heure
                 _translate_blocked_until = time.time() + 3600
-                print(f"[TRANSLATE] Quota dépassé — pause 1h")
-                return clean
-
-            # Reset compteur d'erreurs
+                print(f"[TRANSLATE] MyMemory quota dépassé — pause 1h")
+                return None
+            # Heuristique : si la traduction est identique au texte original (cas des très courts textes),
+            # MyMemory a probablement renvoyé tel quel = pas vraiment traduit
+            if translated.strip().lower() == text.strip().lower():
+                return None
             _translate_429_count = 0
-            _translation_cache[cache_key] = translated
             return translated
-
     except urllib.error.HTTPError as e:
         if e.code == 429:
             _translate_429_count += 1
-            # Backoff exponentiel : 1ère fois 5 min, 2e fois 15 min, 3e fois 1h, ensuite 2h
             wait_seconds = min(5 * 60 * (2 ** _translate_429_count), 7200)
             _translate_blocked_until = time.time() + wait_seconds
-            print(f"[TRANSLATE] 429 reçu — pause {wait_seconds // 60} min (essai #{_translate_429_count})")
+            print(f"[TRANSLATE] MyMemory 429 — pause {wait_seconds // 60} min")
         else:
-            print(f"[TRANSLATE] erreur HTTP {e.code} {source_lang}->{target_lang}")
-        return clean
+            print(f"[TRANSLATE] MyMemory HTTP {e.code} {source_lang}->{target_lang}")
+        return None
     except Exception as e:
-        print(f"[TRANSLATE] erreur {source_lang}->{target_lang}: {e}")
-        return clean
+        print(f"[TRANSLATE] MyMemory exception {source_lang}->{target_lang}: {e}")
+        return None
+
+
+def _try_libretranslate(text: str, source_lang: str, target_lang: str):
+    """Fallback : LibreTranslate (instances publiques gratuites).
+    Retourne le texte traduit ou None."""
+    # Quelques instances publiques connues. On essaie chacune jusqu'à succès.
+    instances = [
+        os.environ.get("LIBRETRANSLATE_URL"),  # personnalisé via env
+        "https://translate.flossboxin.org.in/translate",
+        "https://libretranslate.de/translate",
+        "https://translate.terraprint.co/translate",
+    ]
+    for url in instances:
+        if not url:
+            continue
+        try:
+            payload = json_lib.dumps({
+                'q': text,
+                'source': source_lang,
+                'target': target_lang,
+                'format': 'text',
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'PRONO2026/1.0',
+                },
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json_lib.loads(resp.read().decode('utf-8'))
+                translated = data.get('translatedText', '')
+                if translated and translated.strip().lower() != text.strip().lower():
+                    return translated
+        except Exception as e:
+            print(f"[TRANSLATE] LibreTranslate {url}: {e}")
+            continue
+    return None
+
+
+def translate_text(text: str, source_lang: str, target_lang: str):
+    """Traduit un texte. Retourne le texte traduit ou None si échec.
+    Tente MyMemory d'abord, puis LibreTranslate en backup.
+    Cache mémoire global pour éviter les appels redondants."""
+    if not text or source_lang == target_lang:
+        return text
+
+    # Nettoyer
+    clean = text.replace('\n', ' ').strip()
+    if len(clean) > 480:
+        clean = clean[:477] + "..."
+
+    # Cache mémoire
+    cache_key = f"{source_lang}->{target_lang}:{clean[:120]}"
+    if cache_key in _translation_cache:
+        return _translation_cache[cache_key]
+
+    # 1. MyMemory (rapide et bonne qualité)
+    result = _try_mymemory(clean, source_lang, target_lang)
+
+    # 2. LibreTranslate en fallback
+    if not result:
+        result = _try_libretranslate(clean, source_lang, target_lang)
+
+    if result:
+        _translation_cache[cache_key] = result
+        return result
+
+    # Tous les services ont échoué → None (pas le texte original !)
+    return None
 
 
 def translate_to_all_langs(text: str, source_lang: str) -> dict:
-    """Traduit un texte vers fr, en, es. La langue source est gardée telle quelle."""
-    result = {'fr': '', 'en': '', 'es': ''}
+    """Traduit un texte vers fr, en, es. La langue source est gardée telle quelle.
+    Retourne None pour les langues où la traduction a échoué (sera retraduit à la demande)."""
+    result = {'fr': None, 'en': None, 'es': None}
     result[source_lang] = text
     for target in ['fr', 'en', 'es']:
         if target != source_lang and text:
-            result[target] = translate_text(text, source_lang, target)
-            # Délai plus long pour éviter le rate limit (était 0.3s, maintenant 0.6s)
+            result[target] = translate_text(text, source_lang, target)  # peut être None
             time.sleep(0.6)
     return result
 
@@ -1077,27 +1127,43 @@ def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int
             )
             if need_translation:
                 try:
+                    new_title = None
+                    new_summary = None
                     if not translated_title and d.get('title'):
-                        translated_title = translate_text(d['title'], source_lang, lang) or d['title']
+                        new_title = translate_text(d['title'], source_lang, lang)  # None si échec
+                        if new_title:
+                            translated_title = new_title
                     if not translated_summary and d.get('summary'):
-                        translated_summary = translate_text(d['summary'][:300], source_lang, lang) or d['summary']
-                    # Cache en BDD pour les prochaines requêtes
-                    db.execute(
-                        f"UPDATE news SET title_{lang}=?, summary_{lang}=? WHERE id=?",
-                        (translated_title, translated_summary, d['id'])
-                    )
-                    on_demand_translations += 1
+                        new_summary = translate_text(d['summary'][:300], source_lang, lang)
+                        if new_summary:
+                            translated_summary = new_summary
+                    # Ne cache en BDD QUE si on a obtenu de vraies traductions
+                    # (sinon, on retentera plus tard)
+                    if new_title or new_summary:
+                        # Update partiel : on ne touche qu'aux colonnes vraiment traduites
+                        sets = []
+                        params_upd = []
+                        if new_title:
+                            sets.append(f"title_{lang}=?"); params_upd.append(new_title)
+                        if new_summary:
+                            sets.append(f"summary_{lang}=?"); params_upd.append(new_summary)
+                        params_upd.append(d['id'])
+                        db.execute(
+                            f"UPDATE news SET {', '.join(sets)} WHERE id=?",
+                            params_upd
+                        )
+                        on_demand_translations += 1
                 except Exception as e:
                     print(f"[NEWS translate on-demand] erreur: {e}")
 
-            # Fallback final : titre/résumé original
-            translated_title = translated_title or d.get('title') or ''
-            translated_summary = translated_summary or d.get('summary') or ''
+            # Fallback final pour l'affichage : si toujours pas de traduction → texte original
+            display_title = translated_title or d.get('title') or ''
+            display_summary = translated_summary or d.get('summary') or ''
 
             result.append({
                 'id': d['id'],
-                'title': translated_title,
-                'summary': translated_summary,
+                'title': display_title,
+                'summary': display_summary,
                 'link': d['link'],
                 'source': d['source'],
                 'team': d['team'],
@@ -1106,7 +1172,7 @@ def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int
                 'fetched_at': d['fetched_at'],
                 'lang': source_lang,         # langue d'origine
                 'displayed_lang': lang,       # langue affichée
-                'translated': source_lang != lang,
+                'translated': source_lang != lang and bool(translated_title),
             })
         return result
 
@@ -1115,6 +1181,62 @@ def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int
 def refresh_news(user=Depends(require_admin)):
     fetch_news_once()
     return {"ok": True}
+
+
+@app.post("/api/news/translate-missing")
+def admin_translate_missing(user=Depends(require_admin), max_news: int = 30):
+    """Force la traduction des news existantes qui n'ont pas de version EN/ES.
+    Utilisé pour rattraper les news ingérées avant que la traduction ne fonctionne.
+    Limité à `max_news` news par appel pour éviter de saturer l'API de traduction.
+    À relancer plusieurs fois si beaucoup de news à traduire."""
+    translated = 0
+    failed = 0
+    with get_db() as db:
+        # Trouver les news qui ont au moins une langue manquante
+        rows = db.execute("""
+            SELECT id, title, summary, lang, title_fr, title_en, title_es,
+                   summary_fr, summary_en, summary_es
+            FROM news
+            WHERE (title_en IS NULL OR title_en = '' OR title_es IS NULL OR title_es = ''
+                   OR title_fr IS NULL OR title_fr = '')
+            ORDER BY fetched_at DESC
+            LIMIT ?
+        """, (max_news,)).fetchall()
+
+        for r in rows:
+            d = dict(r)
+            source_lang = d.get('lang') or 'fr'
+            updates = {}
+            for target in ('fr', 'en', 'es'):
+                if target == source_lang:
+                    # La langue source : on s'assure qu'elle est bien remplie
+                    if not d.get(f'title_{target}') and d.get('title'):
+                        updates[f'title_{target}'] = d['title']
+                    if not d.get(f'summary_{target}') and d.get('summary'):
+                        updates[f'summary_{target}'] = d['summary']
+                else:
+                    # Langues à traduire
+                    if not d.get(f'title_{target}') and d.get('title'):
+                        t_title = translate_text(d['title'], source_lang, target)
+                        if t_title:
+                            updates[f'title_{target}'] = t_title
+                            time.sleep(0.6)
+                    if not d.get(f'summary_{target}') and d.get('summary'):
+                        t_summary = translate_text(d['summary'][:300], source_lang, target)
+                        if t_summary:
+                            updates[f'summary_{target}'] = t_summary
+                            time.sleep(0.6)
+
+            if updates:
+                sets = ", ".join(f"{col}=?" for col in updates.keys())
+                params = list(updates.values()) + [d['id']]
+                db.execute(f"UPDATE news SET {sets} WHERE id=?", params)
+                translated += 1
+            else:
+                failed += 1
+
+    log_action(user["id"], "translate_missing", f"translated={translated} failed={failed}")
+    return {"ok": True, "translated": translated, "failed": failed, "checked": len(rows)}
 
 
 # --- Admin ---

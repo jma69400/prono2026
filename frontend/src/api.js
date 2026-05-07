@@ -67,6 +67,7 @@ export const api = {
     return request(`/news${qs ? `?${qs}` : ''}`)
   },
   refreshNews: () => request('/news/refresh', { method: 'POST' }),
+  translateMissingNews: () => request('/news/translate-missing', { method: 'POST' }),
   // Profil
   getProfile: () => request('/profile'),
   updateProfile: (data) => request('/profile', { method: 'PUT', body: JSON.stringify(data) }),

@@ -572,9 +572,26 @@ function GroupsTab() {
 function NewsTab({ news, onRefresh, isAdmin }) {
   const { t, lang } = useTranslation()
   const [teamFilter, setTeamFilter] = useState('')
+  const [translating, setTranslating] = useState(false)
+  const [translateMsg, setTranslateMsg] = useState('')
 
   const filtered = news.filter(n => !teamFilter || n.team === teamFilter)
   const availableTeams = [...new Set(news.map(n => n.team).filter(Boolean))].slice(0, 12)
+
+  const handleTranslate = async () => {
+    setTranslating(true); setTranslateMsg('')
+    try {
+      const res = await api.translateMissingNews()
+      setTranslateMsg(`✓ ${res.translated} news traduites (${res.failed} échecs sur ${res.checked})`)
+      // Refresh la liste
+      if (onRefresh) await onRefresh()
+    } catch (e) {
+      setTranslateMsg('✗ ' + (e.message || 'Erreur'))
+    } finally {
+      setTranslating(false)
+      setTimeout(() => setTranslateMsg(''), 8000)
+    }
+  }
 
   return (
     <div>
@@ -592,11 +609,23 @@ function NewsTab({ news, onRefresh, isAdmin }) {
           ))}
         </div>
         {isAdmin && (
-          <button onClick={onRefresh} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" /> {t('news.refresh')}
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={handleTranslate} disabled={translating}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
+              🌍 {translating ? '...' : 'Traduire manquantes'}
+            </button>
+            <button onClick={onRefresh} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> {t('news.refresh')}
+            </button>
+          </div>
         )}
       </div>
+
+      {translateMsg && (
+        <div className="mb-3 p-2 bg-orange-500/10 border border-orange-400/30 rounded-lg text-sm text-orange-200 text-center">
+          {translateMsg}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-white/40">
