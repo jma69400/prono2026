@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User } from 'lucide-react'
+import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen } from 'lucide-react'
 import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
@@ -1806,6 +1806,98 @@ function AdminContactPanel() {
 
 
 // =====================================================
+// INFO TAB — accès aux pages SEO depuis l'app
+// =====================================================
+function InfoTab() {
+  const { t, lang } = useTranslation()
+
+  // URLs SEO adaptées à la langue active
+  const seoUrls = {
+    fr: {
+      schedule: '/seo/calendrier-coupe-du-monde-2026.html',
+      groups: '/seo/groupes-coupe-du-monde-2026.html',
+      teams: '/seo/equipes-qualifiees-mondial-2026.html',
+      stadiums: '/seo/stades-coupe-du-monde-2026.html',
+      format: '/seo/format-48-equipes-mondial-2026.html',
+      favorites: '/seo/favoris-coupe-du-monde-2026.html',
+    },
+    en: {
+      schedule: '/seo/en/world-cup-2026-schedule.html',
+      groups: '/seo/en/world-cup-2026-groups.html',
+      teams: '/seo/en/qualified-teams-world-cup-2026.html',
+      stadiums: '/seo/en/world-cup-2026-stadiums.html',
+      format: '/seo/en/48-teams-format-world-cup-2026.html',
+      favorites: '/seo/en/world-cup-2026-favorites.html',
+    },
+    es: {
+      schedule: '/seo/es/calendario-mundial-2026.html',
+      groups: '/seo/es/grupos-mundial-2026.html',
+      teams: '/seo/es/equipos-clasificados-mundial-2026.html',
+      stadiums: '/seo/es/estadios-mundial-2026.html',
+      format: '/seo/es/formato-48-equipos-mundial-2026.html',
+      favorites: '/seo/es/favoritos-mundial-2026.html',
+    },
+  }
+  const urls = seoUrls[lang] || seoUrls.fr
+
+  // 6 cards à afficher (favoris en premier, c'est le contenu phare)
+  const cards = [
+    {
+      url: urls.favorites,
+      icon: '🥇',
+      title: t('info.favorites'),
+      subtitle: t('info.favoritesSub'),
+      featured: true,
+    },
+    { url: urls.schedule, icon: '📅', title: t('info.schedule'), subtitle: t('info.scheduleSub') },
+    { url: urls.groups, icon: '👥', title: t('info.groups'), subtitle: t('info.groupsSub') },
+    { url: urls.teams, icon: '🌍', title: t('info.teams'), subtitle: t('info.teamsSub') },
+    { url: urls.stadiums, icon: '🏟️', title: t('info.stadiums'), subtitle: t('info.stadiumsSub') },
+    { url: urls.format, icon: '📋', title: t('info.format'), subtitle: t('info.formatSub') },
+  ]
+
+  return (
+    <div>
+      <div className="text-center mb-8">
+        <div className="inline-block px-3 py-1 mb-3 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
+          📚 {t('info.badge')}
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-black mb-2">{t('info.title')}</h2>
+        <p className="text-sm text-white/60 max-w-2xl mx-auto">{t('info.subtitle')}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards.map((card, idx) => (
+          <a key={idx} href={card.url} target="_blank" rel="noopener"
+            className={`group relative p-5 rounded-2xl border transition transform hover:scale-105 ${
+              card.featured
+                ? 'bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border-yellow-400/40 hover:border-yellow-400/70'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-orange-400/50'
+            }`}>
+            {card.featured && (
+              <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                ⭐ {t('info.new')}
+              </div>
+            )}
+            <div className="text-4xl mb-3">{card.icon}</div>
+            <div className="font-bold text-base mb-1">{card.title}</div>
+            <div className="text-sm text-white/50">{card.subtitle}</div>
+            <div className="mt-3 text-xs text-orange-300 group-hover:text-orange-200 font-semibold">
+              {t('info.readMore')} →
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <p className="text-center text-xs text-white/30 mt-8 italic">
+        {t('info.opensInNewTab')}
+      </p>
+    </div>
+  )
+}
+
+
+// =====================================================
 // PROFILE TAB — espace utilisateur (avatar, bio, mot de passe, langue, thème)
 // =====================================================
 function ProfileTab({ currentUser, onUserUpdate }) {
@@ -2760,6 +2852,7 @@ export default function App() {
     { id: 'groups', label: t('tabs.groups'), icon: Users },
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
+    { id: 'info', label: t('tabs.info'), icon: BookOpen },
     ...(user ? [{ id: 'profile', label: t('profile.title'), icon: User }] : []),
     ...(isAdmin ? [{ id: 'admin', label: t('tabs.admin'), icon: Settings }] : []),
   ]
@@ -2848,11 +2941,46 @@ export default function App() {
         {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
+        {activeTab === 'info' && <InfoTab />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
 
-      <footer className="border-t border-white/10 mt-12 py-6 text-center text-xs text-white/30">
-        {t('common.footer')}
+      {/* Footer enrichi avec liens vers les articles SEO (boost SEO interne + UX) */}
+      <footer className="border-t border-white/10 mt-12 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-6">
+            <h3 className="text-sm font-bold text-white/60 mb-3 uppercase tracking-wider">
+              📚 {t('info.badge')}
+            </h3>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {(() => {
+                const seoUrls = {
+                  fr: { schedule: '/seo/calendrier-coupe-du-monde-2026.html', groups: '/seo/groupes-coupe-du-monde-2026.html', teams: '/seo/equipes-qualifiees-mondial-2026.html', stadiums: '/seo/stades-coupe-du-monde-2026.html', format: '/seo/format-48-equipes-mondial-2026.html', favorites: '/seo/favoris-coupe-du-monde-2026.html' },
+                  en: { schedule: '/seo/en/world-cup-2026-schedule.html', groups: '/seo/en/world-cup-2026-groups.html', teams: '/seo/en/qualified-teams-world-cup-2026.html', stadiums: '/seo/en/world-cup-2026-stadiums.html', format: '/seo/en/48-teams-format-world-cup-2026.html', favorites: '/seo/en/world-cup-2026-favorites.html' },
+                  es: { schedule: '/seo/es/calendario-mundial-2026.html', groups: '/seo/es/grupos-mundial-2026.html', teams: '/seo/es/equipos-clasificados-mundial-2026.html', stadiums: '/seo/es/estadios-mundial-2026.html', format: '/seo/es/formato-48-equipos-mundial-2026.html', favorites: '/seo/es/favoritos-mundial-2026.html' },
+                }
+                const urls = seoUrls[lang] || seoUrls.fr
+                const links = [
+                  { url: urls.favorites, label: '🥇 ' + t('info.favorites') },
+                  { url: urls.schedule, label: '📅 ' + t('info.schedule') },
+                  { url: urls.groups, label: '👥 ' + t('info.groups') },
+                  { url: urls.teams, label: '🌍 ' + t('info.teams') },
+                  { url: urls.stadiums, label: '🏟️ ' + t('info.stadiums') },
+                  { url: urls.format, label: '📋 ' + t('info.format') },
+                ]
+                return links.map((link, idx) => (
+                  <a key={idx} href={link.url} target="_blank" rel="noopener"
+                    className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-400/40 rounded-full text-white/70 hover:text-orange-300 transition">
+                    {link.label}
+                  </a>
+                ))
+              })()}
+            </div>
+          </div>
+          <div className="text-center text-xs text-white/30">
+            {t('common.footer')}
+          </div>
+        </div>
       </footer>
 
       {showGuestPrompt && <GuestPrompt onClose={() => setShowGuestPrompt(false)} onSignin={goToAuth} />}

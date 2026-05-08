@@ -183,6 +183,26 @@ const TRANSLATIONS = {
     'admin.regenerateCodeConfirm': 'Régénérer le code d\'invitation ? L\'ancien sera invalide.',
 
     // PROFIL
+    // INFO TAB (pages SEO)
+    'info.badge': 'Découvre tout le Mondial',
+    'info.title': 'Tout savoir sur la Coupe du Monde 2026',
+    'info.subtitle': 'Explore nos guides détaillés sur le Mondial : favoris, calendrier, groupes, équipes, stades… tout ce qu\'il faut savoir avant le coup d\'envoi !',
+    'info.new': 'NOUVEAU',
+    'info.readMore': 'Lire l\'article',
+    'info.opensInNewTab': 'Les articles s\'ouvrent dans un nouvel onglet',
+    'info.favorites': 'Top 10 favoris',
+    'info.favoritesSub': 'Qui va gagner le Mondial ? Notre analyse des 10 équipes favorites avec probabilités et joueurs clés.',
+    'info.schedule': 'Calendrier complet',
+    'info.scheduleSub': 'Les 104 matchs du Mondial 2026 jour par jour, du 11 juin au 19 juillet.',
+    'info.groups': 'Les 12 groupes',
+    'info.groupsSub': 'Composition des groupes A à L après le tirage de décembre 2025.',
+    'info.teams': 'Les 48 équipes',
+    'info.teamsSub': 'Liste complète par confédération : UEFA, CONMEBOL, AFC, CAF, CONCACAF, OFC.',
+    'info.stadiums': 'Les 16 stades',
+    'info.stadiumsSub': 'MetLife, SoFi, Estadio Azteca… découvre les enceintes du Mondial.',
+    'info.format': 'Format à 48 équipes',
+    'info.formatSub': '12 groupes, 32èmes de finale, meilleurs 3èmes : tout ce qui change.',
+
     'profile.title': 'Mon profil',
     'profile.username': 'Nom d\'utilisateur',
     'profile.email': 'Email',
@@ -218,7 +238,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Répondre',
 
     'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement',
-    'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.info': 'Infos', 'tabs.admin': 'Admin',
 
     'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
     'matches.aiPredict': 'IA prédit', 'matches.confidence': 'Confiance',
@@ -425,6 +445,26 @@ const TRANSLATIONS = {
     'admin.regenerateCodeConfirm': 'Regenerate the invite code? The old one will become invalid.',
 
     // PROFILE
+    // INFO TAB (SEO pages)
+    'info.badge': 'Discover the World Cup',
+    'info.title': 'Everything about the 2026 World Cup',
+    'info.subtitle': 'Explore our in-depth guides about the World Cup: favorites, schedule, groups, teams, stadiums… everything you need to know before kick-off!',
+    'info.new': 'NEW',
+    'info.readMore': 'Read article',
+    'info.opensInNewTab': 'Articles open in a new tab',
+    'info.favorites': 'Top 10 favorites',
+    'info.favoritesSub': 'Who will win the World Cup? Our analysis of the 10 favorite teams with probabilities and key players.',
+    'info.schedule': 'Complete schedule',
+    'info.scheduleSub': 'All 104 matches of the 2026 World Cup day by day, from June 11 to July 19.',
+    'info.groups': 'The 12 groups',
+    'info.groupsSub': 'Composition of groups A through L after the December 2025 draw.',
+    'info.teams': 'The 48 teams',
+    'info.teamsSub': 'Complete list by confederation: UEFA, CONMEBOL, AFC, CAF, CONCACAF, OFC.',
+    'info.stadiums': 'The 16 stadiums',
+    'info.stadiumsSub': 'MetLife, SoFi, Estadio Azteca… discover the World Cup venues.',
+    'info.format': '48-team format',
+    'info.formatSub': '12 groups, Round of 32, best 3rd-placed teams: everything that changes.',
+
     'profile.title': 'My profile',
     'profile.username': 'Username',
     'profile.email': 'Email',
@@ -460,7 +500,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Reply',
 
     'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings',
-    'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.info': 'Info', 'tabs.admin': 'Admin',
 
     'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
     'matches.aiPredict': 'AI predicts', 'matches.confidence': 'Confidence',
@@ -667,6 +707,26 @@ const TRANSLATIONS = {
     'admin.regenerateCodeConfirm': '¿Regenerar el código? El anterior será inválido.',
 
     // PERFIL
+    // INFO TAB (páginas SEO)
+    'info.badge': 'Descubre todo el Mundial',
+    'info.title': 'Todo sobre el Mundial 2026',
+    'info.subtitle': 'Explora nuestras guías detalladas sobre el Mundial: favoritos, calendario, grupos, equipos, estadios… ¡todo lo que hay que saber antes del pitido inicial!',
+    'info.new': 'NUEVO',
+    'info.readMore': 'Leer artículo',
+    'info.opensInNewTab': 'Los artículos se abren en una nueva pestaña',
+    'info.favorites': 'Top 10 favoritos',
+    'info.favoritesSub': '¿Quién ganará el Mundial? Nuestro análisis de los 10 equipos favoritos con probabilidades y jugadores clave.',
+    'info.schedule': 'Calendario completo',
+    'info.scheduleSub': 'Los 104 partidos del Mundial 2026 día por día, del 11 de junio al 19 de julio.',
+    'info.groups': 'Los 12 grupos',
+    'info.groupsSub': 'Composición de los grupos A a L tras el sorteo de diciembre 2025.',
+    'info.teams': 'Los 48 equipos',
+    'info.teamsSub': 'Lista completa por confederación: UEFA, CONMEBOL, AFC, CAF, CONCACAF, OFC.',
+    'info.stadiums': 'Los 16 estadios',
+    'info.stadiumsSub': 'MetLife, SoFi, Estadio Azteca… descubre las sedes del Mundial.',
+    'info.format': 'Formato 48 equipos',
+    'info.formatSub': '12 grupos, dieciseisavos de final, mejores 3ros: todo lo que cambia.',
+
     'profile.title': 'Mi perfil',
     'profile.username': 'Nombre de usuario',
     'profile.email': 'Email',
@@ -702,7 +762,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Responder',
 
     'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación',
-    'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.info': 'Info', 'tabs.admin': 'Admin',
 
     'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
     'matches.aiPredict': 'IA predice', 'matches.confidence': 'Confianza',
