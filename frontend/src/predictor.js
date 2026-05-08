@@ -1,5 +1,5 @@
 // =====================================================
-// PRONO 2026 — Modèle de prédiction avancé style bookmaker
+// United Pronos — Modèle de prédiction avancé style bookmaker
 // =====================================================
 // Inspiré de Dixon-Coles (1997) — utilisé par Pinnacle, Bet365 etc.
 // + Monte Carlo (10 000 simulations)

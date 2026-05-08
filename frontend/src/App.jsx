@@ -71,7 +71,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-3">
             <Trophy className="w-12 h-12 text-orange-400" />
-            <h1 className="text-5xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">PRONO 2026</h1>
+            <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</h1>
           </div>
           <p className="text-white/60">{t('auth.subtitle')}</p>
         </div>
@@ -1155,7 +1155,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Trophy className="w-7 h-7 text-orange-400" />
-            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">PRONO 2026</h1>
+            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</h1>
           </div>
           <div className="flex items-center gap-2">
             <LangSwitch />
@@ -1721,7 +1721,7 @@ function AdminContactPanel() {
                     {statusLabel(m.status)}
                   </span>
                   <span className="font-bold">{m.name}</span>
-                  <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'PRONO 2026'}`}
+                  <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'United Pronos'}`}
                      className="text-sm text-orange-300 hover:text-orange-200">
                     {m.email}
                   </a>
@@ -1731,7 +1731,7 @@ function AdminContactPanel() {
               {m.subject && <div className="text-sm font-semibold text-white/80 mb-1">{m.subject}</div>}
               <p className="text-sm text-white/70 whitespace-pre-wrap mb-3">{m.message}</p>
               <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-white/5">
-                <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'PRONO 2026'}`}
+                <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'United Pronos'}`}
                    className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded text-xs font-semibold transition">
                   ↪ {t('contact.reply')}
                 </a>
@@ -2740,7 +2740,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Trophy className="w-7 h-7 text-orange-400 shrink-0" />
-            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">PRONO 2026</h1>
+            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">United Pronos</h1>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <LangSwitch />

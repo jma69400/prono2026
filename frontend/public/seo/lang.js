@@ -1,5 +1,5 @@
 /**
- * PRONO 2026 — Gestion de la langue cross-page
+ * United Pronos — Gestion de la langue cross-page
  *
  * Ce script est chargé sur chaque page SEO statique.
  * Il assure que la langue choisie par l'utilisateur (dans l'app React

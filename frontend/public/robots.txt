@@ -1,4 +1,4 @@
-# robots.txt — PRONO 2026
+# robots.txt — United Pronos
 # Autoriser tous les moteurs de recherche
 
 User-agent: *

@@ -1,5 +1,5 @@
 """
-PRONO 2026 — Backend FastAPI complet
+United Pronos — Backend FastAPI complet
 Auth JWT + SQLite + agrégateur RSS + scoring temps réel
 Lancement : uvicorn main:app --reload --port 8000
 """
@@ -934,7 +934,7 @@ class AdminPredictionIn(BaseModel):
 # =====================================================
 # APP
 # =====================================================
-app = FastAPI(title="PRONO 2026 API", version="1.0.0")
+app = FastAPI(title="United Pronos API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -959,7 +959,7 @@ def startup():
     results_thread = threading.Thread(target=results_worker, daemon=True)
     results_thread.start()
     print("=" * 60)
-    print("🏆 PRONO 2026 backend démarré")
+    print("🏆 United Pronos backend démarré")
     print(f"📁 Base : {DB_PATH}")
     print("👤 Compte admin : admin@prono26.com (change le mot de passe !)")
     if os.environ.get("FOOTBALL_DATA_API_KEY"):
@@ -2136,9 +2136,9 @@ def send_contact_email(name: str, email: str, subject: str, message: str) -> boo
         msg["From"] = smtp_from
         msg["To"] = smtp_to
         msg["Reply-To"] = email
-        msg["Subject"] = f"[PRONO 2026] {subject or 'Nouveau message'} — de {name}"
+        msg["Subject"] = f"[United Pronos] {subject or 'Nouveau message'} — de {name}"
 
-        body = f"""Nouveau message de contact PRONO 2026
+        body = f"""Nouveau message de contact United Pronos
 
 De     : {name} <{email}>
 Sujet  : {subject or '(sans sujet)'}

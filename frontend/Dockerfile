@@ -1,5 +1,5 @@
 # =====================================================
-# PRONO 2026 — Frontend React/Vite
+# United Pronos — Frontend React/Vite
 # Stage 1 : build avec Node
 # Stage 2 : Nginx léger pour servir les fichiers statiques
 # =====================================================

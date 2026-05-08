@@ -10,7 +10,7 @@ const TRANSLATIONS = {
     'auth.demoAccounts': 'Comptes de démo',
     'auth.adminAccount': 'Admin', 'auth.userAccount': 'Démo',
     'auth.subtitle': 'Coupe du Monde · USA · Canada · Mexique',
-    'auth.welcome': 'Bienvenue sur PRONO 2026',
+    'auth.welcome': 'Bienvenue sur United Pronos',
     'auth.welcomeSub': 'Connecte-toi pour pronostiquer et défier tes amis',
     'auth.continueAsGuest': 'Visiter sans compte',
     'auth.guestBack': 'Retour à l\'accueil',
@@ -105,7 +105,7 @@ const TRANSLATIONS = {
     'home.modes.pro.cta': 'Activer le mode Pro',
 
     // Donations
-    'donate.title': 'Soutenir PRONO 2026',
+    'donate.title': 'Soutenir United Pronos',
     'donate.subtitle': 'Le site est gratuit, sans pubs, sans tracking. Tu peux nous aider à couvrir les frais d\'hébergement.',
     'donate.viaStripe': 'Faire un don par carte',
     'donate.viaPaypal': 'Don PayPal',
@@ -252,7 +252,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Chargement…', 'common.logout': 'Déconnexion',
     'common.vs': 'vs',
-    'common.footer': 'PRONO 2026 · Coupe du Monde 11 juin – 19 juillet 2026',
+    'common.footer': 'United Pronos · Coupe du Monde 11 juin – 19 juillet 2026',
   },
 
   en: {
@@ -263,7 +263,7 @@ const TRANSLATIONS = {
     'auth.demoAccounts': 'Demo accounts',
     'auth.adminAccount': 'Admin', 'auth.userAccount': 'Demo',
     'auth.subtitle': 'World Cup · USA · Canada · Mexico',
-    'auth.welcome': 'Welcome to PRONO 2026',
+    'auth.welcome': 'Welcome to United Pronos',
     'auth.welcomeSub': 'Sign in to predict and challenge your friends',
     'auth.continueAsGuest': 'Browse as guest',
     'auth.guestBack': 'Back to home',
@@ -352,7 +352,7 @@ const TRANSLATIONS = {
     'home.modes.pro.bullet4': 'Perfect for team building',
     'home.modes.pro.cta': 'Activate Pro mode',
 
-    'donate.title': 'Support PRONO 2026',
+    'donate.title': 'Support United Pronos',
     'donate.subtitle': 'The site is free, no ads, no tracking. You can help us cover hosting costs.',
     'donate.viaStripe': 'Donate by card',
     'donate.viaPaypal': 'PayPal donation',
@@ -494,7 +494,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Loading…', 'common.logout': 'Sign out',
     'common.vs': 'vs',
-    'common.footer': 'PRONO 2026 · World Cup June 11 – July 19, 2026',
+    'common.footer': 'United Pronos · World Cup June 11 – July 19, 2026',
   },
 
   es: {
@@ -505,7 +505,7 @@ const TRANSLATIONS = {
     'auth.demoAccounts': 'Cuentas de demo',
     'auth.adminAccount': 'Admin', 'auth.userAccount': 'Demo',
     'auth.subtitle': 'Copa del Mundo · USA · Canadá · México',
-    'auth.welcome': 'Bienvenido a PRONO 2026',
+    'auth.welcome': 'Bienvenido a United Pronos',
     'auth.welcomeSub': 'Inicia sesión para pronosticar y desafiar a tus amigos',
     'auth.continueAsGuest': 'Visitar sin cuenta',
     'auth.guestBack': 'Volver al inicio',
@@ -594,7 +594,7 @@ const TRANSLATIONS = {
     'home.modes.pro.bullet4': 'Ideal team building',
     'home.modes.pro.cta': 'Activar modo Pro',
 
-    'donate.title': 'Apoyar PRONO 2026',
+    'donate.title': 'Apoyar United Pronos',
     'donate.subtitle': 'El sitio es gratuito, sin anuncios, sin rastreo. Puedes ayudarnos a cubrir los costos de alojamiento.',
     'donate.viaStripe': 'Donar con tarjeta',
     'donate.viaPaypal': 'Donación PayPal',
@@ -736,7 +736,7 @@ const TRANSLATIONS = {
 
     'common.loading': 'Cargando…', 'common.logout': 'Cerrar sesión',
     'common.vs': 'vs',
-    'common.footer': 'PRONO 2026 · Copa del Mundo 11 junio – 19 julio 2026',
+    'common.footer': 'United Pronos · Copa del Mundo 11 junio – 19 julio 2026',
   },
 }
 
