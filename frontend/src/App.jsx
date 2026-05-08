@@ -6,6 +6,44 @@ import { useTranslation } from './i18n.jsx'
 import { predictMatch, getMatchOdds } from './predictor.js'
 
 // =====================================================
+// GOOGLE ANALYTICS 4 — Chargement dynamique
+// =====================================================
+// Charge le script GA4 et configure le tracking si l'ID est défini.
+// Appelé une seule fois au boot de l'app (après fetch /api/config).
+let _gaLoaded = false
+function loadGoogleAnalytics(measurementId) {
+  if (_gaLoaded || !measurementId) return
+  _gaLoaded = true
+
+  // 1. Injecter le script gtag.js
+  const script = document.createElement('script')
+  script.async = true
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`
+  document.head.appendChild(script)
+
+  // 2. Initialiser le dataLayer + gtag
+  window.dataLayer = window.dataLayer || []
+  window.gtag = function gtag() { window.dataLayer.push(arguments) }
+  window.gtag('js', new Date())
+  // anonymize_ip pour le RGPD
+  window.gtag('config', measurementId, { anonymize_ip: true })
+
+  console.log('[Analytics] GA4 chargé', measurementId)
+}
+
+// Helper : tracker un changement de "page virtuelle" dans la SPA
+// Utilisé quand l'utilisateur change d'onglet (matches, leaderboard, etc.)
+function trackPageView(pageName) {
+  if (window.gtag) {
+    window.gtag('event', 'page_view', {
+      page_title: pageName,
+      page_location: window.location.href,
+    })
+  }
+}
+
+
+// =====================================================
 // LANG SWITCH (FR / EN / ES)
 // =====================================================
 function LangSwitch() {
@@ -2561,9 +2599,15 @@ export default function App() {
   // Si user vient de s'inscrire en leader → écran création groupe
   const [needsGroupCreation, setNeedsGroupCreation] = useState(false)
 
-  // Init : vérifier token + charger config publique
+  // Init : vérifier token + charger config publique + initialiser GA4
   useEffect(() => {
-    fetch('/api/config').then(r => r.json()).then(setConfig).catch(() => {})
+    fetch('/api/config').then(r => r.json()).then(cfg => {
+      setConfig(cfg)
+      // Initialiser Google Analytics 4 si configuré
+      if (cfg?.analytics?.enabled && cfg?.analytics?.ga_measurement_id) {
+        loadGoogleAnalytics(cfg.analytics.ga_measurement_id)
+      }
+    }).catch(() => {})
 
     if (getToken()) {
       api.me().then(u => {
@@ -2781,7 +2825,7 @@ export default function App() {
           {tabs.map(tab => {
             const Icon = tab.icon
             return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              <button key={tab.id} onClick={() => { setActiveTab(tab.id); trackPageView(tab.label) }}
                 className={`px-4 py-3 flex items-center gap-2 text-sm font-semibold whitespace-nowrap border-b-2 transition ${
                   activeTab === tab.id ? 'border-orange-400 text-orange-400' : 'border-transparent text-white/60 hover:text-white'
                 }`}>

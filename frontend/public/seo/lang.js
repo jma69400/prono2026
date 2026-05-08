@@ -1,9 +1,10 @@
 /**
- * United Pronos — Gestion de la langue cross-page
+ * United Pronos — Gestion de la langue cross-page + Google Analytics
  *
  * Ce script est chargé sur chaque page SEO statique.
  * Il assure que la langue choisie par l'utilisateur (dans l'app React
  * ou dans le sélecteur d'une page SEO) est appliquée partout.
+ * Il charge aussi Google Analytics 4 si configuré côté backend.
  *
  * Logique :
  * 1. Au chargement, lit localStorage.prono26_lang
@@ -11,10 +12,44 @@
  *    automatiquement vers la version équivalente dans la bonne langue
  * 3. Quand l'utilisateur clique sur un drapeau du lang-switcher,
  *    met à jour localStorage AVANT la navigation
+ * 4. Récupère /api/config pour charger Google Analytics 4 si configuré
  */
 (function () {
   'use strict';
 
+  // ============================
+  // GOOGLE ANALYTICS 4
+  // ============================
+  function loadGoogleAnalytics(measurementId) {
+    if (!measurementId) return;
+    // Eviter le double chargement
+    if (window._gaLoaded) return;
+    window._gaLoaded = true;
+
+    var script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
+    document.head.appendChild(script);
+
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag() { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', measurementId, { anonymize_ip: true });
+  }
+
+  // Fetch la config (best-effort, on continue même si KO)
+  try {
+    fetch('/api/config').then(function (r) { return r.json(); }).then(function (cfg) {
+      if (cfg && cfg.analytics && cfg.analytics.enabled && cfg.analytics.ga_measurement_id) {
+        loadGoogleAnalytics(cfg.analytics.ga_measurement_id);
+      }
+    }).catch(function () { /* silent */ });
+  } catch (e) { /* fetch indispo */ }
+
+
+  // ============================
+  // GESTION DE LA LANGUE
+  // ============================
   // Déterminer la langue de la page actuelle depuis l'attribut <html lang="...">
   var pageLang = document.documentElement.lang || 'fr';
   if (pageLang.length > 2) pageLang = pageLang.substring(0, 2);

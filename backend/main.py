@@ -2282,7 +2282,7 @@ def health():
 
 @app.get("/api/config")
 def public_config():
-    """Configuration publique exposée au frontend (liens de dons, features)."""
+    """Configuration publique exposée au frontend (liens de dons, features, analytics)."""
     return {
         "donations": {
             "stripe": os.environ.get("DONATION_STRIPE_LINK", ""),
@@ -2297,6 +2297,10 @@ def public_config():
         "turnstile": {
             "site_key": os.environ.get("TURNSTILE_SITE_KEY", ""),
             "enabled": bool(os.environ.get("TURNSTILE_SITE_KEY") and os.environ.get("TURNSTILE_SECRET")),
+        },
+        "analytics": {
+            "ga_measurement_id": os.environ.get("GA_MEASUREMENT_ID", ""),
+            "enabled": bool(os.environ.get("GA_MEASUREMENT_ID")),
         },
         "features": {
             "translation": True,
