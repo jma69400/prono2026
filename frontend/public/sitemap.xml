@@ -153,5 +153,33 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <!-- ============ FAVORITES / FAVORIS / FAVORITOS ============ -->
+  <url>
+    <loc>https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-favorites.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/favoritos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/en/world-cup-2026-favorites.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-favorites.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/favoritos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/seo/es/favoritos-mundial-2026.html</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/seo/en/world-cup-2026-favorites.html"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/seo/es/favoritos-mundial-2026.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/seo/favoris-coupe-du-monde-2026.html"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
 
 </urlset>

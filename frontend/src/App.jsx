@@ -1127,6 +1127,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       teams: '/seo/equipes-qualifiees-mondial-2026.html',
       stadiums: '/seo/stades-coupe-du-monde-2026.html',
       format: '/seo/format-48-equipes-mondial-2026.html',
+      favorites: '/seo/favoris-coupe-du-monde-2026.html',
     },
     en: {
       schedule: '/seo/en/world-cup-2026-schedule.html',
@@ -1134,6 +1135,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       teams: '/seo/en/qualified-teams-world-cup-2026.html',
       stadiums: '/seo/en/world-cup-2026-stadiums.html',
       format: '/seo/en/48-teams-format-world-cup-2026.html',
+      favorites: '/seo/en/world-cup-2026-favorites.html',
     },
     es: {
       schedule: '/seo/es/calendario-mundial-2026.html',
@@ -1141,6 +1143,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       teams: '/seo/es/equipos-clasificados-mundial-2026.html',
       stadiums: '/seo/es/estadios-mundial-2026.html',
       format: '/seo/es/formato-48-equipos-mundial-2026.html',
+      favorites: '/seo/es/favoritos-mundial-2026.html',
     },
   }
   const urls = seoUrls[lang] || seoUrls.fr
@@ -1213,7 +1216,14 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
             <h2 className="text-2xl sm:text-3xl font-black mb-2">{t('home.seoLinksTitle')}</h2>
             <p className="text-sm text-white/50">{t('home.seoLinksSubtitle')}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <a href={urls.favorites}
+              className="group relative p-4 bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border border-yellow-400/40 hover:border-yellow-400/70 rounded-xl transition text-center md:col-span-1">
+              <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">⭐ {t('home.seoNew')}</div>
+              <div className="text-2xl mb-1.5">🥇</div>
+              <div className="font-bold text-sm">{t('home.seoFavorites')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoFavoritesSub')}</div>
+            </a>
             <a href={urls.schedule}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">📅</div>
