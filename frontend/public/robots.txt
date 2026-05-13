@@ -1,19 +1,68 @@
+# =====================================================
 # robots.txt — United Pronos
-# Autoriser tous les moteurs de recherche
+# =====================================================
+# Autoriser tous les moteurs de recherche y compris les outils SEO
+# Ces derniers t'aident à analyser tes propres performances.
 
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /admin
+Disallow: /auth/
 
-# Bloque les bots agressifs (optionnel)
-User-agent: AhrefsBot
+# Crawl-delay pour ne pas surcharger le serveur
+Crawl-delay: 1
+
+# =====================================================
+# Bloque uniquement les bots IA non-search
+# (scrapers qui aspirent ton contenu sans rien donner en retour)
+# =====================================================
+User-agent: GPTBot
 Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+# =====================================================
+# Autoriser explicitement les moteurs de recherche et SEO
+# =====================================================
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+User-agent: AhrefsBot
+Allow: /
 
 User-agent: SemrushBot
-Disallow: /
+Allow: /
 
 User-agent: MJ12bot
-Disallow: /
+Allow: /
 
+User-agent: DotBot
+Allow: /
+
+# =====================================================
 # Sitemap
+# =====================================================
 Sitemap: https://unitedpronos.com/sitemap.xml
