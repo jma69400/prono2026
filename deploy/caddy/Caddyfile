@@ -1,16 +1,39 @@
 {
-    email admin@prono2026.fr
+    email admin@unitedpronos.com
 }
 
-# Remplace prono2026.fr par ton domaine
-prono2026.fr, www.prono2026.fr {
+# ============================================================
+# Redirection www → non-www (canonique sans www)
+# ============================================================
+# Si tu préfères www → non-www, c'est cette section
+# (commenter celle d'en-dessous et inverser).
+www.unitedpronos.com {
+    redir https://unitedpronos.com{uri} permanent
+}
+
+# ============================================================
+# Site principal — unitedpronos.com
+# HTTP → HTTPS automatique par Caddy
+# Let's Encrypt SSL automatique (gratuit, renouvellement auto)
+# ============================================================
+unitedpronos.com {
     encode gzip
+
     reverse_proxy frontend:80
 
-    # Headers de sécurité supplémentaires
+    # Headers de sécurité
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "geolocation=(), microphone=(), camera=()"
         -Server
     }
+
+    # Cache long pour les assets statiques (JS, CSS, images)
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.webp *.svg *.ico *.woff *.woff2 *.ttf
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
 }
