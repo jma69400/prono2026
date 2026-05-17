@@ -12,7 +12,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
+      # Port UDP 443 (HTTP/3 / QUIC) désactivé pour compatibilité
+      # avec les webviews mobiles (Instagram, TikTok).
+      # Pour réactiver HTTP/3, décommenter la ligne ci-dessous
+      # ET retirer "protocols h1 h2" du Caddyfile.
+      # - "443:443/udp"
     volumes:
       - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

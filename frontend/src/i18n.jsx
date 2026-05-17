@@ -802,15 +802,62 @@ const TRANSLATIONS = {
 
 const I18nContext = createContext({ lang: 'fr', t: (k) => k, setLang: () => {} })
 
+/**
+ * Détecte la langue préférée de l'utilisateur via plusieurs sources :
+ * 1. Choix manuel précédent (localStorage 'prono26_lang_manual')
+ * 2. Langue stockée précédemment (localStorage 'prono26_lang') — sauf si auto-détectée
+ * 3. navigator.languages (liste complète des préférences du navigateur)
+ * 4. navigator.language (langue principale)
+ * 5. Fallback : français
+ */
+function detectInitialLang() {
+  // 1. Choix manuel = priorité absolue
+  const manual = localStorage.getItem('prono26_lang_manual')
+  if (manual && ['fr', 'en', 'es'].includes(manual)) return manual
+
+  // 2. Si l'utilisateur a un localStorage classique mais qu'il était auto-détecté
+  //    on re-détecte au cas où il aurait changé de pays/navigateur
+  const saved = localStorage.getItem('prono26_lang')
+  const savedWasAuto = localStorage.getItem('prono26_lang_auto') === '1'
+
+  // 3. Récupérer la liste complète des langues préférées
+  const langs = []
+  if (navigator.languages && navigator.languages.length) {
+    langs.push(...navigator.languages)
+  }
+  if (navigator.language) langs.push(navigator.language)
+
+  // Cherche la première langue supportée dans la liste
+  let detected = null
+  for (const l of langs) {
+    const code = l.toLowerCase().slice(0, 2)
+    if (['fr', 'en', 'es'].includes(code)) {
+      detected = code
+      break
+    }
+  }
+
+  // Si on a une détection, on la prend
+  if (detected) {
+    // Si le saved est différent ET que le saved venait d'une auto-détection,
+    // on met à jour avec la nouvelle détection
+    if (saved && saved !== detected && savedWasAuto) {
+      localStorage.setItem('prono26_lang', detected)
+    }
+    // Si pas de saved du tout, on prend la détection
+    if (!saved) {
+      return detected
+    }
+    return saved
+  }
+
+  // 4. Fallback : ce qui était sauvé, sinon français
+  if (saved && ['fr', 'en', 'es'].includes(saved)) return saved
+  return 'fr'
+}
+
 export function I18nProvider({ children }) {
-  const [lang, setLangState] = useState(() => {
-    const saved = localStorage.getItem('prono26_lang')
-    if (saved) return saved
-    const navLang = navigator.language?.toLowerCase() || ''
-    if (navLang.startsWith('es')) return 'es'
-    if (navLang.startsWith('en')) return 'en'
-    return 'fr'
-  })
+  const [lang, setLangState] = useState(detectInitialLang)
 
   useEffect(() => {
     localStorage.setItem('prono26_lang', lang)
@@ -821,6 +868,9 @@ export function I18nProvider({ children }) {
   // (silencieusement — pas grave si l'utilisateur n'est pas connecté)
   const setLang = (newLang) => {
     setLangState(newLang)
+    // Marque comme choix MANUEL (priorité absolue à toute future détection)
+    localStorage.setItem('prono26_lang_manual', newLang)
+    localStorage.removeItem('prono26_lang_auto')
     // Sync avec backend si connecté (best-effort, silencieux)
     const token = localStorage.getItem('prono26_token')
     if (token) {

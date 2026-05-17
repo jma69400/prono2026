@@ -1,12 +1,17 @@
 {
     email admin@unitedpronos.com
+    # HTTP/1.1 et HTTP/2 uniquement.
+    # HTTP/3 (QUIC) est désactivé car il pose problème avec
+    # certains webviews mobiles (Instagram, TikTok) qui peuvent
+    # casser la connexion ou afficher des erreurs SSL.
+    servers {
+        protocols h1 h2
+    }
 }
 
 # ============================================================
-# Redirection www → non-www (canonique sans www)
+# Redirection www → non-www
 # ============================================================
-# Si tu préfères www → non-www, c'est cette section
-# (commenter celle d'en-dessous et inverser).
 www.unitedpronos.com {
     redir https://unitedpronos.com{uri} permanent
 }

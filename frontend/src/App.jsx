@@ -2668,7 +2668,17 @@ export default function App() {
   // mode visiteur, mais l'utilisateur doit explicitement cliquer "Continuer en visiteur"
   const [isGuest, setIsGuest] = useState(false)
   // showHome=true → on affiche la HomePage vendeuse au démarrage
-  const [showHome, setShowHome] = useState(true)
+  // ⚠️ Pour les visiteurs récurrents (qui ont déjà vu la HomePage), on skip directement
+  //    vers le mode visiteur pour les amener direct sur les matchs.
+  const [showHome, setShowHome] = useState(() => {
+    // Premier visit : HomePage. Visiteurs récurrents : direct app
+    try {
+      const seen = localStorage.getItem('prono26_homepage_seen')
+      return seen !== '1'
+    } catch (e) {
+      return true
+    }
+  })
   const [showAuth, setShowAuth] = useState(false)
   const [authInitialMode, setAuthInitialMode] = useState('login')
   const [showGuestPrompt, setShowGuestPrompt] = useState(false)
@@ -2716,7 +2726,12 @@ export default function App() {
         .catch(() => { setToken(null) })
         .finally(() => setLoading(false))
     } else {
-      // par défaut : on reste sur la HomePage (showHome=true), mode connecté ni visiteur
+      // Pas de token
+      // Si visiteur récurrent (HomePage déjà vue), on l'active automatiquement en mode visiteur
+      // sinon il resterait coincé sur la HomePage
+      if (!showHome) {
+        setIsGuest(true)
+      }
       setLoading(false)
     }
   }, [])
@@ -2758,9 +2773,13 @@ export default function App() {
     setNews(await api.news(null, lang))
   }
 
-  const handleSignup = () => { setAuthInitialMode('signup'); setShowAuth(true); setShowHome(false) }
-  const handleLogin = () => { setAuthInitialMode('login'); setShowAuth(true); setShowHome(false) }
-  const handleGuest = () => { setIsGuest(true); setShowHome(false) }
+  // Marquer la HomePage comme vue pour les prochaines visites
+  const markHomepageSeen = () => {
+    try { localStorage.setItem('prono26_homepage_seen', '1') } catch (e) {}
+  }
+  const handleSignup = () => { markHomepageSeen(); setAuthInitialMode('signup'); setShowAuth(true); setShowHome(false) }
+  const handleLogin = () => { markHomepageSeen(); setAuthInitialMode('login'); setShowAuth(true); setShowHome(false) }
+  const handleGuest = () => { markHomepageSeen(); setIsGuest(true); setShowHome(false) }
 
   const onLogin = (u) => {
     setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false)
