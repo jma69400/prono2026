@@ -1510,27 +1510,33 @@ function DonateModal({ onClose, links }) {
           <h3 className="text-2xl font-black mb-2">{t('donate.title')}</h3>
           <p className="text-white/60 text-sm">{t('donate.subtitle')}</p>
         </div>
-        <div className="space-y-2">
-          {links.stripe && (
-            <a href={links.stripe} target="_blank" rel="noopener noreferrer"
-              className="block w-full py-3 px-4 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-lg font-bold text-center transition">
-              💳 {t('donate.viaStripe')}
-            </a>
-          )}
-          {links.paypal && (
-            <a href={links.paypal} target="_blank" rel="noopener noreferrer"
-              className="block w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-lg font-bold text-center transition">
-              🅿️ {t('donate.viaPaypal')}
-            </a>
-          )}
+        <div className="space-y-3">
+          {/* Ko-fi en premier : 0% de frais, meilleur pour le créateur */}
           {links.kofi && (
             <a href={links.kofi} target="_blank" rel="noopener noreferrer"
-              className="block w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-lg font-bold text-center transition">
-              ☕ {t('donate.viaKofi')}
+              className="group relative block w-full py-4 px-5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl font-bold text-center transition transform hover:scale-[1.02] shadow-lg">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">☕</span>
+                <span className="text-white">{t('donate.viaKofi')}</span>
+              </div>
+              <div className="text-xs text-white/80 mt-1 font-normal">{t('donate.kofiNote')}</div>
+            </a>
+          )}
+          {links.stripe && (
+            <a href={links.stripe} target="_blank" rel="noopener noreferrer"
+              className="block w-full py-4 px-5 bg-gradient-to-r from-purple-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 rounded-xl font-bold text-center transition transform hover:scale-[1.02] shadow-lg">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">💳</span>
+                <span className="text-white">{t('donate.viaStripe')}</span>
+              </div>
+              <div className="text-xs text-white/80 mt-1 font-normal">{t('donate.stripeNote')}</div>
             </a>
           )}
         </div>
-        <button onClick={onClose} className="mt-4 w-full py-2 text-sm text-white/40 hover:text-white/70 transition">
+        <p className="text-center text-xs text-white/40 mt-5 italic">
+          {t('donate.footer')}
+        </p>
+        <button onClick={onClose} className="mt-3 w-full py-2 text-sm text-white/40 hover:text-white/70 transition">
           ← {t('auth.guestBack')}
         </button>
       </div>

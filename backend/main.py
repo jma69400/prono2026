@@ -2286,11 +2286,9 @@ def public_config():
     return {
         "donations": {
             "stripe": os.environ.get("DONATION_STRIPE_LINK", ""),
-            "paypal": os.environ.get("DONATION_PAYPAL_LINK", ""),
             "kofi": os.environ.get("DONATION_KOFI_LINK", ""),
             "enabled": any([
                 os.environ.get("DONATION_STRIPE_LINK"),
-                os.environ.get("DONATION_PAYPAL_LINK"),
                 os.environ.get("DONATION_KOFI_LINK"),
             ]),
         },
