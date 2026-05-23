@@ -1703,6 +1703,10 @@ function AdminContactPanel() {
   const { t } = useTranslation()
   const [messages, setMessages] = useState([])
   const [statusFilter, setStatusFilter] = useState('all')
+  const [replyingId, setReplyingId] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [sending, setSending] = useState(false)
+  const [toast, setToast] = useState(null)  // { type: 'success'|'error', msg: string }
 
   const reload = async () => {
     const data = await api.adminContactMessages(statusFilter === 'all' ? null : statusFilter)
@@ -1722,6 +1726,40 @@ function AdminContactPanel() {
     reload()
   }
 
+  const startReply = (msg) => {
+    setReplyingId(msg.id)
+    // Si déjà répondu, on pré-remplit avec la réponse précédente
+    setReplyText(msg.admin_reply || '')
+  }
+
+  const cancelReply = () => {
+    setReplyingId(null)
+    setReplyText('')
+  }
+
+  const showToast = (type, msg) => {
+    setToast({ type, msg })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  const sendReply = async (msgId) => {
+    if (!replyText.trim()) {
+      showToast('error', 'La réponse ne peut pas être vide')
+      return
+    }
+    setSending(true)
+    try {
+      const result = await api.adminReplyContact(msgId, replyText.trim())
+      showToast('success', `✉️ Réponse envoyée à ${result.sent_to}`)
+      cancelReply()
+      reload()
+    } catch (e) {
+      showToast('error', e.message || "Erreur lors de l'envoi")
+    } finally {
+      setSending(false)
+    }
+  }
+
   const statusColor = (s) => ({
     new: 'bg-orange-500/20 text-orange-300 border-orange-400/30',
     read: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
@@ -1735,7 +1773,16 @@ function AdminContactPanel() {
   }[s] || s)
 
   return (
-    <div>
+    <div className="relative">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg max-w-sm animate-fade-in ${
+          toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-4">
         {['all', 'new', 'read', 'replied', 'archived'].map(s => {
           const count = s === 'all' ? messages.length : messages.filter(m => m.status === s).length
@@ -1765,43 +1812,85 @@ function AdminContactPanel() {
                     {statusLabel(m.status)}
                   </span>
                   <span className="font-bold">{m.name}</span>
-                  <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'United Pronos'}`}
-                     className="text-sm text-orange-300 hover:text-orange-200">
-                    {m.email}
-                  </a>
+                  <span className="text-sm text-white/60">{m.email}</span>
                 </div>
                 <span className="text-xs text-white/40">{m.created_at}</span>
               </div>
               {m.subject && <div className="text-sm font-semibold text-white/80 mb-1">{m.subject}</div>}
               <p className="text-sm text-white/70 whitespace-pre-wrap mb-3">{m.message}</p>
-              <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-white/5">
-                <a href={`mailto:${m.email}?subject=Re: ${m.subject || 'United Pronos'}`}
-                   className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded text-xs font-semibold transition">
-                  ↪ {t('contact.reply')}
-                </a>
-                {m.status !== 'read' && (
-                  <button onClick={() => updateStatus(m.id, 'read')}
-                    className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs font-semibold transition">
-                    {t('contact.markRead')}
+
+              {/* Si déjà répondu, on affiche la réponse précédente */}
+              {m.admin_reply && (
+                <div className="bg-green-500/10 border border-green-400/20 rounded-lg p-3 mb-3">
+                  <div className="text-xs text-green-300 font-semibold mb-1">
+                    ↪ Réponse envoyée {m.replied_at ? `le ${new Date(m.replied_at).toLocaleDateString('fr-FR')}` : ''}
+                  </div>
+                  <p className="text-sm text-white/80 whitespace-pre-wrap">{m.admin_reply}</p>
+                </div>
+              )}
+
+              {/* Formulaire de réponse (inline) */}
+              {replyingId === m.id ? (
+                <div className="bg-orange-500/5 border border-orange-400/20 rounded-lg p-3 mb-3 space-y-2">
+                  <div className="text-xs text-orange-300 font-semibold">
+                    📨 Répondre à {m.name} ({m.email})
+                  </div>
+                  <div className="text-xs text-white/50">
+                    Sera envoyé depuis <strong>contact@unitedpronos.com</strong> (ton mail perso reste privé)
+                  </div>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Bonjour [prénom], merci pour ton message..."
+                    maxLength={10000}
+                    rows={6}
+                    className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm resize-vertical"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between text-xs text-white/40">
+                    <span>{replyText.length} / 10000 caractères</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button onClick={() => sendReply(m.id)} disabled={sending || !replyText.trim()}
+                      className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/30 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition">
+                      {sending ? '⏳ Envoi...' : '📤 Envoyer la réponse'}
+                    </button>
+                    <button onClick={cancelReply} disabled={sending}
+                      className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/60 transition">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-white/5">
+                  <button onClick={() => startReply(m)}
+                    className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded text-xs font-semibold transition">
+                    {m.admin_reply ? '↻ Re-répondre' : '↪ Répondre'}
                   </button>
-                )}
-                {m.status !== 'replied' && (
-                  <button onClick={() => updateStatus(m.id, 'replied')}
-                    className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded text-xs font-semibold transition">
-                    {t('contact.markReplied')}
+                  {m.status !== 'read' && (
+                    <button onClick={() => updateStatus(m.id, 'read')}
+                      className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded text-xs font-semibold transition">
+                      {t('contact.markRead')}
+                    </button>
+                  )}
+                  {m.status !== 'replied' && (
+                    <button onClick={() => updateStatus(m.id, 'replied')}
+                      className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded text-xs font-semibold transition">
+                      {t('contact.markReplied')}
+                    </button>
+                  )}
+                  {m.status !== 'archived' && (
+                    <button onClick={() => updateStatus(m.id, 'archived')}
+                      className="px-3 py-1 bg-white/5 hover:bg-white/10 text-white/60 rounded text-xs transition">
+                      {t('contact.archive')}
+                    </button>
+                  )}
+                  <button onClick={() => deleteMsg(m.id)}
+                    className="ml-auto p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded">
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                )}
-                {m.status !== 'archived' && (
-                  <button onClick={() => updateStatus(m.id, 'archived')}
-                    className="px-3 py-1 bg-white/5 hover:bg-white/10 text-white/60 rounded text-xs transition">
-                    {t('contact.archive')}
-                  </button>
-                )}
-                <button onClick={() => deleteMsg(m.id)}
-                  className="ml-auto p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

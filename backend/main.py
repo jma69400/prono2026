@@ -187,6 +187,14 @@ def init_db():
             db.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fr'")
             db.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'dark'")
 
+    # === MIGRATION : ajouter colonnes admin_reply, replied_at à contact_messages ===
+    with get_db() as db:
+        contact_cols = {row[1] for row in db.execute("PRAGMA table_info(contact_messages)").fetchall()}
+        if "admin_reply" not in contact_cols:
+            print("[MIGRATION] Ajout de admin_reply, replied_at à contact_messages")
+            db.execute("ALTER TABLE contact_messages ADD COLUMN admin_reply TEXT")
+            db.execute("ALTER TABLE contact_messages ADD COLUMN replied_at TEXT")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -2117,6 +2125,86 @@ def verify_turnstile(token: Optional[str], ip: str) -> bool:
         return False
 
 
+def send_admin_reply(to_email: str, to_name: str, original_subject: str, reply_body: str) -> bool:
+    """Envoie une réponse de l'admin à un utilisateur, depuis contact@unitedpronos.com.
+    Préserve l'anonymat de l'admin (son mail perso n'est jamais exposé).
+    Retourne True si envoyé, False si SMTP non configuré ou erreur."""
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASSWORD")
+    # On utilise SMTP_FROM (= contact@unitedpronos.com par défaut)
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user)
+    reply_to = os.environ.get("CONTACT_EMAIL", smtp_from)
+
+    if not all([smtp_host, smtp_user, smtp_pass, to_email]):
+        print("[ADMIN_REPLY] SMTP non configuré")
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = f"United Pronos <{smtp_from}>"
+        msg["To"] = to_email
+        # Reply-To = boîte de support (les réponses arrivent à l'admin via Resend forward)
+        msg["Reply-To"] = reply_to
+        clean_subject = (original_subject or "ta demande").strip()
+        if not clean_subject.lower().startswith("re:"):
+            clean_subject = f"Re: {clean_subject}"
+        msg["Subject"] = clean_subject
+
+        # Salutation personnalisée
+        hello = f"Bonjour {to_name}," if to_name else "Bonjour,"
+
+        body = f"""{hello}
+
+{reply_body}
+
+—
+L'équipe United Pronos
+https://unitedpronos.com
+
+Tu peux répondre directement à ce mail, ton message nous parviendra.
+"""
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        # HTML version (plus joli)
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <p>{hello}</p>
+  <div style="white-space: pre-wrap; padding: 16px 0;">{reply_body}</div>
+  <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+  <p style="font-size: 14px; color: #666;">
+    L'équipe <strong style="color: #f97316;">United Pronos</strong><br>
+    <a href="https://unitedpronos.com" style="color: #f97316;">unitedpronos.com</a>
+  </p>
+  <p style="font-size: 12px; color: #999; margin-top: 16px;">
+    Tu peux répondre directement à ce mail, ton message nous parviendra.
+  </p>
+</body>
+</html>
+"""
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+
+        print(f"[ADMIN_REPLY] Réponse envoyée à {to_email}")
+        return True
+    except Exception as e:
+        print(f"[ADMIN_REPLY] Erreur SMTP : {e}")
+        return False
+
+
 def send_contact_email(name: str, email: str, subject: str, message: str) -> bool:
     """Envoie le message de contact à l'admin via SMTP.
     Retourne True si envoyé, False si SMTP non configuré ou erreur."""
@@ -2265,6 +2353,42 @@ def admin_update_contact_status(msg_id: int, payload: dict, user=Depends(require
         db.execute("UPDATE contact_messages SET status=? WHERE id=?", (new_status, msg_id))
         log_action(user["id"], "contact_status", f"msg={msg_id} status={new_status}", db=db)
     return {"ok": True}
+
+
+@app.post("/api/admin/contact-messages/{msg_id}/reply")
+def admin_reply_contact(msg_id: int, payload: dict, user=Depends(require_admin)):
+    """Envoie une réponse à un message de contact depuis contact@unitedpronos.com.
+    Préserve l'anonymat de l'admin et trace la réponse en BDD."""
+    reply_text = (payload.get("reply") or "").strip()
+    if not reply_text:
+        raise HTTPException(400, "La réponse ne peut pas être vide")
+    if len(reply_text) > 10000:
+        raise HTTPException(400, "Réponse trop longue (max 10000 caractères)")
+
+    with get_db() as db:
+        row = db.execute("SELECT * FROM contact_messages WHERE id=?", (msg_id,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Message introuvable")
+
+        # Envoie l'email depuis contact@unitedpronos.com
+        sent = send_admin_reply(
+            to_email=row["email"],
+            to_name=row["name"],
+            original_subject=row["subject"] or "",
+            reply_body=reply_text,
+        )
+
+        if not sent:
+            raise HTTPException(500, "Erreur lors de l'envoi du mail. Vérifie la config SMTP.")
+
+        # Stocke la réponse en BDD + marque comme répondu
+        db.execute(
+            "UPDATE contact_messages SET admin_reply=?, replied_at=?, status='replied' WHERE id=?",
+            (reply_text, datetime.now(timezone.utc).isoformat(), msg_id),
+        )
+        log_action(user["id"], "contact_reply", f"msg={msg_id} to={row['email']}", db=db)
+
+    return {"ok": True, "sent_to": row["email"]}
 
 
 @app.delete("/api/admin/contact-messages/{msg_id}")

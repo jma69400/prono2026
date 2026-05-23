@@ -99,5 +99,6 @@ export const api = {
   adminAuditLog: () => request('/admin/audit-log'),
   adminContactMessages: (status) => request(`/admin/contact-messages${status ? `?status=${status}` : ''}`),
   adminUpdateContactStatus: (id, status) => request(`/admin/contact-messages/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  adminReplyContact: (id, reply) => request(`/admin/contact-messages/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) }),
   adminDeleteContact: (id) => request(`/admin/contact-messages/${id}`, { method: 'DELETE' }),
 }
