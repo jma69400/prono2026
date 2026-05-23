@@ -14,6 +14,9 @@ import urllib.parse
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
+from email.mime.base import MIMEBase
+from email import encoders
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -2125,9 +2128,15 @@ def verify_turnstile(token: Optional[str], ip: str) -> bool:
         return False
 
 
-def send_admin_reply(to_email: str, to_name: str, original_subject: str, reply_body: str) -> bool:
+def send_admin_reply(to_email: str, to_name: str, original_subject: str, reply_body: str,
+                     attachments: list = None) -> bool:
     """Envoie une réponse de l'admin à un utilisateur, depuis contact@unitedpronos.com.
     Préserve l'anonymat de l'admin (son mail perso n'est jamais exposé).
+
+    attachments : liste de dicts {"filename": str, "data": str (base64 data URL), "mime": str}
+                  Format attendu pour data : "data:image/png;base64,iVBORw0KGgo..."
+                  ou base64 brut (sans le préfixe data:...)
+
     Retourne True si envoyé, False si SMTP non configuré ou erreur."""
     smtp_host = os.environ.get("SMTP_HOST")
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
@@ -2145,14 +2154,12 @@ def send_admin_reply(to_email: str, to_name: str, original_subject: str, reply_b
         msg = MIMEMultipart()
         msg["From"] = f"United Pronos <{smtp_from}>"
         msg["To"] = to_email
-        # Reply-To = boîte de support (les réponses arrivent à l'admin via Resend forward)
         msg["Reply-To"] = reply_to
         clean_subject = (original_subject or "ta demande").strip()
         if not clean_subject.lower().startswith("re:"):
             clean_subject = f"Re: {clean_subject}"
         msg["Subject"] = clean_subject
 
-        # Salutation personnalisée
         hello = f"Bonjour {to_name}," if to_name else "Bonjour,"
 
         body = f"""{hello}
@@ -2167,7 +2174,6 @@ Tu peux répondre directement à ce mail, ton message nous parviendra.
 """
         msg.attach(MIMEText(body, "plain", "utf-8"))
 
-        # HTML version (plus joli)
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -2188,17 +2194,48 @@ Tu peux répondre directement à ce mail, ton message nous parviendra.
 """
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
+        # Pièces jointes (images)
+        if attachments:
+            import base64
+            for att in attachments:
+                try:
+                    filename = att.get("filename", "image.png")
+                    mime = att.get("mime", "image/png")
+                    data = att.get("data", "")
+                    # Si format data URL, on retire le préfixe
+                    if data.startswith("data:"):
+                        data = data.split(",", 1)[1] if "," in data else ""
+                    if not data:
+                        continue
+                    binary = base64.b64decode(data)
+                    # Si c'est une image, on utilise MIMEImage
+                    if mime.startswith("image/"):
+                        img_subtype = mime.split("/", 1)[1] if "/" in mime else "png"
+                        img = MIMEImage(binary, _subtype=img_subtype)
+                        img.add_header("Content-Disposition", "attachment", filename=filename)
+                        msg.attach(img)
+                    else:
+                        # Autres types (PDF, etc.)
+                        part = MIMEBase("application", "octet-stream")
+                        part.set_payload(binary)
+                        encoders.encode_base64(part)
+                        part.add_header("Content-Disposition", "attachment", filename=filename)
+                        msg.attach(part)
+                except Exception as e:
+                    print(f"[ADMIN_REPLY] Erreur PJ {att.get('filename')}: {e}")
+                    continue
+
         if smtp_port == 465:
-            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
         else:
-            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
                 server.starttls()
                 server.login(smtp_user, smtp_pass)
                 server.send_message(msg)
 
-        print(f"[ADMIN_REPLY] Réponse envoyée à {to_email}")
+        print(f"[ADMIN_REPLY] Réponse envoyée à {to_email} ({len(attachments) if attachments else 0} PJ)")
         return True
     except Exception as e:
         print(f"[ADMIN_REPLY] Erreur SMTP : {e}")
@@ -2358,37 +2395,72 @@ def admin_update_contact_status(msg_id: int, payload: dict, user=Depends(require
 @app.post("/api/admin/contact-messages/{msg_id}/reply")
 def admin_reply_contact(msg_id: int, payload: dict, user=Depends(require_admin)):
     """Envoie une réponse à un message de contact depuis contact@unitedpronos.com.
-    Préserve l'anonymat de l'admin et trace la réponse en BDD."""
+    Préserve l'anonymat de l'admin et trace la réponse en BDD.
+
+    Payload attendu :
+    {
+        "reply": str (texte de la réponse),
+        "attachments": [
+            {"filename": "screenshot.png", "data": "data:image/png;base64,xxx", "mime": "image/png"},
+            ...
+        ]
+    }
+    """
     reply_text = (payload.get("reply") or "").strip()
     if not reply_text:
         raise HTTPException(400, "La réponse ne peut pas être vide")
     if len(reply_text) > 10000:
         raise HTTPException(400, "Réponse trop longue (max 10000 caractères)")
 
+    # Validation des pièces jointes
+    attachments = payload.get("attachments") or []
+    if not isinstance(attachments, list):
+        raise HTTPException(400, "Format de pièces jointes invalide")
+    if len(attachments) > 5:
+        raise HTTPException(400, "Maximum 5 pièces jointes par réponse")
+
+    # Vérification de chaque PJ (taille, type)
+    MAX_ATTACHMENT_SIZE = 3_000_000  # 3 MB en base64 = ~2.2 MB binaire
+    ALLOWED_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
+    for att in attachments:
+        if not isinstance(att, dict):
+            raise HTTPException(400, "Format de pièce jointe invalide")
+        data = att.get("data", "")
+        mime = att.get("mime", "")
+        if mime not in ALLOWED_MIMES:
+            raise HTTPException(400, f"Type non autorisé : {mime}. Autorisés : images PNG/JPG/WebP/GIF")
+        if len(data) > MAX_ATTACHMENT_SIZE:
+            raise HTTPException(400, f"Pièce jointe trop lourde (max 2 MB) : {att.get('filename', '?')}")
+
     with get_db() as db:
         row = db.execute("SELECT * FROM contact_messages WHERE id=?", (msg_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Message introuvable")
 
-        # Envoie l'email depuis contact@unitedpronos.com
+        # Envoie l'email depuis contact@unitedpronos.com avec les PJ
         sent = send_admin_reply(
             to_email=row["email"],
             to_name=row["name"],
             original_subject=row["subject"] or "",
             reply_body=reply_text,
+            attachments=attachments,
         )
 
         if not sent:
             raise HTTPException(500, "Erreur lors de l'envoi du mail. Vérifie la config SMTP.")
 
         # Stocke la réponse en BDD + marque comme répondu
+        # On stocke aussi le nombre de PJ pour info
+        reply_with_meta = reply_text
+        if attachments:
+            reply_with_meta += f"\n\n[{len(attachments)} pièce(s) jointe(s) : {', '.join(a.get('filename', '?') for a in attachments)}]"
         db.execute(
             "UPDATE contact_messages SET admin_reply=?, replied_at=?, status='replied' WHERE id=?",
-            (reply_text, datetime.now(timezone.utc).isoformat(), msg_id),
+            (reply_with_meta, datetime.now(timezone.utc).isoformat(), msg_id),
         )
-        log_action(user["id"], "contact_reply", f"msg={msg_id} to={row['email']}", db=db)
+        log_action(user["id"], "contact_reply", f"msg={msg_id} to={row['email']} attachments={len(attachments)}", db=db)
 
-    return {"ok": True, "sent_to": row["email"]}
+    return {"ok": True, "sent_to": row["email"], "attachments_count": len(attachments)}
 
 
 @app.delete("/api/admin/contact-messages/{msg_id}")

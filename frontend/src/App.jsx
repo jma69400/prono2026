@@ -1705,8 +1705,10 @@ function AdminContactPanel() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [replyingId, setReplyingId] = useState(null)
   const [replyText, setReplyText] = useState('')
+  const [attachments, setAttachments] = useState([])  // [{ filename, data, mime, size }]
   const [sending, setSending] = useState(false)
-  const [toast, setToast] = useState(null)  // { type: 'success'|'error', msg: string }
+  const [toast, setToast] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
 
   const reload = async () => {
     const data = await api.adminContactMessages(statusFilter === 'all' ? null : statusFilter)
@@ -1714,6 +1716,26 @@ function AdminContactPanel() {
   }
 
   useEffect(() => { reload() }, [statusFilter])
+
+  // Cleanup paste handler quand on quitte le mode réponse
+  useEffect(() => {
+    if (!replyingId) return
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) {
+            e.preventDefault()
+            addFile(file)
+          }
+        }
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [replyingId, attachments])
 
   const updateStatus = async (id, status) => {
     await api.adminUpdateContactStatus(id, status)
@@ -1728,18 +1750,69 @@ function AdminContactPanel() {
 
   const startReply = (msg) => {
     setReplyingId(msg.id)
-    // Si déjà répondu, on pré-remplit avec la réponse précédente
     setReplyText(msg.admin_reply || '')
+    setAttachments([])
   }
 
   const cancelReply = () => {
     setReplyingId(null)
     setReplyText('')
+    setAttachments([])
   }
 
   const showToast = (type, msg) => {
     setToast({ type, msg })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  // Lit un File et l'ajoute aux pièces jointes
+  const addFile = (file) => {
+    const ALLOWED = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
+    if (!ALLOWED.includes(file.type)) {
+      showToast('error', `Type non supporté : ${file.type}. Formats : PNG, JPG, WebP, GIF`)
+      return
+    }
+    if (file.size > 2_200_000) {  // 2.2 MB (laisse marge pour base64)
+      showToast('error', `Fichier trop lourd : ${(file.size / 1024 / 1024).toFixed(1)} MB (max 2 MB)`)
+      return
+    }
+    if (attachments.length >= 5) {
+      showToast('error', 'Maximum 5 pièces jointes par réponse')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      // ev.target.result = "data:image/png;base64,XXXXX"
+      // On nomme le fichier si c'est un screenshot collé sans nom
+      const fname = file.name && file.name !== 'image.png'
+        ? file.name
+        : `capture-${Date.now()}.${file.type.split('/')[1] || 'png'}`
+      setAttachments(prev => [...prev, {
+        filename: fname,
+        data: ev.target.result,  // data URL complet
+        mime: file.type,
+        size: file.size,
+      }])
+    }
+    reader.onerror = () => showToast('error', 'Erreur lecture fichier')
+    reader.readAsDataURL(file)
+  }
+
+  const handleFileInput = (e) => {
+    const files = Array.from(e.target.files || [])
+    files.forEach(addFile)
+    e.target.value = ''  // reset pour permettre re-sélection du même fichier
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer?.files || [])
+    files.forEach(addFile)
+  }
+
+  const removeAttachment = (idx) => {
+    setAttachments(prev => prev.filter((_, i) => i !== idx))
   }
 
   const sendReply = async (msgId) => {
@@ -1749,8 +1822,9 @@ function AdminContactPanel() {
     }
     setSending(true)
     try {
-      const result = await api.adminReplyContact(msgId, replyText.trim())
-      showToast('success', `✉️ Réponse envoyée à ${result.sent_to}`)
+      const result = await api.adminReplyContact(msgId, replyText.trim(), attachments)
+      const pjMsg = result.attachments_count > 0 ? ` avec ${result.attachments_count} pièce(s) jointe(s)` : ''
+      showToast('success', `✉️ Réponse envoyée à ${result.sent_to}${pjMsg}`)
       cancelReply()
       reload()
     } catch (e) {
@@ -1771,6 +1845,12 @@ function AdminContactPanel() {
     new: t('contact.statusNew'), read: t('contact.statusRead'),
     replied: t('contact.statusReplied'), archived: t('contact.statusArchived'),
   }[s] || s)
+
+  const formatSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
 
   return (
     <div className="relative">
@@ -1838,23 +1918,81 @@ function AdminContactPanel() {
                   <div className="text-xs text-white/50">
                     Sera envoyé depuis <strong>contact@unitedpronos.com</strong> (ton mail perso reste privé)
                   </div>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Bonjour [prénom], merci pour ton message..."
-                    maxLength={10000}
-                    rows={6}
-                    className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm resize-vertical"
-                    autoFocus
-                  />
-                  <div className="flex items-center justify-between text-xs text-white/40">
-                    <span>{replyText.length} / 10000 caractères</span>
+
+                  {/* Textarea avec drag-and-drop */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    className={`relative ${dragOver ? 'ring-2 ring-orange-400 rounded-lg' : ''}`}
+                  >
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Bonjour [prénom], merci pour ton message..."
+                      maxLength={10000}
+                      rows={6}
+                      className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm resize-vertical"
+                      autoFocus
+                    />
+                    {dragOver && (
+                      <div className="absolute inset-0 bg-orange-500/20 border-2 border-dashed border-orange-400 rounded-lg flex items-center justify-center pointer-events-none">
+                        <span className="text-orange-200 font-bold">📎 Dépose tes images ici</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Pièces jointes */}
+                  {attachments.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs text-white/60 font-semibold">
+                        📎 {attachments.length} pièce{attachments.length > 1 ? 's' : ''} jointe{attachments.length > 1 ? 's' : ''} :
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {attachments.map((att, idx) => (
+                          <div key={idx} className="relative group bg-white/5 border border-white/10 rounded-lg p-2 flex items-center gap-2">
+                            <img src={att.data} alt={att.filename} className="w-12 h-12 object-cover rounded" />
+                            <div className="flex flex-col min-w-0 max-w-[150px]">
+                              <span className="text-xs text-white/80 truncate">{att.filename}</span>
+                              <span className="text-xs text-white/40">{formatSize(att.size)}</span>
+                            </div>
+                            <button onClick={() => removeAttachment(idx)}
+                              className="ml-1 p-1 bg-red-500/20 hover:bg-red-500/40 rounded text-red-300 text-xs"
+                              title="Retirer">
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bouton d'ajout + indication */}
+                  <div className="flex items-center justify-between flex-wrap gap-2 text-xs text-white/40">
+                    <span>{replyText.length} / 10000 caractères</span>
+                    <span className="text-white/30">
+                      💡 Tu peux aussi <strong>glisser-déposer</strong> ou <strong>coller</strong> (Ctrl+V) des images
+                    </span>
+                  </div>
+
                   <div className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => sendReply(m.id)} disabled={sending || !replyText.trim()}
                       className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/30 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition">
                       {sending ? '⏳ Envoi...' : '📤 Envoyer la réponse'}
                     </button>
+
+                    {/* Bouton ajouter PJ */}
+                    <label className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm cursor-pointer transition border border-white/10">
+                      📎 Ajouter image
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        multiple
+                        onChange={handleFileInput}
+                        className="hidden"
+                      />
+                    </label>
+
                     <button onClick={cancelReply} disabled={sending}
                       className="px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-white/60 transition">
                       Annuler
