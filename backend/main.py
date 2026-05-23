@@ -2151,7 +2151,10 @@ def send_admin_reply(to_email: str, to_name: str, original_subject: str, reply_b
         return False
 
     try:
-        msg = MIMEMultipart()
+        # Structure MIME correcte pour éviter la duplication texte/HTML :
+        # - multipart/mixed = container global (texte/HTML + pièces jointes)
+        # - multipart/alternative = "voici 2 versions du MÊME message" → client choisit une seule
+        msg = MIMEMultipart("mixed")
         msg["From"] = f"United Pronos <{smtp_from}>"
         msg["To"] = to_email
         msg["Reply-To"] = reply_to
@@ -2172,9 +2175,8 @@ https://unitedpronos.com
 
 Tu peux répondre directement à ce mail, ton message nous parviendra.
 """
-        msg.attach(MIMEText(body, "plain", "utf-8"))
 
-        html_body = f"""
+        html_body = f"""\
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
@@ -2190,9 +2192,14 @@ Tu peux répondre directement à ce mail, ton message nous parviendra.
     Tu peux répondre directement à ce mail, ton message nous parviendra.
   </p>
 </body>
-</html>
-"""
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
+</html>"""
+
+        # Sous-container "alternative" qui contient les 2 versions du MÊME message.
+        # Le client mail choisit UNE SEULE des deux (HTML si supporté, texte sinon).
+        alt_part = MIMEMultipart("alternative")
+        alt_part.attach(MIMEText(body, "plain", "utf-8"))
+        alt_part.attach(MIMEText(html_body, "html", "utf-8"))
+        msg.attach(alt_part)
 
         # Pièces jointes (images)
         if attachments:
