@@ -2821,6 +2821,61 @@ def admin_get_conversation(conv_id: int, user=Depends(require_admin)):
         }
 
 
+@app.post("/api/admin/conversations/new-to-user")
+def admin_new_conversation_to_user(payload: dict, user=Depends(require_admin)):
+    """L'admin démarre une conversation avec un utilisateur (message proactif).
+    Crée une conversation au nom de l'utilisateur cible avec un premier message admin.
+    L'utilisateur verra le badge rouge sur sa chat-box dès le prochain polling."""
+    target_user_id = payload.get("user_id")
+    if not target_user_id:
+        raise HTTPException(400, "user_id requis")
+    try:
+        target_user_id = int(target_user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(400, "user_id invalide")
+
+    content = (payload.get("content") or "").strip()
+    subject = (payload.get("subject") or "").strip()
+    attachments = _validate_attachments(payload.get("attachments"))
+    if not content:
+        raise HTTPException(400, "Le message ne peut pas être vide")
+    if len(content) > 10000:
+        raise HTTPException(400, "Message trop long (max 10000 caractères)")
+    if not subject:
+        subject = content[:50] + ("..." if len(content) > 50 else "")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as db:
+        # Vérifier que l'utilisateur cible existe
+        target = db.execute("SELECT id, username, email FROM users WHERE id=?", (target_user_id,)).fetchone()
+        if not target:
+            raise HTTPException(404, "Utilisateur introuvable")
+
+        # Crée la conversation : unread_user=1 (l'utilisateur a un nouveau message),
+        # unread_admin=0 (c'est l'admin qui écrit, donc rien à lire pour lui)
+        cur = db.execute("""
+            INSERT INTO conversations (user_id, subject, status, unread_user, unread_admin,
+                                       created_at, updated_at, last_message_at)
+            VALUES (?, ?, 'open', 1, 0, ?, ?, ?)
+        """, (target_user_id, subject, now, now, now))
+        conv_id = cur.lastrowid
+
+        # Premier message envoyé par l'admin
+        attachments_json = json.dumps(attachments) if attachments else ""
+        db.execute("""
+            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+            VALUES (?, 'admin', ?, ?, ?)
+        """, (conv_id, content, attachments_json, now))
+        log_action(user["id"], "admin_new_conv_to_user",
+                   f"conv={conv_id} target_user={target_user_id} ({target['username']})", db=db)
+
+    return {
+        "ok": True,
+        "conversation_id": conv_id,
+        "target_user": {"id": target["id"], "username": target["username"], "email": target["email"]},
+    }
+
+
 @app.post("/api/admin/conversations/{conv_id}/reply")
 def admin_reply_conversation(conv_id: int, payload: dict, user=Depends(require_admin)):
     """L'admin répond dans une conversation. Pas d'email envoyé (chat-box interne)."""

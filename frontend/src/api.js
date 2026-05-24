@@ -122,6 +122,10 @@ export const api = {
   adminConversations: (status) => request(`/admin/conversations${status ? `?status=${status}` : ''}`),
   adminConversationsUnreadCount: () => request('/admin/conversations/unread-count'),
   adminConversation: (id) => request(`/admin/conversations/${id}`),
+  adminNewConversationToUser: (userId, subject, content, attachments) => request('/admin/conversations/new-to-user', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, subject, content, attachments: attachments || [] })
+  }),
   adminReplyConversation: (convId, content, attachments) => request(`/admin/conversations/${convId}/reply`, {
     method: 'POST',
     body: JSON.stringify({ content, attachments: attachments || [] })
