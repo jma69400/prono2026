@@ -57,6 +57,28 @@ export function FloatingChatBox({ user }) {
     return () => { cancelled = true; clearInterval(interval) }
   }, [user])
 
+  // Écoute l'événement global "open-chatbox" (déclenché par le bouton Contact)
+  useEffect(() => {
+    const handleOpen = async () => {
+      setIsOpen(true)
+      // Si l'utilisateur n'a encore aucune conversation, on l'amène direct
+      // au formulaire de nouveau message (UX optimisée pour "je veux contacter le support")
+      try {
+        const list = await api.myConversations()
+        setConversations(list)
+        if (list.length === 0) {
+          setView('new')
+        } else {
+          setView('list')
+        }
+      } catch {
+        setView('list')
+      }
+    }
+    window.addEventListener('open-chatbox', handleOpen)
+    return () => window.removeEventListener('open-chatbox', handleOpen)
+  }, [])
+
   // Charge la liste quand on ouvre la chat-box ou refresh
   const loadConversations = async () => {
     setLoading(true)

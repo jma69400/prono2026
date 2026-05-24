@@ -3263,6 +3263,8 @@ export default function App() {
 
   const onLogin = (u) => {
     setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false)
+    // Toujours afficher les matchs au login (peu importe ce que l'utilisateur regardait avant)
+    setActiveTab('matches')
     // Appliquer la langue préférée du profil
     if (u.lang && u.lang !== lang) {
       setLang(u.lang)
@@ -3277,7 +3279,7 @@ export default function App() {
       window.history.replaceState({}, '', '/')
     }
   }
-  const logout = () => { setToken(null); setUser(null); setIsGuest(false); setShowHome(true); setNeedsGroupCreation(false) }
+  const logout = () => { setToken(null); setUser(null); setIsGuest(false); setShowHome(true); setNeedsGroupCreation(false); setActiveTab('matches') }
   const onGuestPrompt = () => setShowGuestPrompt(true)
   const goToAuth = () => { setShowGuestPrompt(false); setShowAuth(true); setShowHome(false) }
   const backToGuest = () => { setShowAuth(false); if (!user) setShowHome(true) }
@@ -3380,10 +3382,19 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <LangSwitch />
-            <button onClick={() => setShowContact(true)}
+            <button
+              onClick={() => {
+                // Si utilisateur connecté → ouvre la chat-box interne
+                // Sinon → ouvre le formulaire de contact classique (email)
+                if (user) {
+                  window.dispatchEvent(new CustomEvent('open-chatbox'))
+                } else {
+                  setShowContact(true)
+                }
+              }}
               className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5"
-              title={t('contact.title')}>
-              ✉️ <span className="hidden sm:inline">{t('contact.menuItem')}</span>
+              title={user ? 'Discuter avec le support' : t('contact.title')}>
+              {user ? '💬' : '✉️'} <span className="hidden sm:inline">{t('contact.menuItem')}</span>
             </button>
             {config.donations?.enabled && (
               <button onClick={() => setShowDonate(true)}
