@@ -204,6 +204,37 @@ def init_db():
             db.execute("ALTER TABLE contact_messages ADD COLUMN admin_reply TEXT")
             db.execute("ALTER TABLE contact_messages ADD COLUMN replied_at TEXT")
 
+    # === MIGRATION : créer tables conversations et conversation_messages (chat-box) ===
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS conversations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                subject TEXT DEFAULT '',
+                status TEXT DEFAULT 'open',
+                unread_user INTEGER DEFAULT 0,
+                unread_admin INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                last_message_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS conversation_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                sender TEXT NOT NULL,
+                content TEXT NOT NULL,
+                attachments TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_conv_user ON conversations(user_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_conv_status ON conversations(status)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_conv_msg ON conversation_messages(conversation_id)")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -2520,6 +2551,328 @@ def admin_delete_contact(msg_id: int, user=Depends(require_admin)):
     with get_db() as db:
         db.execute("DELETE FROM contact_messages WHERE id=?", (msg_id,))
         log_action(user["id"], "contact_delete", f"msg={msg_id}", db=db)
+    return {"ok": True}
+
+
+# =====================================================
+# CHAT-BOX : MESSAGERIE INTERNE (utilisateur ↔ admin)
+# =====================================================
+
+def _validate_attachments(attachments) -> list:
+    """Valide les pièces jointes : format, type, taille. Renvoie la liste valide ou raise HTTPException."""
+    if not attachments:
+        return []
+    if not isinstance(attachments, list):
+        raise HTTPException(400, "Format de pièces jointes invalide")
+    if len(attachments) > 5:
+        raise HTTPException(400, "Maximum 5 pièces jointes par message")
+    MAX_SIZE = 3_000_000  # ~2.2 MB binaire
+    ALLOWED_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
+    cleaned = []
+    for att in attachments:
+        if not isinstance(att, dict):
+            raise HTTPException(400, "Format de pièce jointe invalide")
+        if att.get("mime") not in ALLOWED_MIMES:
+            raise HTTPException(400, f"Type non autorisé : {att.get('mime')}. Autorisés : PNG/JPG/WebP/GIF")
+        if len(att.get("data", "")) > MAX_SIZE:
+            raise HTTPException(400, f"Pièce jointe trop lourde (max 2 MB) : {att.get('filename', '?')}")
+        cleaned.append({
+            "filename": att.get("filename", "image.png"),
+            "data": att.get("data", ""),
+            "mime": att.get("mime", "image/png"),
+        })
+    return cleaned
+
+
+# ----------- ENDPOINTS UTILISATEUR -----------
+
+@app.get("/api/me/conversations")
+def my_conversations(user=Depends(get_current_user)):
+    """Liste toutes mes conversations (la plus récente en premier)."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT id, subject, status, unread_user, unread_admin,
+                   created_at, updated_at, last_message_at
+            FROM conversations
+            WHERE user_id = ?
+            ORDER BY last_message_at DESC
+        """, (user["id"],)).fetchall()
+        # Pour chaque conv, on récupère le dernier message en aperçu
+        conversations = []
+        for r in rows:
+            conv = dict(r)
+            last = db.execute("""
+                SELECT sender, content, created_at FROM conversation_messages
+                WHERE conversation_id = ?
+                ORDER BY id DESC LIMIT 1
+            """, (conv["id"],)).fetchone()
+            conv["last_preview"] = dict(last) if last else None
+            conversations.append(conv)
+        return conversations
+
+
+@app.get("/api/me/conversations/unread-count")
+def my_unread_count(user=Depends(get_current_user)):
+    """Renvoie le nombre total de messages non lus (pour le badge).
+    Endpoint léger et peu coûteux, idéal pour le polling toutes les 30s."""
+    with get_db() as db:
+        row = db.execute("""
+            SELECT COALESCE(SUM(unread_user), 0) AS total
+            FROM conversations
+            WHERE user_id = ? AND status = 'open'
+        """, (user["id"],)).fetchone()
+        return {"unread": row["total"] or 0}
+
+
+@app.get("/api/me/conversations/{conv_id}")
+def get_my_conversation(conv_id: int, user=Depends(get_current_user)):
+    """Récupère une conversation avec tous ses messages.
+    Marque automatiquement les messages comme lus côté utilisateur."""
+    with get_db() as db:
+        conv = db.execute(
+            "SELECT * FROM conversations WHERE id = ? AND user_id = ?",
+            (conv_id, user["id"])
+        ).fetchone()
+        if not conv:
+            raise HTTPException(404, "Conversation introuvable")
+
+        messages = db.execute("""
+            SELECT id, sender, content, attachments, created_at
+            FROM conversation_messages
+            WHERE conversation_id = ?
+            ORDER BY id ASC
+        """, (conv_id,)).fetchall()
+
+        # Marque comme lu côté utilisateur
+        if conv["unread_user"] > 0:
+            db.execute("UPDATE conversations SET unread_user = 0 WHERE id = ?", (conv_id,))
+
+        # Parse les attachments JSON
+        msgs_clean = []
+        for m in messages:
+            md = dict(m)
+            try:
+                md["attachments"] = json.loads(md["attachments"]) if md["attachments"] else []
+            except Exception:
+                md["attachments"] = []
+            msgs_clean.append(md)
+
+        return {
+            "conversation": dict(conv),
+            "messages": msgs_clean,
+        }
+
+
+@app.post("/api/me/conversations")
+def create_my_conversation(payload: dict, user=Depends(get_current_user)):
+    """Crée une nouvelle conversation avec un premier message."""
+    subject = (payload.get("subject") or "").strip()
+    content = (payload.get("content") or "").strip()
+    attachments = _validate_attachments(payload.get("attachments"))
+    if not content:
+        raise HTTPException(400, "Le message ne peut pas être vide")
+    if len(content) > 5000:
+        raise HTTPException(400, "Message trop long (max 5000 caractères)")
+    if not subject:
+        subject = content[:50] + ("..." if len(content) > 50 else "")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as db:
+        # Crée la conversation
+        cur = db.execute("""
+            INSERT INTO conversations (user_id, subject, status, unread_admin, unread_user,
+                                       created_at, updated_at, last_message_at)
+            VALUES (?, ?, 'open', 1, 0, ?, ?, ?)
+        """, (user["id"], subject, now, now, now))
+        conv_id = cur.lastrowid
+        # Premier message
+        attachments_json = json.dumps(attachments) if attachments else ""
+        db.execute("""
+            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+            VALUES (?, 'user', ?, ?, ?)
+        """, (conv_id, content, attachments_json, now))
+        log_action(user["id"], "conversation_create", f"conv={conv_id} subject={subject[:50]}", db=db)
+    return {"id": conv_id, "subject": subject}
+
+
+@app.post("/api/me/conversations/{conv_id}/messages")
+def post_my_message(conv_id: int, payload: dict, user=Depends(get_current_user)):
+    """Ajoute un message dans une conversation existante (côté utilisateur)."""
+    content = (payload.get("content") or "").strip()
+    attachments = _validate_attachments(payload.get("attachments"))
+    if not content:
+        raise HTTPException(400, "Le message ne peut pas être vide")
+    if len(content) > 5000:
+        raise HTTPException(400, "Message trop long (max 5000 caractères)")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as db:
+        conv = db.execute(
+            "SELECT * FROM conversations WHERE id = ? AND user_id = ?",
+            (conv_id, user["id"])
+        ).fetchone()
+        if not conv:
+            raise HTTPException(404, "Conversation introuvable")
+        if conv["status"] == "closed":
+            # Rouvre la conversation si l'utilisateur répond
+            db.execute("UPDATE conversations SET status = 'open' WHERE id = ?", (conv_id,))
+
+        attachments_json = json.dumps(attachments) if attachments else ""
+        db.execute("""
+            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+            VALUES (?, 'user', ?, ?, ?)
+        """, (conv_id, content, attachments_json, now))
+        # Increment compteur admin
+        db.execute("""
+            UPDATE conversations
+            SET unread_admin = unread_admin + 1,
+                updated_at = ?, last_message_at = ?
+            WHERE id = ?
+        """, (now, now, conv_id))
+        log_action(user["id"], "conversation_message", f"conv={conv_id}", db=db)
+    return {"ok": True}
+
+
+# ----------- ENDPOINTS ADMIN -----------
+
+@app.get("/api/admin/conversations")
+def admin_conversations(status: Optional[str] = None, user=Depends(require_admin)):
+    """Liste toutes les conversations avec infos utilisateur. Filtre optionnel par statut."""
+    query = """
+        SELECT c.id, c.subject, c.status, c.unread_admin, c.unread_user,
+               c.created_at, c.updated_at, c.last_message_at,
+               u.id AS user_id, u.username, u.email, u.role
+        FROM conversations c
+        JOIN users u ON u.id = c.user_id
+    """
+    params = ()
+    if status and status != "all":
+        if status not in ("open", "closed", "unread"):
+            raise HTTPException(400, "Statut invalide")
+        if status == "unread":
+            query += " WHERE c.unread_admin > 0"
+        else:
+            query += " WHERE c.status = ?"
+            params = (status,)
+    query += " ORDER BY c.unread_admin DESC, c.last_message_at DESC"
+
+    with get_db() as db:
+        rows = db.execute(query, params).fetchall()
+        conversations = []
+        for r in rows:
+            conv = dict(r)
+            last = db.execute("""
+                SELECT sender, content, created_at FROM conversation_messages
+                WHERE conversation_id = ?
+                ORDER BY id DESC LIMIT 1
+            """, (conv["id"],)).fetchone()
+            conv["last_preview"] = dict(last) if last else None
+            conversations.append(conv)
+        return conversations
+
+
+@app.get("/api/admin/conversations/unread-count")
+def admin_unread_count(user=Depends(require_admin)):
+    """Compte total de conversations avec messages non lus (pour le badge admin)."""
+    with get_db() as db:
+        row = db.execute("""
+            SELECT COUNT(*) AS total FROM conversations
+            WHERE unread_admin > 0 AND status = 'open'
+        """).fetchone()
+        return {"unread": row["total"] or 0}
+
+
+@app.get("/api/admin/conversations/{conv_id}")
+def admin_get_conversation(conv_id: int, user=Depends(require_admin)):
+    """Récupère une conversation. Marque comme lue côté admin."""
+    with get_db() as db:
+        conv = db.execute("""
+            SELECT c.*, u.username, u.email, u.role
+            FROM conversations c
+            JOIN users u ON u.id = c.user_id
+            WHERE c.id = ?
+        """, (conv_id,)).fetchone()
+        if not conv:
+            raise HTTPException(404, "Conversation introuvable")
+
+        messages = db.execute("""
+            SELECT id, sender, content, attachments, created_at
+            FROM conversation_messages
+            WHERE conversation_id = ?
+            ORDER BY id ASC
+        """, (conv_id,)).fetchall()
+
+        # Marque comme lu côté admin
+        if conv["unread_admin"] > 0:
+            db.execute("UPDATE conversations SET unread_admin = 0 WHERE id = ?", (conv_id,))
+
+        msgs_clean = []
+        for m in messages:
+            md = dict(m)
+            try:
+                md["attachments"] = json.loads(md["attachments"]) if md["attachments"] else []
+            except Exception:
+                md["attachments"] = []
+            msgs_clean.append(md)
+
+        return {
+            "conversation": dict(conv),
+            "messages": msgs_clean,
+        }
+
+
+@app.post("/api/admin/conversations/{conv_id}/reply")
+def admin_reply_conversation(conv_id: int, payload: dict, user=Depends(require_admin)):
+    """L'admin répond dans une conversation. Pas d'email envoyé (chat-box interne)."""
+    content = (payload.get("content") or "").strip()
+    attachments = _validate_attachments(payload.get("attachments"))
+    if not content:
+        raise HTTPException(400, "Le message ne peut pas être vide")
+    if len(content) > 10000:
+        raise HTTPException(400, "Message trop long (max 10000 caractères)")
+
+    now = datetime.now(timezone.utc).isoformat()
+    with get_db() as db:
+        conv = db.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+        if not conv:
+            raise HTTPException(404, "Conversation introuvable")
+
+        attachments_json = json.dumps(attachments) if attachments else ""
+        db.execute("""
+            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+            VALUES (?, 'admin', ?, ?, ?)
+        """, (conv_id, content, attachments_json, now))
+        # Increment compteur user + remet à ouvert
+        db.execute("""
+            UPDATE conversations
+            SET unread_user = unread_user + 1,
+                status = 'open',
+                updated_at = ?, last_message_at = ?
+            WHERE id = ?
+        """, (now, now, conv_id))
+        log_action(user["id"], "conversation_reply", f"conv={conv_id}", db=db)
+    return {"ok": True}
+
+
+@app.post("/api/admin/conversations/{conv_id}/close")
+def admin_close_conversation(conv_id: int, user=Depends(require_admin)):
+    """Ferme une conversation (l'utilisateur peut toujours répondre, ce qui la rouvre)."""
+    with get_db() as db:
+        conv = db.execute("SELECT id FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+        if not conv:
+            raise HTTPException(404, "Conversation introuvable")
+        db.execute("UPDATE conversations SET status = 'closed' WHERE id = ?", (conv_id,))
+        log_action(user["id"], "conversation_close", f"conv={conv_id}", db=db)
+    return {"ok": True}
+
+
+@app.delete("/api/admin/conversations/{conv_id}")
+def admin_delete_conversation(conv_id: int, user=Depends(require_admin)):
+    """Supprime définitivement une conversation et tous ses messages."""
+    with get_db() as db:
+        # CASCADE supprime les messages automatiquement
+        db.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
+        log_action(user["id"], "conversation_delete", f"conv={conv_id}", db=db)
     return {"ok": True}
 
 

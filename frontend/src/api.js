@@ -104,4 +104,28 @@ export const api = {
     body: JSON.stringify({ reply, attachments: attachments || [] })
   }),
   adminDeleteContact: (id) => request(`/admin/contact-messages/${id}`, { method: 'DELETE' }),
+
+  // ===== CHAT-BOX : Messagerie interne user ↔ admin =====
+  // Côté utilisateur
+  myConversations: () => request('/me/conversations'),
+  myConversationsUnreadCount: () => request('/me/conversations/unread-count'),
+  myConversation: (id) => request(`/me/conversations/${id}`),
+  createConversation: (subject, content, attachments) => request('/me/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ subject, content, attachments: attachments || [] })
+  }),
+  sendConversationMessage: (convId, content, attachments) => request(`/me/conversations/${convId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ content, attachments: attachments || [] })
+  }),
+  // Côté admin
+  adminConversations: (status) => request(`/admin/conversations${status ? `?status=${status}` : ''}`),
+  adminConversationsUnreadCount: () => request('/admin/conversations/unread-count'),
+  adminConversation: (id) => request(`/admin/conversations/${id}`),
+  adminReplyConversation: (convId, content, attachments) => request(`/admin/conversations/${convId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ content, attachments: attachments || [] })
+  }),
+  adminCloseConversation: (id) => request(`/admin/conversations/${id}/close`, { method: 'POST' }),
+  adminDeleteConversation: (id) => request(`/admin/conversations/${id}`, { method: 'DELETE' }),
 }

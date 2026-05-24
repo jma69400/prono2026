@@ -4,6 +4,8 @@ import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
 import { predictMatch, getMatchOdds } from './predictor.js'
+import { FloatingChatBox } from './ChatBox.jsx'
+import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 
 // =====================================================
 // GOOGLE ANALYTICS 4 — Chargement dynamique
@@ -1007,10 +1009,18 @@ function AdminTab({ user }) {
   const [tab, setTab] = useState('scores')
   const [fetchingResults, setFetchingResults] = useState(false)
   const [resultsMsg, setResultsMsg] = useState('')
+  const [convsUnread, setConvsUnread] = useState(0)
 
   useEffect(() => {
     api.adminUsers().then(setUsers).catch(() => {})
     api.adminAuditLog().then(setAuditLog).catch(() => {})
+    // Polling du badge "conversations non lues"
+    const fetchUnread = () => {
+      api.adminConversationsUnreadCount().then(r => setConvsUnread(r.unread || 0)).catch(() => {})
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30_000)
+    return () => clearInterval(interval)
   }, [])
 
   const deleteUser = async (id) => {
@@ -1071,6 +1081,14 @@ function AdminTab({ user }) {
         <button onClick={() => setTab('contact')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'contact' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           ✉️ {t('contact.adminTitle')}
         </button>
+        <button onClick={() => setTab('conversations')} className={`relative px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'conversations' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+          💬 Chats
+          {convsUnread > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+              {convsUnread > 9 ? '9+' : convsUnread}
+            </span>
+          )}
+        </button>
         <button onClick={() => setTab('audit')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'audit' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.audit')}
         </button>
@@ -1083,6 +1101,8 @@ function AdminTab({ user }) {
       {tab === 'groups' && <AdminGroupsPanel />}
 
       {tab === 'contact' && <AdminContactPanel />}
+
+      {tab === 'conversations' && <AdminConversationsPanel />}
 
       {tab === 'audit' && (
         <div className="space-y-1">
@@ -3465,6 +3485,9 @@ export default function App() {
       {showGuestPrompt && <GuestPrompt onClose={() => setShowGuestPrompt(false)} onSignin={goToAuth} />}
       {showDonate && config.donations?.enabled && <DonateModal onClose={() => setShowDonate(false)} links={config.donations} />}
       {showContact && <ContactModal onClose={() => setShowContact(false)} currentUser={user} turnstileSiteKey={config.turnstile?.site_key} />}
+
+      {/* Chat-box flottante pour les utilisateurs connectés (résout le problème délivrabilité Outlook) */}
+      <FloatingChatBox user={user} />
     </div>
   )
 }
