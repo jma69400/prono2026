@@ -13,6 +13,10 @@ const POLL_INTERVAL_MS = 30_000  // 30 secondes (polling discret)
 const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
 const MAX_ATTACHMENT_SIZE = 2_200_000  // 2.2 MB
 
+// Son de notification (base64 court "ding" intégré au code, pas de fichier externe à charger)
+// Bruit discret de notification ~0.3s
+const NOTIFICATION_SOUND = 'data:audio/wav;base64,UklGRkQGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSAGAACAhpKduMHJysC0pZWGdmxhWE9JREE6NS4tKygmJSQiIB0aFhMQDQsIBQQDAgIBAQECAwQGCAsOERUYHB8jJikrLjA0OkBHT1ZdZWtwdHd5enl3dXFsZmBaVE5HQTw3MzAuLCsqKigmJCEfHBgVEg8MCggGBAMCAgECBAYIDA8TFxsfIyYpKy0vMjU5PUNJUFdeZmxxdXh6e3p4dnJtaGNcVlBJQz04MzAuLSwrKignJSQiIB4cGRcUEQ4LCQYEAwIBAQIDBQcKDREVGB0gJCgrLS8xMzc8QEZNVFtiaG1yd3l6e3p4dHBraWNeWFFLRT83MzEvLi0sKykoJiUjIR8dGxgVEw8MCgcEAwICAQIEBgkMDxIWGRwfJCcqLC4wMjU4PUFITlVcZGptcnZ5enp6eHVxbWdiXFdQS0Q+ODQxLy4tLCsqKCcmJCMhHx0bGRYUEAwKBwUDAgEBAgQGCAwPExcaHSEkKCotLzAyNjk9Q0lQV15kanByd3l6enl3dHBrZWBbVU9JQz03My8uLCsqKSgnJiUkIyIgHx0cGhcUEg4LCQYEAwICAgMEBgoNERQXGyAjJiotLzAyNTc6P0VLUVliaG1yd3l5enp5dnRwa2VgWlNNRkE7NjMwLi0sKykoJyclJSQjIiAfHRsZFxQRDgsHBQMCAgIDBAYJDA8SFhkdISQnKy0vMTM2OD1ESVBXXmRpb3R3eXp6eXh1cm5oYltVTkhCPDcyMC4tKyopKCcmJSQjIiEgHx0cGhgVEg8MCQcFAwICAwQGCAsOERUYHB8jJikrLjA0OD5DSlBXXmRqb3R3eXp6eXd0cGtmYFtUTkhCPDgzMTEwLy4sLCspKSgnJyYlJSQjIiEgHh0cGxoZGBcWFRMRDw0LCAYEAwIBAQICAwQFBwgKDA4QExUYGh0gIyYoKy0wMjQ3OTw+QURGSU1QU1ZZXF9iZWhrbW9xc3V2d3h5enp6eXh3dnVzcW9tampnZWNgXltZVlNQTUtIRkRBPjw6Nzc1MzIxLy8uLS0sLCsrKioqKSkpKSkpKSoqKy0uLzAxMzQ2ODg7PUBCQ0VHSUtNT1FSU1RVVlZXV1dXV1dXVldYWFlaW1xeYGFjZmhqbG9xc3V3eXt8fX5+f39/f39+fnx7eXh1c3FvbGppZ2RhX1xZV1RSUE5MSklIR0ZGRUVERERFRURERkdISktNTk9RUlRVV1lbXF5gYmRmaGptb3FzdXd5e3x9fn5+fn5+fX18e3p4dnRzcG9ta2lnZWNiYF5dW1pZWFdWVVRTU1NSUlJSUlJTU1RVVldYWVtcXl9hY2VnaGptbm9xc3R2d3h6e3x9fX5+fn5+fX18e3p4d3VzcnFvbm1samhnZmRjYmFgX19eXVxcW1tbWlpaWlpaW1tbXFxdXl5fYGFiY2RlZmhpaWttbnBxcnN0dXZ3eHl5ent7e3x8fHx8fHx7e3p6eXl4d3d2dnV0c3NycXBwb25tbWxraGloZ2dmZWVlZGRkZGRkZGRkZWVlZWZmZ2dnaGhpampra21ucG5wcXJzdHV2d3d4eXl6eg=='
+
 function formatChatTime(iso) {
   if (!iso) return ''
   try {
@@ -33,36 +37,173 @@ function formatChatTime(iso) {
   }
 }
 
+// Lit la préférence son depuis localStorage (default: activé)
+function getSoundEnabled() {
+  try { return localStorage.getItem('prono26_chat_sound') !== '0' } catch { return true }
+}
+function setSoundEnabled(enabled) {
+  try { localStorage.setItem('prono26_chat_sound', enabled ? '1' : '0') } catch {}
+}
+
 export function FloatingChatBox({ user }) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const [view, setView] = useState('list')  // 'list' | 'conversation' | 'new'
   const [conversations, setConversations] = useState([])
-  const [activeConv, setActiveConv] = useState(null)  // { conversation, messages }
+  const [activeConv, setActiveConv] = useState(null)
   const [loading, setLoading] = useState(false)
+  // UX : préview + nouveau-message
+  const [latestPreview, setLatestPreview] = useState(null)  // { content, sender } du dernier message non-lu
+  const [showBubblePreview, setShowBubblePreview] = useState(false)
+  const [justGotNewMessage, setJustGotNewMessage] = useState(false)
+  const [showTooltipFirstTime, setShowTooltipFirstTime] = useState(false)
+  const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled())
 
-  // Polling pour le compteur non-lus
+  // Refs pour son et titre
+  const audioRef = useRef(null)
+  const originalTitleRef = useRef(typeof document !== 'undefined' ? document.title : '')
+  const titleBlinkIntervalRef = useRef(null)
+  const previousUnreadRef = useRef(0)
+
+  // Initialise l'audio une seule fois
+  useEffect(() => {
+    if (typeof Audio !== 'undefined') {
+      try {
+        audioRef.current = new Audio(NOTIFICATION_SOUND)
+        audioRef.current.volume = 0.4
+      } catch {}
+    }
+  }, [])
+
+  // Joue le son de notification (si activé)
+  const playNotification = () => {
+    if (!soundEnabled || !audioRef.current) return
+    try {
+      audioRef.current.currentTime = 0
+      audioRef.current.play().catch(() => {})  // Ignore "user hasn't interacted" errors
+    } catch {}
+  }
+
+  // Active le clignotement du titre quand onglet inactif et messages non-lus
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    // Stop blink si pas de message non-lu OU onglet actif OU chat ouvert
+    const stopBlink = () => {
+      if (titleBlinkIntervalRef.current) {
+        clearInterval(titleBlinkIntervalRef.current)
+        titleBlinkIntervalRef.current = null
+      }
+      document.title = originalTitleRef.current
+    }
+
+    if (unreadCount === 0 || isOpen) {
+      stopBlink()
+      return
+    }
+
+    // Blink toutes les 1.5 sec : "(N) United Pronos" ↔ "💬 Nouveau message !"
+    let toggle = false
+    const updateTitle = () => {
+      if (!document.hidden) {
+        // Onglet visible : titre normal
+        document.title = originalTitleRef.current
+        return
+      }
+      toggle = !toggle
+      document.title = toggle
+        ? `💬 (${unreadCount}) Nouveau message !`
+        : `(${unreadCount}) United Pronos`
+    }
+    updateTitle()
+    titleBlinkIntervalRef.current = setInterval(updateTitle, 1500)
+
+    // Quand l'utilisateur revient sur l'onglet, on remet le titre normal
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        document.title = originalTitleRef.current
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      stopBlink()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [unreadCount, isOpen])
+
+  // Polling pour le compteur non-lus + détection de nouveau message
   useEffect(() => {
     if (!user) return
     let cancelled = false
     const fetchUnread = async () => {
       try {
         const r = await api.myConversationsUnreadCount()
-        if (!cancelled) setUnreadCount(r.unread || 0)
+        if (cancelled) return
+        const newCount = r.unread || 0
+        // Détecte une NOUVELLE arrivée de message
+        if (newCount > previousUnreadRef.current) {
+          // L'utilisateur a reçu un nouveau message depuis le dernier polling
+          handleNewMessageReceived(newCount)
+        }
+        previousUnreadRef.current = newCount
+        setUnreadCount(newCount)
       } catch {}
     }
     fetchUnread()
     const interval = setInterval(fetchUnread, POLL_INTERVAL_MS)
     return () => { cancelled = true; clearInterval(interval) }
-  }, [user])
+  }, [user, soundEnabled])
+
+  // Gère l'arrivée d'un nouveau message : son, animation, bulle preview, tooltip
+  const handleNewMessageReceived = async (newCount) => {
+    // 1. Son
+    playNotification()
+
+    // 2. Animation du bouton flottant (wiggle pendant 4 sec)
+    setJustGotNewMessage(true)
+    setTimeout(() => setJustGotNewMessage(false), 4000)
+
+    // 3. Récupère le dernier message pour aperçu dans la bulle
+    if (!isOpen) {
+      try {
+        const list = await api.myConversations()
+        // Trouve la conversation la plus récente avec messages non-lus
+        const recentUnread = list.find(c => c.unread_user > 0)
+        if (recentUnread && recentUnread.last_preview) {
+          setLatestPreview({
+            content: recentUnread.last_preview.content,
+            sender: recentUnread.last_preview.sender,
+            convId: recentUnread.id,
+          })
+          setShowBubblePreview(true)
+          // Auto-fermeture de la bulle preview après 8 secondes
+          setTimeout(() => setShowBubblePreview(false), 8000)
+        }
+      } catch {}
+    }
+  }
+
+  // Tooltip "Tu as un nouveau message" au premier affichage du badge
+  useEffect(() => {
+    if (unreadCount > 0 && !isOpen) {
+      try {
+        const tooltipSeen = localStorage.getItem('prono26_chat_tooltip_seen')
+        if (!tooltipSeen) {
+          setShowTooltipFirstTime(true)
+          // Masque le tooltip après 10 sec ou au clic
+          setTimeout(() => setShowTooltipFirstTime(false), 10000)
+        }
+      } catch {}
+    }
+  }, [unreadCount, isOpen])
 
   // Écoute l'événement global "open-chatbox" (déclenché par le bouton Contact)
   useEffect(() => {
     const handleOpen = async () => {
       setIsOpen(true)
-      // Si l'utilisateur n'a encore aucune conversation, on l'amène direct
-      // au formulaire de nouveau message (UX optimisée pour "je veux contacter le support")
+      setShowBubblePreview(false)
+      setShowTooltipFirstTime(false)
       try {
         const list = await api.myConversations()
         setConversations(list)
@@ -78,6 +219,24 @@ export function FloatingChatBox({ user }) {
     window.addEventListener('open-chatbox', handleOpen)
     return () => window.removeEventListener('open-chatbox', handleOpen)
   }, [])
+
+  // Quand on ouvre, ferme la bulle preview et marque le tooltip comme vu
+  const openChatbox = (convId = null) => {
+    setIsOpen(true)
+    setShowBubblePreview(false)
+    setShowTooltipFirstTime(false)
+    try { localStorage.setItem('prono26_chat_tooltip_seen', '1') } catch {}
+    if (convId) {
+      openConversation(convId)
+    }
+  }
+
+  // Toggle son
+  const toggleSound = () => {
+    const newVal = !soundEnabled
+    setSoundEnabledState(newVal)
+    setSoundEnabled(newVal)
+  }
 
   // Charge la liste quand on ouvre la chat-box ou refresh
   const loadConversations = async () => {
@@ -143,23 +302,116 @@ export function FloatingChatBox({ user }) {
 
   if (!user) return null
 
+  const hasUnread = unreadCount > 0
+
   return (
     <>
-      {/* Bouton flottant */}
+      {/* Bouton flottant + UX engageante */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 z-50 w-14 h-14 bg-gradient-to-br from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-110 group"
-          aria-label="Ouvrir la messagerie"
-        >
-          <span className="text-2xl">💬</span>
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center border-2 border-[#0a0e27] animate-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+
+          {/* Bulle preview du dernier message (apparaît quand nouveau message reçu) */}
+          {showBubblePreview && latestPreview && (
+            <button
+              onClick={() => {
+                setShowBubblePreview(false)
+                openChatbox(latestPreview.convId)
+              }}
+              className="max-w-[300px] bg-white text-[#0a0e27] rounded-2xl shadow-2xl p-3 animate-bubble-in cursor-pointer hover:shadow-orange-400/50 transition border-2 border-orange-400"
+              style={{ animation: 'bubbleIn 0.4s ease-out' }}
+            >
+              <div className="flex items-start gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-sm flex-shrink-0">
+                  🛠️
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="text-xs font-bold text-orange-600 mb-0.5">
+                    United Pronos · Nouveau message
+                  </div>
+                  <div className="text-sm text-gray-800 line-clamp-2">
+                    {latestPreview.content}
+                  </div>
+                  <div className="text-xs text-orange-500 font-semibold mt-1">
+                    👉 Cliquer pour lire
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowBubblePreview(false) }}
+                  className="text-gray-400 hover:text-gray-700 text-xs"
+                >✕</button>
+              </div>
+            </button>
           )}
-        </button>
+
+          {/* Tooltip "Tu as un nouveau message" (premier passage) */}
+          {showTooltipFirstTime && !showBubblePreview && (
+            <div className="bg-orange-500 text-white px-3 py-2 rounded-lg shadow-2xl text-sm font-semibold flex items-center gap-2 animate-bounce">
+              <span>👋</span>
+              <span>Tu as {unreadCount > 1 ? `${unreadCount} nouveaux messages` : 'un nouveau message'} !</span>
+              {/* Petit triangle pointant vers le bas */}
+              <span className="absolute -bottom-1 right-6 w-3 h-3 bg-orange-500 rotate-45"></span>
+            </div>
+          )}
+
+          {/* Bouton principal */}
+          <button
+            onClick={() => openChatbox()}
+            className={`relative w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-110 ${
+              justGotNewMessage ? 'animate-wiggle' : ''
+            } ${hasUnread ? 'shadow-orange-400/50' : ''}`}
+            style={{
+              animation: justGotNewMessage
+                ? 'wiggle 0.5s ease-in-out 6'
+                : hasUnread
+                  ? 'gentle-pulse 2s ease-in-out infinite'
+                  : 'none',
+            }}
+            aria-label={hasUnread ? `Ouvrir la messagerie (${unreadCount} non-lu)` : 'Ouvrir la messagerie'}
+          >
+            <span className="text-3xl">💬</span>
+
+            {/* Badge nombre non-lus (plus gros et plus visible) */}
+            {hasUnread && (
+              <>
+                {/* Halo lumineux derrière le badge */}
+                <span className="absolute -top-1 -right-1 w-7 h-7 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                <span className="absolute -top-1 -right-1 min-w-[28px] h-7 px-1.5 rounded-full bg-red-500 text-white text-sm font-black flex items-center justify-center border-2 border-white shadow-lg z-10">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              </>
+            )}
+
+            {/* Indicateur "en ligne" (point vert en bas) - rassure les non-experts */}
+            {!hasUnread && (
+              <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></span>
+            )}
+          </button>
+        </div>
       )}
+
+      {/* Style CSS pour animations (inline pour pas dépendre du Tailwind config) */}
+      <style>{`
+        @keyframes wiggle {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-12deg); }
+          75% { transform: rotate(12deg); }
+        }
+        @keyframes gentle-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.7); }
+          50% { box-shadow: 0 0 0 12px rgba(251, 146, 60, 0); }
+        }
+        @keyframes bubbleIn {
+          0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-bubble-in { animation: bubbleIn 0.4s ease-out; }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
 
       {/* Fenêtre de chat */}
       {isOpen && (
@@ -185,9 +437,19 @@ export function FloatingChatBox({ user }) {
                 )}
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/10 rounded text-xl leading-none">
-              ✕
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Toggle son */}
+              <button
+                onClick={toggleSound}
+                className="p-1.5 hover:bg-white/10 rounded text-sm"
+                title={soundEnabled ? 'Désactiver le son' : 'Activer le son'}
+              >
+                {soundEnabled ? '🔔' : '🔕'}
+              </button>
+              <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/10 rounded text-xl leading-none">
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* Contenu */}
