@@ -240,7 +240,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Répondre',
 
     'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement',
-    'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.info': 'Infos', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.info': 'Infos', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
     'matches.aiPredict': 'IA prédit', 'matches.confidence': 'Confiance',
@@ -504,7 +504,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Reply',
 
     'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings',
-    'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.info': 'Info', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
     'matches.aiPredict': 'AI predicts', 'matches.confidence': 'Confidence',
@@ -768,7 +768,7 @@ const TRANSLATIONS = {
     'contact.reply': 'Responder',
 
     'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación',
-    'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.info': 'Info', 'tabs.admin': 'Admin',
+    'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
     'matches.aiPredict': 'IA predice', 'matches.confidence': 'Confianza',

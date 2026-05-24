@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen } from 'lucide-react'
+import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen, HelpCircle } from 'lucide-react'
 import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
 import { predictMatch, getMatchOdds } from './predictor.js'
 import { FloatingChatBox } from './ChatBox.jsx'
 import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
+import { FAQTab } from './FAQTab.jsx'
 
 // =====================================================
 // GOOGLE ANALYTICS 4 — Chargement dynamique
@@ -3354,6 +3355,7 @@ export default function App() {
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
     { id: 'info', label: t('tabs.info'), icon: BookOpen },
+    { id: 'faq', label: t('tabs.faq'), icon: HelpCircle },
     ...(user ? [{ id: 'profile', label: t('profile.title'), icon: User }] : []),
     ...(isAdmin ? [{ id: 'admin', label: t('tabs.admin'), icon: Settings }] : []),
   ]
@@ -3452,6 +3454,7 @@ export default function App() {
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
         {activeTab === 'info' && <InfoTab />}
+        {activeTab === 'faq' && <FAQTab />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
 
