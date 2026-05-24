@@ -1078,33 +1078,7 @@ function AdminTab({ user }) {
 
       {tab === 'scores' && <AdminScoresPanel />}
 
-      {tab === 'users' && (
-        <div className="space-y-2">
-          {users.map(u => (
-            <div key={u.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm">
-                {u.username[0].toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{u.username}</div>
-                <div className="text-xs text-white/40 truncate">{u.email}</div>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded ${
-                u.role === 'admin' ? 'bg-red-500/20 text-red-300' :
-                u.role === 'leader' ? 'bg-purple-500/20 text-purple-300' :
-                'bg-white/5 text-white/60'
-              }`}>
-                {u.role}
-              </span>
-              {u.id !== user.id && (
-                <button onClick={() => deleteUser(u.id)} className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {tab === 'users' && <AdminUsersPanel users={users} currentUserId={user.id} onDelete={deleteUser} />}
 
       {tab === 'groups' && <AdminGroupsPanel />}
 
@@ -1698,6 +1672,259 @@ function ContactModal({ onClose, currentUser, turnstileSiteKey }) {
 
 // =====================================================
 // ADMIN CONTACT PANEL
+// =====================================================
+// =====================================================
+// ADMIN — Panneau utilisateurs avec tracking last_seen
+// =====================================================
+
+/**
+ * Formate un timestamp en texte humain : "il y a 2h", "hier", "il y a 3 jours".
+ * Renvoie null si jamais connecté.
+ */
+function formatLastSeen(iso) {
+  if (!iso) return null
+  try {
+    const date = new Date(iso)
+    const now = new Date()
+    const diffMs = now - date
+    const diffSec = Math.floor(diffMs / 1000)
+    const diffMin = Math.floor(diffSec / 60)
+    const diffH = Math.floor(diffMin / 60)
+    const diffDays = Math.floor(diffH / 24)
+
+    if (diffSec < 60) return 'à l\'instant'
+    if (diffMin < 60) return `il y a ${diffMin} min`
+    if (diffH < 24) return `il y a ${diffH}h`
+    if (diffDays === 1) return 'hier'
+    if (diffDays < 7) return `il y a ${diffDays} jours`
+    if (diffDays < 30) return `il y a ${Math.floor(diffDays / 7)} sem.`
+    if (diffDays < 365) return `il y a ${Math.floor(diffDays / 30)} mois`
+    return `il y a ${Math.floor(diffDays / 365)} an${Math.floor(diffDays / 365) > 1 ? 's' : ''}`
+  } catch (e) {
+    return null
+  }
+}
+
+/**
+ * Couleur de pastille selon l'activité de l'utilisateur :
+ * - vert : actif (< 7 jours)
+ * - jaune : dormant (7-30 jours)
+ * - rouge : inactif (> 30 jours ou jamais)
+ */
+function getActivityLevel(iso) {
+  if (!iso) return { color: 'gray', label: 'jamais', emoji: '⚪' }
+  try {
+    const days = (new Date() - new Date(iso)) / (1000 * 60 * 60 * 24)
+    if (days < 7) return { color: 'green', label: 'actif', emoji: '🟢' }
+    if (days < 30) return { color: 'yellow', label: 'dormant', emoji: '🟡' }
+    return { color: 'red', label: 'inactif', emoji: '🔴' }
+  } catch (e) {
+    return { color: 'gray', label: '?', emoji: '⚪' }
+  }
+}
+
+function AdminUsersPanel({ users, currentUserId, onDelete }) {
+  const { t } = useTranslation()
+  const [filter, setFilter] = useState('all')      // all | active | dormant | inactive | never
+  const [sortBy, setSortBy] = useState('last_seen') // last_seen | created | username
+  const [search, setSearch] = useState('')
+
+  // Compteurs par activité (pour les badges des filtres)
+  const counts = useMemo(() => {
+    const c = { all: users.length, active: 0, dormant: 0, inactive: 0, never: 0 }
+    users.forEach(u => {
+      const lvl = getActivityLevel(u.last_seen_at)
+      if (!u.last_seen_at) c.never++
+      else if (lvl.color === 'green') c.active++
+      else if (lvl.color === 'yellow') c.dormant++
+      else if (lvl.color === 'red') c.inactive++
+    })
+    return c
+  }, [users])
+
+  // Filtrage + recherche + tri
+  const filtered = useMemo(() => {
+    let list = [...users]
+
+    // Filtre par activité
+    if (filter !== 'all') {
+      list = list.filter(u => {
+        if (filter === 'never') return !u.last_seen_at
+        const lvl = getActivityLevel(u.last_seen_at)
+        if (filter === 'active') return lvl.color === 'green'
+        if (filter === 'dormant') return lvl.color === 'yellow'
+        if (filter === 'inactive') return lvl.color === 'red'
+        return true
+      })
+    }
+
+    // Recherche texte (username + email)
+    if (search.trim()) {
+      const q = search.toLowerCase().trim()
+      list = list.filter(u =>
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      )
+    }
+
+    // Tri
+    list.sort((a, b) => {
+      if (sortBy === 'last_seen') {
+        // Jamais connectés en dernier, puis du plus récent au plus ancien
+        if (!a.last_seen_at && !b.last_seen_at) return 0
+        if (!a.last_seen_at) return 1
+        if (!b.last_seen_at) return -1
+        return new Date(b.last_seen_at) - new Date(a.last_seen_at)
+      }
+      if (sortBy === 'created') {
+        return new Date(b.created_at) - new Date(a.created_at)
+      }
+      if (sortBy === 'username') {
+        return a.username.localeCompare(b.username)
+      }
+      return 0
+    })
+
+    return list
+  }, [users, filter, search, sortBy])
+
+  return (
+    <div>
+      {/* Stats cards en haut */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+        <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-black">{counts.all}</div>
+          <div className="text-xs text-white/60">Total</div>
+        </div>
+        <div className="bg-green-500/10 border border-green-400/30 rounded-lg p-2 text-center">
+          <div className="text-2xl font-black text-green-300">{counts.active}</div>
+          <div className="text-xs text-green-200/80">🟢 Actifs (7j)</div>
+        </div>
+        <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-2 text-center">
+          <div className="text-2xl font-black text-yellow-300">{counts.dormant}</div>
+          <div className="text-xs text-yellow-200/80">🟡 Dormants</div>
+        </div>
+        <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-2 text-center">
+          <div className="text-2xl font-black text-red-300">{counts.inactive}</div>
+          <div className="text-xs text-red-200/80">🔴 Inactifs</div>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-lg p-2 text-center">
+          <div className="text-2xl font-black text-white/40">{counts.never}</div>
+          <div className="text-xs text-white/40">⚪ Jamais</div>
+        </div>
+      </div>
+
+      {/* Recherche + filtres + tri */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 Rechercher par nom ou email..."
+          className="flex-1 min-w-[200px] px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm"
+        >
+          <option value="last_seen">Tri : dernière connexion</option>
+          <option value="created">Tri : date inscription</option>
+          <option value="username">Tri : nom A-Z</option>
+        </select>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[
+          { id: 'all', label: 'Tous', count: counts.all },
+          { id: 'active', label: '🟢 Actifs', count: counts.active },
+          { id: 'dormant', label: '🟡 Dormants', count: counts.dormant },
+          { id: 'inactive', label: '🔴 Inactifs', count: counts.inactive },
+          { id: 'never', label: '⚪ Jamais', count: counts.never },
+        ].map(f => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+              filter === f.id ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
+            }`}
+          >
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+
+      {/* Liste */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          <span style={{ fontSize: 40 }}>👤</span>
+          <p className="mt-3">Aucun utilisateur</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(u => {
+            const activity = getActivityLevel(u.last_seen_at)
+            const lastSeenText = formatLastSeen(u.last_seen_at)
+            return (
+              <div key={u.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm flex-shrink-0">
+                  {u.username[0].toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold truncate">{u.username}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      u.role === 'admin' ? 'bg-red-500/20 text-red-300' :
+                      u.role === 'leader' ? 'bg-purple-500/20 text-purple-300' :
+                      'bg-white/5 text-white/60'
+                    }`}>
+                      {u.role}
+                    </span>
+                  </div>
+                  <div className="text-xs text-white/40 truncate">{u.email}</div>
+                </div>
+                <div className="hidden sm:block text-right text-xs flex-shrink-0">
+                  <div className={`font-semibold ${
+                    activity.color === 'green' ? 'text-green-300' :
+                    activity.color === 'yellow' ? 'text-yellow-300' :
+                    activity.color === 'red' ? 'text-red-300' :
+                    'text-white/40'
+                  }`}>
+                    {activity.emoji} {lastSeenText || 'Jamais connecté'}
+                  </div>
+                  {u.last_seen_at && (
+                    <div className="text-white/30 text-[10px]" title={u.last_seen_at}>
+                      {new Date(u.last_seen_at).toLocaleString('fr-FR', {
+                        day: '2-digit', month: '2-digit', year: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                  )}
+                </div>
+                {u.id !== currentUserId && (
+                  <button onClick={() => onDelete(u.id)}
+                    className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded flex-shrink-0"
+                    title="Supprimer">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Info en bas */}
+      <div className="mt-4 text-xs text-white/30 text-center">
+        Mis à jour à chaque activité (max toutes les 5 min par utilisateur)
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
+// ADMIN — Panneau de contact (messages)
 // =====================================================
 function AdminContactPanel() {
   const { t } = useTranslation()

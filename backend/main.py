@@ -189,6 +189,12 @@ def init_db():
             db.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
             db.execute("ALTER TABLE users ADD COLUMN lang TEXT DEFAULT 'fr'")
             db.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'dark'")
+        # Migration : ajouter last_seen_at (suivi de la dernière activité utilisateur)
+        if "last_seen_at" not in cols:
+            print("[MIGRATION] Ajout de last_seen_at à users")
+            db.execute("ALTER TABLE users ADD COLUMN last_seen_at TEXT")
+            # Index pour permettre tri rapide par dernière connexion
+            db.execute("CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen_at)")
 
     # === MIGRATION : ajouter colonnes admin_reply, replied_at à contact_messages ===
     with get_db() as db:
@@ -430,7 +436,35 @@ def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> dict:
         user = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         if not user:
             raise HTTPException(401, "Utilisateur introuvable")
-        return dict(user)
+        user_dict = dict(user)
+
+        # Tracking : mise à jour de last_seen_at avec throttling (max 1 UPDATE / 5 min)
+        # Évite de surcharger la BDD à chaque API call.
+        now = datetime.now(timezone.utc)
+        last_seen = user_dict.get("last_seen_at")
+        should_update = False
+        if not last_seen:
+            should_update = True
+        else:
+            try:
+                last_seen_dt = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
+                # Si dernière mise à jour > 5 min, on update
+                if (now - last_seen_dt).total_seconds() > 300:
+                    should_update = True
+            except Exception:
+                # Format invalide → on update pour réparer
+                should_update = True
+
+        if should_update:
+            now_iso = now.isoformat()
+            try:
+                db.execute("UPDATE users SET last_seen_at=? WHERE id=?", (now_iso, user_id))
+                user_dict["last_seen_at"] = now_iso
+            except Exception as e:
+                # Ne JAMAIS bloquer l'authentification si la mise à jour du tracking échoue
+                print(f"[TRACKING] Erreur update last_seen_at user={user_id}: {e}")
+
+        return user_dict
 
 
 def require_admin(user=Depends(get_current_user)) -> dict:
@@ -1024,6 +1058,12 @@ def login(data: LoginIn):
             log_action(user["id"] if user else None, "login_failed", data.email, db=db)
             raise HTTPException(401, "Email ou mot de passe invalide")
         log_action(user["id"], "login_success", data.email, db=db)
+        # Mise à jour immédiate du last_seen_at au login
+        now_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            db.execute("UPDATE users SET last_seen_at=? WHERE id=?", (now_iso, user["id"]))
+        except Exception as e:
+            print(f"[TRACKING] Erreur update last_seen_at login user={user['id']}: {e}")
         token = create_token(user["id"], user["role"])
         return {
             "token": token,
@@ -1265,8 +1305,13 @@ def admin_translate_missing(user=Depends(require_admin), max_news: int = 30):
 # --- Admin ---
 @app.get("/api/admin/users")
 def admin_users(user=Depends(require_admin)):
+    """Liste tous les utilisateurs avec leur dernière connexion."""
     with get_db() as db:
-        rows = db.execute("SELECT id, email, username, role, created_at FROM users ORDER BY id").fetchall()
+        rows = db.execute("""
+            SELECT id, email, username, role, created_at, last_seen_at, group_id
+            FROM users
+            ORDER BY (last_seen_at IS NULL), last_seen_at DESC, id DESC
+        """).fetchall()
         return [dict(r) for r in rows]
 
 
