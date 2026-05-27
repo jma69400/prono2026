@@ -235,6 +235,21 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_conv_status ON conversations(status)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_conv_msg ON conversation_messages(conversation_id)")
 
+    # === MIGRATION : créer table password_reset_tokens (reset password) ===
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                expires_at TEXT NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_reset_user ON password_reset_tokens(user_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_reset_expires ON password_reset_tokens(expires_at)")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -1072,13 +1087,22 @@ def signup(data: SignupIn):
         user_id = cur.lastrowid
         log_action(user_id, "signup", f"{data.email} role={chosen_role}", db=db)
         token = create_token(user_id, chosen_role)
-        return {
-            "token": token,
-            "user": {
-                "id": user_id, "email": data.email, "username": data.username,
-                "role": chosen_role, "group_id": target_group_id,
-            },
-        }
+
+    # Envoi de l'email de bienvenue (hors du with db, non bloquant en cas d'erreur SMTP)
+    try:
+        send_welcome_email(data.email, data.username)
+    except Exception as e:
+        # Ne JAMAIS bloquer l'inscription si l'envoi du mail échoue
+        # (le user peut s'être inscrit avec un email Microsoft qui rejette nos mails)
+        print(f"[SIGNUP] Email bienvenue non envoyé à {data.email}: {e}")
+
+    return {
+        "token": token,
+        "user": {
+            "id": user_id, "email": data.email, "username": data.username,
+            "role": chosen_role, "group_id": target_group_id,
+        },
+    }
 
 
 @app.post("/api/auth/login")
@@ -1103,6 +1127,119 @@ def login(data: LoginIn):
                 "role": user["role"], "group_id": user["group_id"],
             },
         }
+
+
+# =====================================================
+# RESET PASSWORD : Mot de passe oublié
+# =====================================================
+
+@app.post("/api/auth/password-reset-request")
+def password_reset_request(data: dict):
+    """Demande de réinitialisation : envoie un email avec un token unique (1h de validité).
+    Sécurité : on renvoie TOUJOURS un succès même si l'email n'existe pas
+    (évite la "user enumeration" — pratique courante des hackers).
+    """
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "Email invalide")
+
+    with get_db() as db:
+        user = db.execute("SELECT id, username, email FROM users WHERE email=?", (email,)).fetchone()
+        if user:
+            # Génère un token sécurisé
+            import secrets
+            token = secrets.token_urlsafe(48)  # 64 caractères, ~256 bits d'entropie
+            expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+
+            # Supprime les anciens tokens non-utilisés pour cet utilisateur (1 seul actif)
+            db.execute("DELETE FROM password_reset_tokens WHERE user_id=? AND used=0", (user["id"],))
+
+            # Crée le nouveau token
+            db.execute(
+                "INSERT INTO password_reset_tokens (token, user_id, expires_at) VALUES (?,?,?)",
+                (token, user["id"], expires_at),
+            )
+            log_action(user["id"], "password_reset_request", email, db=db)
+
+            # Envoi de l'email (hors with, non bloquant)
+            try:
+                send_password_reset_email(user["email"], user["username"], token)
+            except Exception as e:
+                print(f"[PASSWORD_RESET] Erreur envoi email à {email}: {e}")
+        else:
+            # User inexistant : on simule un délai pour cacher l'absence
+            # (sécurité : éviter user enumeration)
+            log_action(None, "password_reset_unknown_email", email, db=db)
+
+    # Toujours renvoyer un succès (sécurité)
+    return {
+        "ok": True,
+        "message": "Si cet email existe, un lien de réinitialisation a été envoyé.",
+    }
+
+
+@app.post("/api/auth/password-reset-confirm")
+def password_reset_confirm(data: dict):
+    """Confirme la réinitialisation : valide le token et change le mot de passe."""
+    token = (data.get("token") or "").strip()
+    new_password = (data.get("password") or "").strip()
+
+    if not token:
+        raise HTTPException(400, "Token manquant")
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(400, "Le mot de passe doit faire au moins 8 caractères")
+    if len(new_password) > 200:
+        raise HTTPException(400, "Mot de passe trop long")
+
+    with get_db() as db:
+        row = db.execute("""
+            SELECT t.*, u.email, u.username
+            FROM password_reset_tokens t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.token = ?
+        """, (token,)).fetchone()
+
+        if not row:
+            raise HTTPException(400, "Lien invalide ou expiré")
+
+        if row["used"]:
+            raise HTTPException(400, "Ce lien a déjà été utilisé")
+
+        # Vérifie l'expiration
+        try:
+            expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+            if datetime.now(timezone.utc) > expires_at:
+                raise HTTPException(400, "Ce lien a expiré. Demande un nouveau lien de réinitialisation.")
+        except (ValueError, AttributeError):
+            raise HTTPException(400, "Lien invalide")
+
+        # Hash et met à jour le mot de passe
+        new_hash = pwd_context.hash(new_password)
+        db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, row["user_id"]))
+        # Marque le token comme utilisé
+        db.execute("UPDATE password_reset_tokens SET used=1 WHERE token=?", (token,))
+        log_action(row["user_id"], "password_reset_confirm", row["email"], db=db)
+
+    return {
+        "ok": True,
+        "message": "Mot de passe réinitialisé avec succès. Tu peux maintenant te connecter.",
+    }
+
+
+@app.post("/api/me/resend-welcome")
+def resend_welcome_email(user=Depends(get_current_user)):
+    """Renvoie l'email de bienvenue à l'utilisateur connecté.
+    Utile si l'utilisateur n'a jamais reçu son email (ex: bloqué par Outlook)."""
+    try:
+        success = send_welcome_email(user["email"], user["username"])
+        log_action(user["id"], "resend_welcome", user["email"])
+        if success:
+            return {"ok": True, "message": "Email de bienvenue renvoyé"}
+        else:
+            return {"ok": False, "message": "Erreur lors de l'envoi (config SMTP)"}
+    except Exception as e:
+        print(f"[RESEND_WELCOME] Erreur: {e}")
+        raise HTTPException(500, "Erreur lors de l'envoi de l'email")
 
 
 @app.get("/api/me")
@@ -2323,6 +2460,228 @@ Tu peux répondre directement à ce mail, ton message nous parviendra.
     except Exception as e:
         print(f"[ADMIN_REPLY] Erreur SMTP : {e}")
         return False
+
+
+def _send_email_html(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
+    """Helper interne pour envoyer un mail multipart/alternative (texte + HTML).
+    Réutilisable par les fonctions email transactionnelles (bienvenue, reset, etc.)."""
+    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASSWORD")
+    smtp_from = os.environ.get("SMTP_FROM", smtp_user)
+    reply_to = os.environ.get("CONTACT_EMAIL", smtp_from)
+
+    if not all([smtp_host, smtp_user, smtp_pass, to_email]):
+        print(f"[EMAIL] SMTP non configuré, mail non envoyé à {to_email}")
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["From"] = f"United Pronos <{smtp_from}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = reply_to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(text_body, "plain", "utf-8"))
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+        if smtp_port == 465:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+
+        print(f"[EMAIL] Envoyé : '{subject}' à {to_email}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL] Erreur envoi à {to_email} : {e}")
+        return False
+
+
+def send_welcome_email(email: str, username: str) -> bool:
+    """Envoie un email de bienvenue après inscription.
+    NE CONTIENT PAS le mot de passe (sécurité).
+    Rappelle l'email de connexion + lien direct + guide rapide."""
+    site_url = os.environ.get("SITE_URL", "https://unitedpronos.com")
+
+    text_body = f"""Bonjour {username},
+
+Bienvenue sur United Pronos ! 🎉
+
+Ton compte a été créé avec succès. Voici tes infos de connexion :
+
+   📧 Email : {email}
+   🔑 Mot de passe : celui que tu viens de définir
+
+Pour te connecter, va sur : {site_url}
+
+🎯 PREMIERS PAS
+- Découvre les 104 matchs de la Coupe du Monde 2026
+- Fais tes pronostics avant le coup d'envoi
+- Rejoins ou crée un groupe avec tes amis/collègues
+- Consulte les actualités foot en français
+
+🆘 BESOIN D'AIDE ?
+Une fois connecté, utilise la chat-box 💬 en bas à droite pour nous contacter directement.
+
+🔐 MOT DE PASSE OUBLIÉ ?
+Pas de panique ! Tu peux le réinitialiser à tout moment depuis la page de connexion via le lien "Mot de passe oublié ?".
+
+Bonne compétition !
+L'équipe United Pronos
+{site_url}
+"""
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background: #f5f5f5;">
+  <div style="background: linear-gradient(135deg, #f97316 0%, #ec4899 100%); padding: 32px 20px; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 28px;">🏆 Bienvenue sur United Pronos !</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">Coupe du Monde 2026</p>
+  </div>
+
+  <div style="background: white; padding: 32px 24px;">
+    <p style="font-size: 16px;">Bonjour <strong>{username}</strong>,</p>
+    <p>Ton compte a été créé avec succès ! 🎉 Tu es prêt à pronostiquer sur les 104 matchs du Mondial.</p>
+
+    <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 14px; color: #666;"><strong>📧 Tes infos de connexion :</strong></p>
+      <p style="margin: 8px 0 0 0; font-size: 15px;">
+        <strong>Email :</strong> {email}<br>
+        <strong>Mot de passe :</strong> celui que tu viens de définir
+      </p>
+    </div>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="{site_url}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f97316, #ec4899); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+        🚀 Se connecter au site
+      </a>
+    </div>
+
+    <h2 style="color: #f97316; font-size: 18px; margin-top: 32px;">🎯 Premiers pas</h2>
+    <ul style="padding-left: 20px; color: #555;">
+      <li>Découvre les <strong>104 matchs</strong> de la Coupe du Monde 2026</li>
+      <li>Fais tes pronostics <strong>avant le coup d'envoi</strong></li>
+      <li>Rejoins ou crée un <strong>groupe</strong> avec tes amis/collègues</li>
+      <li>Suis l'actualité foot <strong>en français, anglais et espagnol</strong></li>
+    </ul>
+
+    <h2 style="color: #f97316; font-size: 18px; margin-top: 24px;">🆘 Besoin d'aide ?</h2>
+    <p>Une fois connecté, utilise la <strong>chat-box 💬</strong> en bas à droite pour nous contacter directement. Réponses rapides garanties !</p>
+
+    <h2 style="color: #f97316; font-size: 18px; margin-top: 24px;">🔐 Mot de passe oublié ?</h2>
+    <p>Pas de panique ! Tu peux le réinitialiser à tout moment depuis la page de connexion via le lien <strong>"Mot de passe oublié ?"</strong>.</p>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
+    <p style="font-size: 14px; color: #666; text-align: center;">
+      Bonne compétition ! ⚽<br>
+      <strong style="color: #f97316;">L'équipe United Pronos</strong>
+    </p>
+  </div>
+
+  <div style="background: #f5f5f5; padding: 16px; text-align: center; font-size: 12px; color: #999;">
+    <a href="{site_url}" style="color: #f97316; text-decoration: none;">{site_url}</a>
+  </div>
+</body>
+</html>"""
+
+    return _send_email_html(
+        to_email=email,
+        subject=f"🏆 Bienvenue sur United Pronos, {username} !",
+        html_body=html_body,
+        text_body=text_body,
+    )
+
+
+def send_password_reset_email(email: str, username: str, reset_token: str) -> bool:
+    """Envoie un email avec un lien de réinitialisation de mot de passe.
+    Le lien expire dans 1h pour la sécurité."""
+    site_url = os.environ.get("SITE_URL", "https://unitedpronos.com")
+    reset_url = f"{site_url}/?reset_token={reset_token}"
+
+    text_body = f"""Bonjour {username},
+
+Tu as demandé à réinitialiser ton mot de passe sur United Pronos.
+
+Clique sur ce lien pour définir un nouveau mot de passe :
+{reset_url}
+
+⚠️ Ce lien est valable 1 heure seulement.
+
+Si tu n'as pas demandé cette réinitialisation, ignore simplement cet email.
+Ton mot de passe ne sera pas modifié.
+
+🔐 SÉCURITÉ
+Ne partage jamais ce lien avec personne. L'équipe United Pronos
+ne te demandera jamais ton mot de passe par email.
+
+L'équipe United Pronos
+{site_url}
+"""
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background: #f5f5f5;">
+  <div style="background: linear-gradient(135deg, #f97316 0%, #ec4899 100%); padding: 32px 20px; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 26px;">🔐 Réinitialisation du mot de passe</h1>
+  </div>
+
+  <div style="background: white; padding: 32px 24px;">
+    <p style="font-size: 16px;">Bonjour <strong>{username}</strong>,</p>
+    <p>Tu as demandé à réinitialiser ton mot de passe sur United Pronos.</p>
+
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="{reset_url}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f97316, #ec4899); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+        🔑 Définir un nouveau mot de passe
+      </a>
+    </div>
+
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 14px;">
+        ⏱️ <strong>Ce lien expire dans 1 heure.</strong>
+      </p>
+    </div>
+
+    <p style="color: #666; font-size: 14px;">
+      Tu peux aussi copier-coller cette URL dans ton navigateur :<br>
+      <span style="word-break: break-all; color: #f97316; font-family: monospace; font-size: 12px;">{reset_url}</span>
+    </p>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
+
+    <p style="color: #666; font-size: 14px;">
+      <strong>Tu n'as pas demandé cette réinitialisation ?</strong><br>
+      Ignore simplement cet email. Ton mot de passe ne sera pas modifié.
+    </p>
+
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; margin: 16px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 13px; color: #991b1b;">
+        🔐 <strong>Sécurité</strong> : Ne partage jamais ce lien. L'équipe United Pronos
+        ne te demandera jamais ton mot de passe par email.
+      </p>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
+    <p style="font-size: 14px; color: #666; text-align: center;">
+      <strong style="color: #f97316;">L'équipe United Pronos</strong><br>
+      <a href="{site_url}" style="color: #f97316; text-decoration: none;">{site_url}</a>
+    </p>
+  </div>
+</body>
+</html>"""
+
+    return _send_email_html(
+        to_email=email,
+        subject="🔐 Réinitialise ton mot de passe sur United Pronos",
+        html_body=html_body,
+        text_body=text_body,
+    )
 
 
 def send_contact_email(name: str, email: str, subject: str, message: str) -> bool:

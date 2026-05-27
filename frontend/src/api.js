@@ -105,6 +105,17 @@ export const api = {
   }),
   adminDeleteContact: (id) => request(`/admin/contact-messages/${id}`, { method: 'DELETE' }),
 
+  // ===== AUTH : Reset password & welcome email =====
+  passwordResetRequest: (email) => request('/auth/password-reset-request', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  }),
+  passwordResetConfirm: (token, password) => request('/auth/password-reset-confirm', {
+    method: 'POST',
+    body: JSON.stringify({ token, password })
+  }),
+  resendWelcomeEmail: () => request('/me/resend-welcome', { method: 'POST' }),
+
   // ===== CHAT-BOX : Messagerie interne user ↔ admin =====
   // Côté utilisateur
   myConversations: () => request('/me/conversations'),

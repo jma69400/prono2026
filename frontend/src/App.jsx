@@ -7,6 +7,7 @@ import { predictMatch, getMatchOdds } from './predictor.js'
 import { FloatingChatBox } from './ChatBox.jsx'
 import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
+import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
 
 // =====================================================
 // GOOGLE ANALYTICS 4 — Chargement dynamique
@@ -85,6 +86,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
   const [signupRole, setSignupRole] = useState(inviteCode ? 'solo' : 'solo')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -137,6 +139,10 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
         )}
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+          {showForgotPassword ? (
+            <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
+          ) : (
+            <>
           <div className="flex gap-2 mb-6">
             <button type="button" onClick={() => { setMode('login'); setError('') }}
               className={`flex-1 py-2 rounded-lg font-semibold transition ${mode === 'login' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
@@ -160,6 +166,14 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
             <input type="password" placeholder={t('auth.password')} required minLength={6} value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+
+            {/* Lien Mot de passe oublié (uniquement en mode login) */}
+            {mode === 'login' && (
+              <button type="button" onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-orange-400 hover:text-orange-300 transition self-start -mt-2 underline-offset-2 hover:underline">
+                🔐 Mot de passe oublié ?
+              </button>
+            )}
 
             {/* Choix du rôle (uniquement à l'inscription, sauf si invité) */}
             {mode === 'signup' && !inviteCode && (
@@ -220,6 +234,8 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
                 ← {t('auth.guestBack')}
               </button>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>
@@ -3182,6 +3198,15 @@ export default function App() {
   // Si user vient de s'inscrire en leader → écran création groupe
   const [needsGroupCreation, setNeedsGroupCreation] = useState(false)
 
+  // === RESET PASSWORD ===
+  // Si l'URL contient ?reset_token=XXX → affiche la page de réinitialisation
+  const [resetToken, setResetToken] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return params.get('reset_token') || null
+    } catch { return null }
+  })
+
   // Init : vérifier token + charger config publique + initialiser GA4
   useEffect(() => {
     fetch('/api/config').then(r => r.json()).then(cfg => {
@@ -3323,6 +3348,20 @@ export default function App() {
         </div>
       </div>
     )
+  }
+
+  // 0. PRIORITÉ ABSOLUE : Reset password si l'URL contient ?reset_token=XXX
+  if (resetToken) {
+    return <ResetPasswordPage
+      token={resetToken}
+      onSuccess={() => {
+        setResetToken(null)
+        // Force le retour à l'écran de connexion
+        setShowHome(false)
+        setShowAuth(true)
+        setAuthInitialMode('login')
+      }}
+    />
   }
 
   // 1. HomePage par défaut (premier visit)
