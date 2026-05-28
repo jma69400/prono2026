@@ -87,37 +87,48 @@ function expectedGoals(team, opponent, isHome, isHostCountry) {
   const t = TEAM_STRENGTHS[team] || { att: 1.0, def: 1.0, form: 0.5 }
   const o = TEAM_STRENGTHS[opponent] || { att: 1.0, def: 1.0, form: 0.5 }
 
-  // Moyenne globale CDM ~2.6 buts/match → ~1.3 par équipe
-  const baseGoals = 1.30
+  // Moyenne globale CDM ~2.75 buts/match → ~1.37 par équipe
+  // On part un peu plus haut pour éviter le biais "trop de 1-1"
+  const baseGoals = 1.52
 
-  // Forces relatives
-  const attackPower = t.att / o.def
+  // Forces relatives : attaque de l'équipe vs défense de l'adversaire
+  // On utilise une puissance pour AMPLIFIER les écarts entre grosses et petites équipes
+  // (sinon tout se tasse vers 1-1)
+  const attackPower = Math.pow(t.att / o.def, 1.20)
 
   // Avantage domicile / pays hôte
   let homeBoost = 1.0
-  if (isHome) homeBoost = 1.10        // +10% à domicile
-  if (isHostCountry) homeBoost = 1.18  // +18% si pays hôte du tournoi
+  if (isHome) homeBoost = 1.08         // +8% à domicile
+  if (isHostCountry) homeBoost = 1.15  // +15% si pays hôte du tournoi
 
-  // Bonus de forme (entre 0.85x et 1.15x selon la forme)
-  const formBoost = 0.85 + (t.form * 0.30)
+  // Bonus de forme (entre 0.90x et 1.12x selon la forme)
+  // Atténué pour ne pas trop compresser vers la moyenne
+  const formBoost = 0.90 + (t.form * 0.22)
 
   // Lambda final
   let lambda = baseGoals * attackPower * homeBoost * formBoost
 
-  // Bornes raisonnables : entre 0.2 et 4.5 buts attendus
-  lambda = Math.max(0.2, Math.min(4.5, lambda))
+  // Bornes raisonnables : entre 0.25 et 4.5 buts attendus
+  lambda = Math.max(0.25, Math.min(4.5, lambda))
 
   return lambda
 }
 
 // Ajustement Dixon-Coles pour les scores serrés (corrige le biais Poisson)
 function dixonColesAdjustment(homeGoals, awayGoals, lambdaH, lambdaA) {
-  // Dixon-Coles applique une correction pour les scores 0-0, 1-0, 0-1, 1-1
-  const rho = -0.18 // paramètre de dépendance
-  if (homeGoals === 0 && awayGoals === 0) return 1 - lambdaH * lambdaA * rho
-  if (homeGoals === 1 && awayGoals === 0) return 1 + lambdaA * rho
-  if (homeGoals === 0 && awayGoals === 1) return 1 + lambdaH * rho
-  if (homeGoals === 1 && awayGoals === 1) return 1 - rho
+  // Le modèle Dixon-Coles (1997) corrige UNIQUEMENT les 4 scores à faible total.
+  // rho NÉGATIF (~-0.05) = la vraie valeur empirique du foot international.
+  //
+  // Important : avec rho négatif :
+  //   - 0-0 et 1-1 sont LÉGÈREMENT réduits (le Poisson les surestime)
+  //   - 1-0 et 0-1 sont légèrement augmentés
+  // C'est l'inverse de l'ancien code qui boostait le 1-1 de +18% (bug).
+  const rho = -0.08  // valeur empirique réaliste (était -0.18, trop fort + mal appliqué)
+
+  if (homeGoals === 0 && awayGoals === 0) return 1 - (lambdaH * lambdaA * rho)
+  if (homeGoals === 1 && awayGoals === 0) return 1 + (lambdaA * rho)
+  if (homeGoals === 0 && awayGoals === 1) return 1 + (lambdaH * rho)
+  if (homeGoals === 1 && awayGoals === 1) return 1 + rho   // ← réduit le 1-1 (rho<0)
   return 1
 }
 
@@ -142,9 +153,13 @@ export function predictMatch(homeCode, awayCode, options = {}) {
     const h = poissonRandom(lambdaH)
     const a = poissonRandom(lambdaA)
 
-    // Correction Dixon-Coles pour scores serrés (rejection sampling simplifié)
+    // Correction Dixon-Coles pour scores serrés (rejection sampling).
+    // adj est dans [~0.9, ~1.1]. On normalise par le max possible (1.1) pour que
+    // le rejection sampling puisse réduire les scores sur-représentés.
+    // Les scores avec adj élevé passent presque toujours, ceux avec adj faible sont rejetés plus souvent.
     const adj = dixonColesAdjustment(h, a, lambdaH, lambdaA)
-    if (Math.random() > adj) {
+    // Normalisation : on divise par 1.15 (borne haute) pour avoir une proba d'acceptation < 1
+    if (Math.random() > adj / 1.15) {
       i--  // re-tirage
       continue
     }

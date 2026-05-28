@@ -363,16 +363,25 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
       {/* Bandeau IA principal */}
       {ai && !locked && (
         <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-          <button onClick={() => setShowAI(!showAI)} className="w-full flex items-center justify-between text-sm">
+          <button onClick={() => setShowAI(!showAI)} className="w-full flex items-center justify-between text-sm group hover:bg-purple-500/5 -m-1 p-1 rounded transition">
             <span className="flex items-center gap-2 text-purple-300">
               <Sparkles className="w-4 h-4" /> {t('matches.aiPredict')} : <strong className="text-white">{ai.home}-{ai.away}</strong>
               <span className="text-purple-400 text-xs">({ai.probability}%)</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="text-white/40 text-xs">
+              <span className="text-white/40 text-xs hidden sm:inline">
                 {t('matches.confidence')} {t(`matches.confidence${ai.confidence === 'high' ? 'High' : ai.confidence === 'medium' ? 'Medium' : 'Low'}`)}
               </span>
-              {showAI ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+              {/* Bouton déplier explicite */}
+              <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition ${
+                showAI ? 'bg-purple-500/30 text-purple-200' : 'bg-purple-500/20 text-purple-300 group-hover:bg-purple-500/40'
+              }`}>
+                {showAI ? (
+                  <>{t('matches.hideDetail')} <ChevronUp className="w-3.5 h-3.5" /></>
+                ) : (
+                  <>{t('matches.showDetail')} <ChevronDown className="w-3.5 h-3.5" /></>
+                )}
+              </span>
             </span>
           </button>
 
@@ -420,6 +429,11 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                   <div className="text-xs text-white/50 mb-1">{t('matches.btts')}</div>
                   <div className="font-mono font-bold text-sm text-orange-300">{ai.btts}%</div>
                 </div>
+              </div>
+
+              {/* Note méthodologique (rassure sur le sérieux du modèle) */}
+              <div className="text-[11px] text-white/30 leading-relaxed pt-1">
+                {t('matches.aiMethodology')}
               </div>
             </div>
           )}
