@@ -1191,6 +1191,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       stadiums: '/seo/stades-coupe-du-monde-2026.html',
       format: '/seo/format-48-equipes-mondial-2026.html',
       favorites: '/seo/favoris-coupe-du-monde-2026.html',
+      friendsLeague: '/pronostics-coupe-du-monde-entre-amis',
     },
     en: {
       schedule: '/seo/en/world-cup-2026-schedule.html',
@@ -1199,6 +1200,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       stadiums: '/seo/en/world-cup-2026-stadiums.html',
       format: '/seo/en/48-teams-format-world-cup-2026.html',
       favorites: '/seo/en/world-cup-2026-favorites.html',
+      friendsLeague: '/world-cup-predictions-with-friends',
     },
     es: {
       schedule: '/seo/es/calendario-mundial-2026.html',
@@ -1207,6 +1209,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       stadiums: '/seo/es/estadios-mundial-2026.html',
       format: '/seo/es/formato-48-equipos-mundial-2026.html',
       favorites: '/seo/es/favoritos-mundial-2026.html',
+      friendsLeague: '/pronosticos-mundial-entre-amigos',
     },
   }
   const urls = seoUrls[lang] || seoUrls.fr
@@ -1286,6 +1289,13 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
               <div className="text-2xl mb-1.5">🥇</div>
               <div className="font-bold text-sm">{t('home.seoFavorites')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoFavoritesSub')}</div>
+            </a>
+            <a href={urls.friendsLeague}
+              className="group relative p-4 bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border border-yellow-400/40 hover:border-yellow-400/70 rounded-xl transition text-center md:col-span-1">
+              <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">⭐ {t('home.seoNew')}</div>
+              <div className="text-2xl mb-1.5">🍻</div>
+              <div className="font-bold text-sm">{t('home.seoFriendsLeague')}</div>
+              <div className="text-xs text-white/40 mt-0.5">{t('home.seoFriendsLeagueSub')}</div>
             </a>
             <a href={urls.schedule}
               className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
@@ -2331,6 +2341,7 @@ function InfoTab() {
       stadiums: '/seo/stades-coupe-du-monde-2026.html',
       format: '/seo/format-48-equipes-mondial-2026.html',
       favorites: '/seo/favoris-coupe-du-monde-2026.html',
+      friendsLeague: '/pronostics-coupe-du-monde-entre-amis',
     },
     en: {
       schedule: '/seo/en/world-cup-2026-schedule.html',
@@ -2339,6 +2350,7 @@ function InfoTab() {
       stadiums: '/seo/en/world-cup-2026-stadiums.html',
       format: '/seo/en/48-teams-format-world-cup-2026.html',
       favorites: '/seo/en/world-cup-2026-favorites.html',
+      friendsLeague: '/world-cup-predictions-with-friends',
     },
     es: {
       schedule: '/seo/es/calendario-mundial-2026.html',
@@ -2347,17 +2359,25 @@ function InfoTab() {
       stadiums: '/seo/es/estadios-mundial-2026.html',
       format: '/seo/es/formato-48-equipos-mundial-2026.html',
       favorites: '/seo/es/favoritos-mundial-2026.html',
+      friendsLeague: '/pronosticos-mundial-entre-amigos',
     },
   }
   const urls = seoUrls[lang] || seoUrls.fr
 
-  // 6 cards à afficher (favoris en premier, c'est le contenu phare)
+  // 7 cards à afficher (favoris + pronos entre amis en premier, contenus phares)
   const cards = [
     {
       url: urls.favorites,
       icon: '🥇',
       title: t('info.favorites'),
       subtitle: t('info.favoritesSub'),
+      featured: true,
+    },
+    {
+      url: urls.friendsLeague,
+      icon: '🍻',
+      title: t('info.friendsLeague'),
+      subtitle: t('info.friendsLeagueSub'),
       featured: true,
     },
     { url: urls.schedule, icon: '📅', title: t('info.schedule'), subtitle: t('info.scheduleSub') },

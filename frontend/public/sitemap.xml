@@ -9,6 +9,36 @@
     <priority>1.0</priority>
   </url>
 
+  <!-- ============ LANDING PAGES SEO HAUTE PRIORITÉ ============ -->
+  <!-- Pages dédiées au mot-clé "pronostics entre amis" (très recherché) -->
+  <url>
+    <loc>https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/world-cup-predictions-with-friends"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/pronosticos-mundial-entre-amigos"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/world-cup-predictions-with-friends</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/world-cup-predictions-with-friends"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/pronosticos-mundial-entre-amigos"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://unitedpronos.com/pronosticos-mundial-entre-amigos</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://unitedpronos.com/world-cup-predictions-with-friends"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://unitedpronos.com/pronosticos-mundial-entre-amigos"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/pronostics-coupe-du-monde-entre-amis"/>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
   <!-- ============ CALENDAR / SCHEDULE / CALENDARIO ============ -->
   <url>
     <loc>https://unitedpronos.com/seo/calendrier-coupe-du-monde-2026.html</loc>
