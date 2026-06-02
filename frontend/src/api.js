@@ -58,7 +58,16 @@ export const api = {
   myPredictions: () => request('/predictions'),
   savePrediction: (match_id, home_score, away_score) =>
     request('/predictions', { method: 'POST', body: JSON.stringify({ match_id, home_score, away_score }) }),
-  leaderboard: () => request('/leaderboard'),
+  // Renvoie l'objet complet { ranked: [...], ranked_count, excluded_admins, total_users }
+  // Rétrocompatible : si une version ancienne du backend renvoie un tableau, on l'enveloppe.
+  leaderboard: async () => {
+    const data = await request('/leaderboard')
+    if (Array.isArray(data)) {
+      // Ancien format (tableau direct) — on encapsule pour compatibilité
+      return { ranked: data, ranked_count: data.length, excluded_admins: 0, total_users: data.length }
+    }
+    return data
+  },
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

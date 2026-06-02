@@ -1296,7 +1296,11 @@ def save_prediction(data: PredictionIn, user=Depends(get_current_user)):
 # --- Leaderboard ---
 @app.get("/api/leaderboard")
 def leaderboard():
-    """Classement global avec infos de groupe pour chaque joueur."""
+    """Classement global avec infos de groupe pour chaque joueur.
+
+    Logique métier : les admins SANS pronostic sont exclus du classement
+    (ils ne sont pas censés concourir). Les admins QUI font des pronos restent inclus.
+    """
     with get_db() as db:
         rows = db.execute("""
             SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
@@ -1312,7 +1316,21 @@ def leaderboard():
             GROUP BY u.id
             ORDER BY total_points DESC, predictions_count DESC
         """).fetchall()
-        return [dict(r) for r in rows]
+
+        # Compte les admins exclus (utile pour transparence côté admin/frontend)
+        excluded_count = db.execute("""
+            SELECT COUNT(*) AS n FROM users u
+            WHERE u.role = 'admin'
+              AND u.id NOT IN (SELECT user_id FROM predictions WHERE user_id IS NOT NULL)
+        """).fetchone()["n"]
+
+        ranked = [dict(r) for r in rows]
+        return {
+            "ranked": ranked,
+            "ranked_count": len(ranked),
+            "excluded_admins": excluded_count,
+            "total_users": len(ranked) + excluded_count,
+        }
 
 
 # --- News ---
@@ -1760,24 +1778,49 @@ def my_group(user=Depends(require_user)):
 
 @app.get("/api/groups/{group_id}/members")
 def list_group_members(group_id: int, user=Depends(require_user)):
-    """Liste les membres d'un groupe. Accessible au leader ou à l'admin."""
+    """Liste les membres d'un groupe avec leur classement (points + pronos).
+    Accessible à tout membre du groupe (pour voir le classement interne),
+    au leader du groupe, et aux admins.
+    """
     with get_db() as db:
         group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
         if not group:
             raise HTTPException(404, "Groupe introuvable")
-        # Vérifier les droits
+
+        # Vérifier les droits : leader, admin, OU membre du groupe
         is_leader = user["role"] == "leader" and group["leader_id"] == user["id"]
         is_admin = user["role"] == "admin"
-        if not (is_leader or is_admin):
-            raise HTTPException(403, "Accès refusé")
+        is_member = user.get("group_id") == group_id
+        if not (is_leader or is_admin or is_member):
+            raise HTTPException(403, "Accès refusé : tu dois être membre du groupe")
+
+        # Identifier le leader pour le badge frontend
+        leader_id = group["leader_id"]
 
         rows = db.execute(
-            """SELECT u.id, u.email, u.username, u.role, u.created_at,
-                      COALESCE((SELECT SUM(p.points) FROM predictions p WHERE p.user_id=u.id), 0) AS points
-               FROM users u WHERE u.group_id=? ORDER BY points DESC, u.username""",
+            """SELECT u.id, u.username, u.role, u.created_at, u.avatar_data,
+                      COALESCE((SELECT SUM(p.points) FROM predictions p WHERE p.user_id=u.id), 0) AS points,
+                      (SELECT COUNT(p.id) FROM predictions p WHERE p.user_id=u.id) AS predictions_count
+               FROM users u WHERE u.group_id=?
+               ORDER BY points DESC, predictions_count DESC, u.username""",
             (group_id,),
         ).fetchall()
-        return [dict(r) for r in rows]
+
+        # Inclure l'email uniquement pour le leader/admin (RGPD : confidentialité)
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["is_leader"] = (d["id"] == leader_id)
+            if is_leader or is_admin:
+                # Le leader et l'admin voient l'email
+                email_row = db.execute("SELECT email FROM users WHERE id=?", (d["id"],)).fetchone()
+                d["email"] = email_row["email"] if email_row else None
+            else:
+                # Les autres membres NE voient PAS l'email des autres (RGPD)
+                d["email"] = None
+            result.append(d)
+
+        return result
 
 
 @app.put("/api/groups/{group_id}")

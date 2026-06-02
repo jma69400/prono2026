@@ -567,13 +567,32 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
 // =====================================================
 // LEADERBOARD TAB
 // =====================================================
-function LeaderboardTab({ leaderboard, currentUserId }) {
+function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
   const { t } = useTranslation()
+  // leaderboard peut être un tableau (ancien format) ou un objet (nouveau format)
+  const ranked = Array.isArray(leaderboard) ? leaderboard : (leaderboard?.ranked || [])
+  const rankedCount = leaderboard?.ranked_count ?? ranked.length
+  const excludedAdmins = leaderboard?.excluded_admins ?? 0
+
   return (
     <div className="space-y-2">
-      {leaderboard.length === 0 ? (
+      {/* Bandeau d'info : nombre de joueurs classés (transparence) */}
+      {ranked.length > 0 && (
+        <div className="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/60">
+          <span>
+            <strong className="text-white/90">{rankedCount}</strong> {rankedCount > 1 ? 'joueurs classés' : 'joueur classé'}
+          </span>
+          {isAdmin && excludedAdmins > 0 && (
+            <span className="text-white/40" title="Les admins sans pronostic ne figurent pas dans le classement public">
+              ℹ️ {excludedAdmins} admin{excludedAdmins > 1 ? 's' : ''} exclu{excludedAdmins > 1 ? 's' : ''} (sans pronos)
+            </span>
+          )}
+        </div>
+      )}
+
+      {ranked.length === 0 ? (
         <div className="text-center py-12 text-white/40">Aucun participant</div>
-      ) : leaderboard.map((entry, i) => (
+      ) : ranked.map((entry, i) => (
         <div key={entry.id}
           className={`flex items-center gap-3 p-4 rounded-xl border transition ${
             entry.id === currentUserId ? 'bg-orange-500/10 border-orange-400/40' : 'bg-white/5 border-white/10'
@@ -3098,9 +3117,13 @@ function GroupTab({ user }) {
       setGroup(g)
       if (g) {
         setName(g.name); setDescription(g.description || ''); setLogoData(g.logo_data)
-        if (isLeader) {
+        // Tous les membres du groupe (leader inclus) voient le classement interne
+        try {
           const m = await api.groupMembers(g.id)
           setMembers(m)
+        } catch (e) {
+          console.error('groupMembers error:', e)
+          setMembers([])
         }
       }
     } catch (e) { console.error(e) }
@@ -3108,6 +3131,21 @@ function GroupTab({ user }) {
   }
 
   useEffect(() => { reload() }, [])
+
+  // Rafraîchissement auto toutes les 60s pour suivre le classement en temps réel
+  // (les points évoluent après chaque match résolu)
+  useEffect(() => {
+    if (!group) return
+    const interval = setInterval(async () => {
+      try {
+        const m = await api.groupMembers(group.id)
+        setMembers(m)
+      } catch (e) {
+        // silencieux : pas de toast d'erreur sur un refresh background
+      }
+    }, 60_000)
+    return () => clearInterval(interval)
+  }, [group])
 
   const handleLogoUpload = (e) => {
     const file = e.target.files[0]
@@ -3219,29 +3257,83 @@ function GroupTab({ user }) {
         </div>
       )}
 
-      {/* Liste des membres (leader uniquement) */}
-      {isLeader && members.length > 0 && (
+      {/* Classement interne du groupe (visible pour TOUS les membres) */}
+      {members.length > 0 && (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <h3 className="font-semibold mb-3">{t('group.members')} ({members.length})</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              🏆 {t('group.ranking')}
+              <span className="text-xs text-white/40 font-normal">({members.length} {members.length > 1 ? t('group.membersPlural') : t('group.membersSingular')})</span>
+            </h3>
+            <button onClick={reload} className="text-xs text-white/40 hover:text-orange-400 transition" title="Rafraîchir">
+              🔄
+            </button>
+          </div>
+
           <div className="space-y-2">
-            {members.map(m => (
-              <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-bold text-sm">
-                    {m.username[0].toUpperCase()}
+            {members.map((m, idx) => {
+              const isMe = m.id === user?.id
+              const rank = idx + 1
+              const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+              return (
+                <div key={m.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition ${
+                    isMe
+                      ? 'bg-orange-500/15 border-orange-400/50 shadow-md shadow-orange-500/10'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}>
+
+                  {/* Rang */}
+                  <div className="w-10 text-center flex-shrink-0">
+                    {rankEmoji ? (
+                      <span className="text-2xl">{rankEmoji}</span>
+                    ) : (
+                      <span className={`font-mono font-bold ${isMe ? 'text-orange-300' : 'text-white/40'}`}>
+                        #{rank}
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <div className="font-semibold text-sm">
-                      {m.username}
-                      {m.role === 'leader' && <span className="ml-2 text-xs text-orange-300">👑 {t('group.leader')}</span>}
+
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm flex-shrink-0 overflow-hidden">
+                    {m.avatar_data ? (
+                      <img src={m.avatar_data} alt={m.username} className="w-full h-full object-cover" />
+                    ) : (
+                      m.username[0].toUpperCase()
+                    )}
+                  </div>
+
+                  {/* Nom + badges */}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">{m.username}</span>
+                      {isMe && <span className="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded-full font-bold">{t('group.you')}</span>}
+                      {m.is_leader && <span className="text-[11px] text-orange-300" title={t('group.leader')}>👑</span>}
                     </div>
-                    <div className="text-xs text-white/40">{m.email}</div>
+                    <div className="text-xs text-white/40 mt-0.5">
+                      {m.predictions_count} {m.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}
+                      {m.email && (isLeader || user?.role === 'admin') && (
+                        <span className="ml-2 text-white/30">· {m.email}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Points */}
+                  <div className="text-right flex-shrink-0">
+                    <div className={`text-lg font-black ${isMe ? 'text-orange-300' : 'text-white/90'}`}>
+                      {m.points}
+                    </div>
+                    <div className="text-[10px] text-white/40 uppercase">{t('group.points')}</div>
                   </div>
                 </div>
-                <div className="text-sm text-orange-300 font-bold">{m.points} {t('group.points')}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+
+          {/* Note de transparence */}
+          <p className="text-[11px] text-white/30 mt-3 text-center">
+            {t('group.rankingNote')}
+          </p>
         </div>
       )}
     </div>
@@ -3410,7 +3502,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('matches')
   const [matches, setMatches] = useState([])
   const [predictions, setPredictions] = useState([])
-  const [leaderboard, setLeaderboard] = useState([])
+  const [leaderboard, setLeaderboard] = useState({ ranked: [], ranked_count: 0, excluded_admins: 0, total_users: 0 })
   const [news, setNews] = useState([])
   const [config, setConfig] = useState({ donations: { enabled: false } })
 
@@ -3712,7 +3804,7 @@ export default function App() {
             isAdmin={isAdmin} onAdminSetScore={handleAdminSetScore}
             isGuest={isGuest} onGuestPrompt={onGuestPrompt} />
         )}
-        {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} />}
+        {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} isAdmin={isAdmin} />}
         {activeTab === 'groups' && <GroupsTab />}
         {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
