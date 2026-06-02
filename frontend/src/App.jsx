@@ -1054,10 +1054,33 @@ function AdminTab({ user }) {
     return () => clearInterval(interval)
   }, [])
 
-  const deleteUser = async (id) => {
-    if (!confirm(t('admin.deleteConfirm'))) return
-    await api.adminDeleteUser(id)
-    setUsers(await api.adminUsers())
+  // === Suppression d'un utilisateur (RGPD) ===
+  // On utilise une modale dédiée (state ci-dessous) au lieu d'un simple confirm()
+  // pour permettre de saisir un motif et de visualiser l'info RGPD à l'admin.
+  const [deleteUserTarget, setDeleteUserTarget] = useState(null)  // { id, username, email }
+  const [deleteMessage, setDeleteMessage] = useState(null)
+
+  const requestDeleteUser = (u) => {
+    setDeleteUserTarget(u)
+  }
+
+  const confirmDeleteUser = async (reason, notify) => {
+    if (!deleteUserTarget) return
+    try {
+      const result = await api.adminDeleteUser(deleteUserTarget.id, { reason, notify })
+      setDeleteMessage({
+        type: 'success',
+        text: result.message || 'Compte supprimé avec succès',
+        emailSent: result.email_notification_sent,
+      })
+      setUsers(await api.adminUsers())
+    } catch (e) {
+      setDeleteMessage({ type: 'error', text: e.message || 'Erreur lors de la suppression' })
+    } finally {
+      setDeleteUserTarget(null)
+      // Toast disparaît après 5 sec
+      setTimeout(() => setDeleteMessage(null), 5000)
+    }
   }
 
   const handleFetchResults = async () => {
@@ -1127,7 +1150,7 @@ function AdminTab({ user }) {
 
       {tab === 'scores' && <AdminScoresPanel />}
 
-      {tab === 'users' && <AdminUsersPanel users={users} currentUserId={user.id} onDelete={deleteUser} />}
+      {tab === 'users' && <AdminUsersPanel users={users} currentUserId={user.id} onDelete={requestDeleteUser} />}
 
       {tab === 'groups' && <AdminGroupsPanel />}
 
@@ -1146,6 +1169,174 @@ function AdminTab({ user }) {
           ))}
         </div>
       )}
+
+      {/* Modale RGPD : confirmation de suppression utilisateur */}
+      {deleteUserTarget && (
+        <DeleteUserGDPRModal
+          target={deleteUserTarget}
+          onCancel={() => setDeleteUserTarget(null)}
+          onConfirm={confirmDeleteUser}
+        />
+      )}
+
+      {/* Toast de confirmation après suppression */}
+      {deleteMessage && (
+        <div className={`fixed top-4 right-4 z-50 max-w-md p-4 rounded-xl shadow-2xl border ${
+          deleteMessage.type === 'success'
+            ? 'bg-green-500/20 border-green-400/50 text-green-100'
+            : 'bg-red-500/20 border-red-400/50 text-red-100'
+        }`}>
+          <div className="flex items-start gap-2">
+            <span className="text-xl">{deleteMessage.type === 'success' ? '✅' : '❌'}</span>
+            <div className="flex-1">
+              <div className="font-semibold text-sm">{deleteMessage.text}</div>
+              {deleteMessage.type === 'success' && deleteMessage.emailSent === false && (
+                <div className="text-xs mt-1 text-yellow-200">
+                  ⚠️ Email RGPD non envoyé (SMTP non configuré ou échec)
+                </div>
+              )}
+            </div>
+            <button onClick={() => setDeleteMessage(null)} className="text-white/60 hover:text-white">✕</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// =====================================================
+// MODALE RGPD : Confirmation de suppression d'un utilisateur
+// =====================================================
+// Affiche un récapitulatif RGPD à l'admin avant de supprimer un compte,
+// avec un champ "motif" (optionnel) qui sera inclus dans l'email envoyé à l'utilisateur.
+function DeleteUserGDPRModal({ target, onCancel, onConfirm }) {
+  const [reason, setReason] = useState('')
+  const [notify, setNotify] = useState(true)
+  const [confirmText, setConfirmText] = useState('')
+  const [processing, setProcessing] = useState(false)
+
+  // Pour éviter une suppression accidentelle, on demande de taper le username
+  const canConfirm = confirmText === target.username && !processing
+
+  const handleSubmit = async () => {
+    if (!canConfirm) return
+    setProcessing(true)
+    try {
+      await onConfirm(reason, notify)
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={onCancel}>
+      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-red-400/40 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="text-3xl">🗑️</div>
+          <div>
+            <h3 className="text-xl font-bold text-red-300">Suppression de compte</h3>
+            <p className="text-xs text-white/50">Conforme RGPD — Article 17</p>
+          </div>
+        </div>
+
+        {/* Récap utilisateur */}
+        <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-3 mb-4">
+          <div className="text-xs text-white/60 mb-1">UTILISATEUR À SUPPRIMER</div>
+          <div className="font-bold text-sm">{target.username}</div>
+          <div className="text-xs text-white/60">{target.email}</div>
+        </div>
+
+        {/* Avertissement RGPD */}
+        <div className="bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-3 mb-4 text-xs text-yellow-100/80">
+          <strong>⚠️ Cette action est irréversible.</strong>
+          <ul className="mt-2 space-y-1 list-disc list-inside">
+            <li>Toutes les données personnelles seront effacées</li>
+            <li>Les pronostics et l'historique seront supprimés</li>
+            <li>Les conversations chat seront effacées</li>
+            <li>Si l'utilisateur est leader de groupe, le groupe sera conservé sans leader</li>
+          </ul>
+        </div>
+
+        {/* Motif (optionnel) */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-white/70 mb-1">
+            Motif de suppression <span className="text-white/40">(optionnel)</span>
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ex: Demande utilisateur (RGPD), Compte inactif, Violation des CGU..."
+            maxLength={200}
+            rows={2}
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-400/50 resize-none"
+          />
+          <div className="text-[11px] text-white/40 mt-1">
+            Si renseigné, sera inclus dans l'email RGPD envoyé à l'utilisateur.
+          </div>
+        </div>
+
+        {/* Option : envoyer l'email RGPD */}
+        <div className="mb-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={notify}
+              onChange={(e) => setNotify(e.target.checked)}
+              className="w-4 h-4 rounded accent-orange-500"
+            />
+            <span className="text-sm">
+              📧 Envoyer l'email de confirmation RGPD à <strong>{target.email}</strong>
+              <span className="text-orange-300 text-xs ml-1">(recommandé)</span>
+            </span>
+          </label>
+          {!notify && (
+            <div className="mt-2 p-2 bg-red-500/10 border border-red-400/30 rounded text-[11px] text-red-200">
+              ⚠️ Désactiver l'email n'est pas conforme RGPD. À utiliser uniquement
+              si l'utilisateur a déjà été notifié par un autre canal (ex: réponse manuelle au support).
+            </div>
+          )}
+        </div>
+
+        {/* Double confirmation : taper le username */}
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-white/70 mb-1">
+            Pour confirmer, tape <code className="px-1.5 py-0.5 bg-white/10 rounded text-orange-300 font-mono">{target.username}</code> ci-dessous :
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={target.username}
+            autoComplete="off"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm font-mono focus:outline-none focus:border-red-400/50"
+          />
+        </div>
+
+        {/* Boutons */}
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onCancel}
+            disabled={processing}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm transition disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!canConfirm}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${
+              canConfirm
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-white/5 text-white/30 cursor-not-allowed'
+            }`}
+          >
+            {processing ? '⏳ Suppression...' : '🗑️ Supprimer définitivement'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1165,10 +1356,10 @@ function GuestPrompt({ onClose, onSignin }) {
         <p className="text-white/70 mb-6">{t('auth.guestPromptText')}</p>
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
-            {t('auth.guestBack')}
+            {t('common.cancel')}
           </button>
-          <button onClick={onSignin} className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg font-bold text-sm">
-            {t('auth.guestPromptBtn')}
+          <button onClick={onSignin} className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg text-sm font-bold">
+            {t('auth.guestPromptCTA')}
           </button>
         </div>
       </div>
@@ -1963,7 +2154,7 @@ function AdminUsersPanel({ users, currentUserId, onDelete }) {
                   )}
                 </div>
                 {u.id !== currentUserId && (
-                  <button onClick={() => onDelete(u.id)}
+                  <button onClick={() => onDelete(u)}
                     className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded flex-shrink-0"
                     title="Supprimer">
                     <Trash2 className="w-4 h-4" />

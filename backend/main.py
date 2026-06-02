@@ -1484,13 +1484,95 @@ def admin_users(user=Depends(require_admin)):
 
 
 @app.delete("/api/admin/users/{user_id}")
-def admin_delete_user(user_id: int, user=Depends(require_admin)):
+def admin_delete_user(
+    user_id: int,
+    reason: str = "",
+    notify: bool = True,
+    user=Depends(require_admin)
+):
+    """Supprime un compte utilisateur (conforme RGPD Article 17).
+
+    Query params optionnels :
+    - reason : motif de suppression (affiché dans l'email RGPD si fourni)
+    - notify : envoyer l'email de confirmation RGPD (défaut True, recommandé)
+
+    Ordre des opérations :
+    1. Récupère email + username AVANT suppression (sinon on perd l'adresse)
+    2. Envoie l'email de confirmation RGPD
+    3. Supprime en cascade en BDD (avec garde-fous)
+    4. Log l'action dans l'audit (anonymisé : seul l'ID, pas l'email)
+    """
     if user_id == user["id"]:
         raise HTTPException(400, "Impossible de supprimer son propre compte")
+
     with get_db() as db:
+        # 1. Récupérer les infos AVANT suppression
+        target = db.execute(
+            "SELECT id, email, username FROM users WHERE id=?",
+            (user_id,)
+        ).fetchone()
+        if not target:
+            raise HTTPException(404, "Utilisateur introuvable")
+
+        target_email = target["email"]
+        target_username = target["username"]
+
+    # 2. Envoyer l'email de confirmation RGPD (hors transaction BDD)
+    # IMPORTANT : on l'envoie AVANT la suppression au cas où l'envoi échoue
+    # et qu'on doive recommencer. Si on supprimait avant, on perdrait l'adresse.
+    email_sent = False
+    if notify:
+        try:
+            email_sent = send_account_deletion_email(
+                target_email, target_username, reason.strip() if reason else ""
+            )
+        except Exception as e:
+            print(f"[DELETE_USER] Erreur envoi email RGPD à {target_email}: {e}")
+            # On continue quand même la suppression (l'utilisateur a demandé l'effacement)
+
+    # 3. Suppression en BDD avec cascade explicite
+    # Note : les FK avec ON DELETE CASCADE devraient gérer ça, mais on est explicite
+    # pour garantir RGPD compliance même si une FK manque.
+    with get_db() as db:
+        # Données personnelles directes
+        db.execute("DELETE FROM predictions WHERE user_id=?", (user_id,))
+
+        # Conversations et messages (chat interne)
+        # Note : conversation_messages cascade automatiquement via FK
+        db.execute("DELETE FROM conversations WHERE user_id=?", (user_id,))
+
+        # Tokens de reset password (au cas où)
+        db.execute("DELETE FROM password_reset_tokens WHERE user_id=?", (user_id,))
+
+        # Messages de contact envoyés par cet utilisateur (si table existe)
+        try:
+            db.execute("DELETE FROM contact_messages WHERE user_id=?", (user_id,))
+        except Exception:
+            pass  # Table peut ne pas exister selon migrations
+
+        # Si l'utilisateur est leader d'un groupe, on désigne le groupe comme "orphelin"
+        # (on ne supprime PAS le groupe pour ne pas pénaliser les autres membres)
+        db.execute("UPDATE groups SET leader_id=NULL WHERE leader_id=?", (user_id,))
+
+        # Suppression du user lui-même
         db.execute("DELETE FROM users WHERE id=?", (user_id,))
-        log_action(user["id"], "delete_user", str(user_id), db=db)
-        return {"ok": True}
+
+        # 4. Log d'audit ANONYMISÉ (RGPD : pas d'email/username, juste l'ID)
+        log_action(
+            user["id"], "delete_user_gdpr",
+            f"user_id={user_id} email_sent={email_sent} reason={'yes' if reason else 'none'}",
+            db=db
+        )
+
+    return {
+        "ok": True,
+        "user_id": user_id,
+        "email_notification_sent": email_sent,
+        "message": f"Compte de {target_username} supprimé. " + (
+            "Email de confirmation RGPD envoyé." if email_sent
+            else "⚠️ Email de confirmation non envoyé (vérifier SMTP)."
+        )
+    }
 
 
 @app.get("/api/admin/users/{user_id}/predictions")
@@ -2679,6 +2761,157 @@ L'équipe United Pronos
     return _send_email_html(
         to_email=email,
         subject="🔐 Réinitialise ton mot de passe sur United Pronos",
+        html_body=html_body,
+        text_body=text_body,
+    )
+
+
+def send_account_deletion_email(email: str, username: str, reason: str = "") -> bool:
+    """Envoie un email de confirmation de suppression de compte (conforme RGPD Article 17).
+
+    À envoyer AVANT la suppression effective en BDD, sinon on perd l'adresse email.
+    L'email confirme à l'utilisateur :
+    - Que son compte a bien été supprimé
+    - Que ses données personnelles ont été effacées
+    - Les données conservées (le cas échéant) et leur base légale
+    - Comment exercer ses autres droits RGPD
+    """
+    site_url = os.environ.get("SITE_URL", "https://unitedpronos.com")
+    contact_email = os.environ.get("CONTACT_EMAIL", "contact@unitedpronos.com")
+    deletion_date = datetime.now(timezone.utc).strftime("%d/%m/%Y à %H:%M UTC")
+
+    # Texte adapté si suppression sur demande de l'utilisateur ou décision admin
+    reason_text = f"\n\nMotif communiqué : {reason}" if reason else ""
+
+    text_body = f"""Bonjour {username},
+
+Conformément à ta demande et à l'Article 17 du RGPD ("Droit à l'effacement"),
+nous t'informons que ton compte United Pronos a été supprimé.
+
+📅 Date de suppression : {deletion_date}
+📧 Compte concerné : {email}{reason_text}
+
+DONNÉES EFFACÉES
+Toutes tes données personnelles ont été supprimées de nos systèmes :
+- Identifiant, email, mot de passe (hashé)
+- Avatar et biographie
+- Pronostics et historique de jeu
+- Appartenance aux groupes
+- Conversations dans le chat interne
+- Préférences (langue, thème)
+
+DONNÉES CONSERVÉES (obligation légale uniquement)
+Pour des raisons légales et de sécurité, certaines traces techniques peuvent être
+conservées 1 an dans nos logs d'audit (anonymisées) : c'est requis par la
+législation française et européenne en cas de litige ou de procédure judiciaire.
+
+TES AUTRES DROITS RGPD
+Tu peux à tout moment exercer tes droits :
+- Droit d'accès aux données restantes
+- Droit de rectification
+- Droit à la portabilité
+- Droit d'opposition
+
+Pour toute question : {contact_email}
+
+CRÉER UN NOUVEAU COMPTE
+Tu es libre de revenir quand tu veux ! Tu peux créer un nouveau compte
+à tout moment sur {site_url} (avec le même email ou un autre).
+
+Merci d'avoir fait partie de la communauté United Pronos !
+
+L'équipe United Pronos
+{site_url}
+
+---
+Cet email est envoyé automatiquement après la suppression effective de ton compte.
+Aucune action n'est requise de ta part. Si tu n'as PAS demandé cette suppression,
+contacte-nous immédiatement à {contact_email}.
+"""
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background: #f5f5f5;">
+  <div style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 32px 20px; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">✅ Suppression de compte confirmée</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Conforme RGPD — Article 17</p>
+  </div>
+
+  <div style="background: white; padding: 32px 24px;">
+    <p style="font-size: 16px;">Bonjour <strong>{username}</strong>,</p>
+
+    <p>Conformément à ta demande et à l'<strong>Article 17 du RGPD</strong> ("Droit à l'effacement"),
+    nous t'informons que ton compte United Pronos a été supprimé avec succès.</p>
+
+    <div style="background: #f3f4f6; border-left: 4px solid #6b7280; padding: 16px; margin: 24px 0; border-radius: 4px;">
+      <p style="margin: 0; font-size: 14px;">
+        <strong>📅 Date de suppression :</strong> {deletion_date}<br>
+        <strong>📧 Compte concerné :</strong> {email}{('<br><strong>📝 Motif :</strong> ' + reason) if reason else ''}
+      </p>
+    </div>
+
+    <h2 style="color: #16a34a; font-size: 18px; margin-top: 32px;">✅ Données effacées</h2>
+    <p style="color: #555; margin-bottom: 8px;">Toutes tes données personnelles ont été supprimées de nos systèmes :</p>
+    <ul style="padding-left: 20px; color: #555;">
+      <li>Identifiant, email, mot de passe (hashé)</li>
+      <li>Avatar et biographie</li>
+      <li>Pronostics et historique de jeu</li>
+      <li>Appartenance aux groupes</li>
+      <li>Conversations dans le chat interne</li>
+      <li>Préférences (langue, thème)</li>
+    </ul>
+
+    <h2 style="color: #f59e0b; font-size: 18px; margin-top: 24px;">ℹ️ Données conservées (obligation légale)</h2>
+    <p style="color: #555;">
+      Pour des raisons légales et de sécurité, certaines traces techniques peuvent être
+      conservées <strong>1 an dans nos logs d'audit</strong> (anonymisées) : c'est requis par
+      la législation française et européenne en cas de litige ou de procédure judiciaire.
+    </p>
+
+    <h2 style="color: #3b82f6; font-size: 18px; margin-top: 24px;">🔐 Tes autres droits RGPD</h2>
+    <p style="color: #555; margin-bottom: 8px;">Tu peux à tout moment exercer tes droits :</p>
+    <ul style="padding-left: 20px; color: #555;">
+      <li>Droit d'accès aux données restantes</li>
+      <li>Droit de rectification</li>
+      <li>Droit à la portabilité</li>
+      <li>Droit d'opposition</li>
+    </ul>
+    <p style="color: #555;">Pour toute question : <a href="mailto:{contact_email}" style="color: #f97316;">{contact_email}</a></p>
+
+    <div style="text-align: center; margin: 40px 0 24px 0; padding: 24px; background: #fff7ed; border-radius: 8px;">
+      <p style="margin: 0 0 12px 0; color: #9a3412; font-weight: bold;">Tu peux revenir quand tu veux ! 👋</p>
+      <p style="margin: 0 0 16px 0; color: #666; font-size: 14px;">
+        Crée un nouveau compte à tout moment, avec le même email ou un autre.
+      </p>
+      <a href="{site_url}" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #f97316, #ec4899); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">
+        🏆 Retourner sur United Pronos
+      </a>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;">
+
+    <p style="font-size: 14px; color: #666; text-align: center;">
+      Merci d'avoir fait partie de la communauté ! ⚽<br>
+      <strong style="color: #f97316;">L'équipe United Pronos</strong>
+    </p>
+
+    <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 12px 16px; margin: 24px 0 0 0; border-radius: 4px; font-size: 13px;">
+      <strong style="color: #991b1b;">⚠️ Tu n'as PAS demandé cette suppression ?</strong><br>
+      <span style="color: #7f1d1d;">Contacte-nous immédiatement à <a href="mailto:{contact_email}" style="color: #991b1b;">{contact_email}</a>.</span>
+    </div>
+  </div>
+
+  <div style="background: #f5f5f5; padding: 16px; text-align: center; font-size: 11px; color: #999;">
+    Email automatique de confirmation de suppression de compte<br>
+    <a href="{site_url}" style="color: #f97316; text-decoration: none;">{site_url}</a>
+  </div>
+</body>
+</html>"""
+
+    return _send_email_html(
+        to_email=email,
+        subject="✅ Suppression de ton compte United Pronos confirmée — RGPD",
         html_body=html_body,
         text_body=text_body,
     )

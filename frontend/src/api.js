@@ -89,7 +89,13 @@ export const api = {
   contact: (data) => request('/contact', { method: 'POST', body: JSON.stringify(data) }),
   // Admin
   adminUsers: () => request('/admin/users'),
-  adminDeleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+  adminDeleteUser: (id, options = {}) => {
+    const params = new URLSearchParams()
+    if (options.reason) params.set('reason', options.reason)
+    if (options.notify === false) params.set('notify', 'false')
+    const query = params.toString() ? `?${params.toString()}` : ''
+    return request(`/admin/users/${id}${query}`, { method: 'DELETE' })
+  },
   adminUserPredictions: (id) => request(`/admin/users/${id}/predictions`),
   adminSetPrediction: (data) => request('/admin/predictions', { method: 'PUT', body: JSON.stringify(data) }),
   adminSetScore: (match_id, home_score, away_score) =>
