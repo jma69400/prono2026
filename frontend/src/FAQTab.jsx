@@ -112,6 +112,10 @@ const FAQ_DATA = {
       icon: '🏆',
       items: [
         {
+          q: 'Comment fonctionne le classement des groupes ?',
+          a: 'Le classement des groupes utilise une formule équilibrée : Score = Moyenne par membre × (1 + log10(membres actifs)). Cette formule récompense à la fois la performance moyenne du groupe ET son engagement collectif. Un petit groupe ultra-performant peut donc battre un gros groupe peu actif. Les groupes avec moins de 2 membres actifs sont exclus du classement. Détails complets dans l\'onglet "🏆 Groupes".',
+        },
+        {
           q: 'À quelle fréquence le classement est mis à jour ?',
           a: 'Le classement est mis à jour automatiquement dès qu\'un résultat de match est enregistré. La mise à jour est instantanée pour toi et les autres membres du groupe.',
         },
@@ -288,6 +292,10 @@ const FAQ_DATA = {
       icon: '🏆',
       items: [
         {
+          q: 'How does the groups ranking work?',
+          a: 'The groups ranking uses a balanced formula: Score = Average per member × (1 + log10(active members)). It rewards both individual performance AND collective engagement. A small high-performing group can beat a large inactive one. Groups with fewer than 2 active members are excluded. Full details in the "🏆 Groups" tab.',
+        },
+        {
           q: 'How often is the ranking updated?',
           a: 'The ranking is updated automatically as soon as a match result is recorded. The update is instant for you and other group members.',
         },
@@ -463,6 +471,10 @@ const FAQ_DATA = {
       category: '🏆 Clasificación',
       icon: '🏆',
       items: [
+        {
+          q: '¿Cómo funciona la clasificación de grupos?',
+          a: 'La clasificación de grupos usa una fórmula equilibrada: Puntuación = Promedio por miembro × (1 + log10(miembros activos)). Recompensa tanto el rendimiento medio como el compromiso colectivo. Un grupo pequeño de alto rendimiento puede vencer a uno grande poco activo. Se excluyen los grupos con menos de 2 miembros activos. Detalles completos en la pestaña "🏆 Grupos".',
+        },
         {
           q: '¿Con qué frecuencia se actualiza la clasificación?',
           a: 'La clasificación se actualiza automáticamente en cuanto se registra un resultado de partido. La actualización es instantánea para ti y otros miembros del grupo.',

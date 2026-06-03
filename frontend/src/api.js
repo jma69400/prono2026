@@ -68,6 +68,8 @@ export const api = {
     }
     return data
   },
+  // Classement des GROUPES (score équilibré performance × engagement)
+  leaderboardGroups: () => request('/leaderboard/groups'),
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

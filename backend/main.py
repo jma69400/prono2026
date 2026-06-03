@@ -1333,6 +1333,86 @@ def leaderboard():
         }
 
 
+@app.get("/api/leaderboard/groups")
+def leaderboard_groups():
+    """Classement des GROUPES — calcul équilibré performance × engagement.
+
+    FORMULE (visible aussi côté front pour transparence) :
+        score = moyenne_points_par_membre × (1 + log10(nb_membres_actifs))
+
+    Récompense à la fois :
+    - La PERFORMANCE moyenne du groupe (un groupe avec de bons pronostiqueurs)
+    - L'ENGAGEMENT collectif (plus de membres actifs = bonus, mais plafonné par log)
+
+    Un "membre actif" = a fait au moins 1 pronostic.
+    Les groupes avec moins de 2 membres actifs sont EXCLUS (groupes fantômes).
+    """
+    import math
+
+    with get_db() as db:
+        # Récupère tous les groupes avec leurs stats agrégées
+        rows = db.execute("""
+            SELECT
+                g.id, g.name, g.description, g.logo_data, g.slug, g.invite_code,
+                g.created_at,
+                COUNT(DISTINCT u.id) AS members_count,
+                COUNT(DISTINCT CASE
+                    WHEN EXISTS (SELECT 1 FROM predictions p WHERE p.user_id = u.id)
+                    THEN u.id
+                END) AS active_members,
+                COALESCE(SUM(
+                    (SELECT SUM(p.points) FROM predictions p WHERE p.user_id = u.id)
+                ), 0) AS total_points,
+                COALESCE(SUM(
+                    (SELECT COUNT(p.id) FROM predictions p WHERE p.user_id = u.id)
+                ), 0) AS total_predictions,
+                leader.username AS leader_username
+            FROM groups g
+            LEFT JOIN users u ON u.group_id = g.id
+            LEFT JOIN users leader ON leader.id = g.leader_id
+            GROUP BY g.id
+        """).fetchall()
+
+        # Calcul du score équilibré côté Python (plus lisible que SQL avec log)
+        groups_ranked = []
+        excluded_count = 0
+        for r in rows:
+            d = dict(r)
+            active = d["active_members"]
+            total_pts = d["total_points"] or 0
+
+            # Exclusion des groupes fantômes (< 2 membres actifs)
+            if active < 2:
+                excluded_count += 1
+                continue
+
+            # Score équilibré : moyenne × (1 + log10(nb actifs))
+            average = total_pts / active if active > 0 else 0
+            engagement_bonus = 1 + math.log10(active)
+            balanced_score = average * engagement_bonus
+
+            d["average_points"] = round(average, 1)
+            d["engagement_bonus"] = round(engagement_bonus, 2)
+            d["balanced_score"] = round(balanced_score, 1)
+            groups_ranked.append(d)
+
+        # Tri par score équilibré décroissant, puis par moyenne en tie-breaker
+        groups_ranked.sort(
+            key=lambda x: (x["balanced_score"], x["average_points"]),
+            reverse=True
+        )
+
+        return {
+            "groups": groups_ranked,
+            "groups_count": len(groups_ranked),
+            "excluded_count": excluded_count,
+            "formula": {
+                "description": "moyenne_points × (1 + log10(nb_membres_actifs))",
+                "min_active_members": 2,
+            },
+        }
+
+
 # --- News ---
 @app.get("/api/news")
 def list_news(team: Optional[str] = None, lang: Optional[str] = 'fr', limit: int = 50):

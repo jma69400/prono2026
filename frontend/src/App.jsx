@@ -8,6 +8,7 @@ import { FloatingChatBox } from './ChatBox.jsx'
 import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
 import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
+import { GroupsLeaderboardTab } from './GroupsLeaderboardTab.jsx'
 
 // =====================================================
 // GOOGLE ANALYTICS 4 — Chargement dynamique
@@ -3707,6 +3708,7 @@ export default function App() {
   const tabs = [
     { id: 'matches', label: t('tabs.matches'), icon: Calendar },
     { id: 'leaderboard', label: t('tabs.leaderboard'), icon: Trophy },
+    { id: 'groupsleaderboard', label: t('tabs.groupsLeaderboard'), icon: Trophy },
     { id: 'groups', label: t('tabs.groups'), icon: Users },
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
@@ -3805,6 +3807,7 @@ export default function App() {
             isGuest={isGuest} onGuestPrompt={onGuestPrompt} />
         )}
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} isAdmin={isAdmin} />}
+        {activeTab === 'groupsleaderboard' && <GroupsLeaderboardTab user={user} currentGroupId={user?.group_id} />}
         {activeTab === 'groups' && <GroupsTab />}
         {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}

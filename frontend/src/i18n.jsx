@@ -239,7 +239,7 @@ const TRANSLATIONS = {
     'contact.archive': 'Archiver',
     'contact.reply': 'Répondre',
 
-    'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement',
+    'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement', 'tabs.groupsLeaderboard': '🏆 Groupes',
     'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.info': 'Infos', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
@@ -503,7 +503,7 @@ const TRANSLATIONS = {
     'contact.archive': 'Archive',
     'contact.reply': 'Reply',
 
-    'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings',
+    'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings', 'tabs.groupsLeaderboard': '🏆 Groups',
     'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
@@ -767,7 +767,7 @@ const TRANSLATIONS = {
     'contact.archive': 'Archivar',
     'contact.reply': 'Responder',
 
-    'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación',
+    'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación', 'tabs.groupsLeaderboard': '🏆 Grupos',
     'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
     'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
