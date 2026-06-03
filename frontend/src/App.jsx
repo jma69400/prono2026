@@ -1732,6 +1732,46 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         </div>
       </section>
 
+      {/* ============================================ */}
+      {/* SECTION SEO : Contenu textuel riche (boost référencement) */}
+      {/* Texte indexable par Google, structuré en H2/H3 */}
+      {/* ============================================ */}
+      <section className="py-12 px-4 sm:px-6 max-w-4xl mx-auto">
+        <h2 className="text-2xl sm:text-3xl font-black mb-4 bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">
+          {t('home.seoSection1Title')}
+        </h2>
+        <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection1P1')}</p>
+        <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection1P2')}</p>
+
+        <h3 className="text-xl font-bold mt-8 mb-3 text-white/90">{t('home.seoSection2Title')}</h3>
+        <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection2P1')}</p>
+        <ul className="space-y-2 text-white/70 leading-relaxed mb-3 pl-5 list-disc">
+          <li>{t('home.seoSection2Li1')}</li>
+          <li>{t('home.seoSection2Li2')}</li>
+          <li>{t('home.seoSection2Li3')}</li>
+          <li>{t('home.seoSection2Li4')}</li>
+        </ul>
+
+        <h3 className="text-xl font-bold mt-8 mb-3 text-white/90">{t('home.seoSection3Title')}</h3>
+        <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection3P1')}</p>
+
+        <h3 className="text-xl font-bold mt-8 mb-3 text-white/90">{t('home.seoSection4Title')}</h3>
+        <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection4P1')}</p>
+
+        {/* Liens internes contextuels */}
+        <div className="mt-8 p-5 bg-white/5 border border-white/10 rounded-xl">
+          <h3 className="text-base font-bold mb-3 text-orange-300">{t('home.seoInternalTitle')}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+            <a href={urls.friendsLeague} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkFriends')}</a>
+            <a href={urls.favorites} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkFavorites')}</a>
+            <a href={urls.schedule} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkSchedule')}</a>
+            <a href={urls.groups} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkGroups')}</a>
+            <a href={urls.teams} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkTeams')}</a>
+            <a href={urls.stadiums} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkStadiums')}</a>
+          </div>
+        </div>
+      </section>
+
       <footer className="py-6 text-center text-xs text-white/30 border-t border-white/10">
         {t('common.footer')}
       </footer>

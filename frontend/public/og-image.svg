@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Fond dégradé violet/orange -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e27"/>
+      <stop offset="50%" stop-color="#1a1f3a"/>
+      <stop offset="100%" stop-color="#0a0e27"/>
+    </linearGradient>
+    <linearGradient id="orangePink" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Cercles décoratifs flous -->
+  <circle cx="100" cy="100" r="200" fill="#f97316" opacity="0.1"/>
+  <circle cx="1100" cy="530" r="250" fill="#ec4899" opacity="0.1"/>
+
+  <!-- Trophée centré -->
+  <text x="600" y="180" font-family="Arial, sans-serif" font-size="120" text-anchor="middle">🏆</text>
+
+  <!-- Titre principal -->
+  <text x="600" y="320" font-family="Arial, sans-serif" font-size="72" font-weight="900" fill="white" text-anchor="middle">United Pronos</text>
+
+  <!-- Sous-titre -->
+  <text x="600" y="380" font-family="Arial, sans-serif" font-size="36" fill="#cbd5e1" text-anchor="middle">Pronostics Coupe du Monde 2026</text>
+
+  <!-- Tagline en bas -->
+  <rect x="350" y="450" width="500" height="80" rx="40" fill="url(#orangePink)"/>
+  <text x="600" y="500" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="white" text-anchor="middle">100% gratuit · Sans pub · Entre amis</text>
+
+  <!-- URL en bas -->
+  <text x="600" y="595" font-family="Arial, sans-serif" font-size="22" fill="#94a3b8" text-anchor="middle">unitedpronos.com</text>
+</svg>
