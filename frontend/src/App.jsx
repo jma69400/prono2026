@@ -305,6 +305,10 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
   const dateLabel = date.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'es' ? 'es-ES' : 'en-US', {
     weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   })
+  // Fuseau horaire du visiteur (ex : "Europe/Paris", "America/New_York")
+  // Affiché en tooltip pour transparence (les utilisateurs voient leur heure locale)
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const dateTitle = `Heure affichée dans ton fuseau (${userTimezone})`
 
   const isFinal = match.stage === 'final'
 
@@ -321,7 +325,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               {t('matches.live')}
             </span>
           )}
-          <Calendar className="w-3 h-3" /> {dateLabel}
+          <Calendar className="w-3 h-3" /> <span title={dateTitle} className="cursor-help">{dateLabel}</span>
         </span>
         <span className="flex items-center gap-2 flex-wrap justify-end">
           {match.stage !== 'group' && (

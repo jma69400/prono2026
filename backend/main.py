@@ -256,6 +256,53 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_groups_invite ON groups(invite_code)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_groups_leader ON groups(leader_id)")
 
+    # === MIGRATION : dates des matchs en UTC officielles FIFA ===
+    # Mise à jour conservatrice :
+    # - Identifie chaque match par (home_team, away_team)
+    # - Met à jour ses dates/stades sans toucher aux pronos liés
+    # - Tag les matchs déjà migrés via une table `_meta` pour ne le faire qu'une fois
+    with get_db() as db:
+        # Crée une table meta pour tracer les migrations one-shot
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS _meta_migrations (
+                key TEXT PRIMARY KEY,
+                applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        already = db.execute(
+            "SELECT 1 FROM _meta_migrations WHERE key='match_dates_utc_v1'"
+        ).fetchone()
+
+        if not already:
+            print("[MIGRATION] Mise à jour des dates des matchs vers UTC officiel FIFA")
+            from wc2026_schedule import ALL_MATCHES
+            updated, not_found = 0, 0
+            for h, a, d, s, g, st in ALL_MATCHES:
+                # Pour les matchs de groupes : identifie par (home, away)
+                # Pour les knockouts : par home (placeholder unique : R32_73, etc.)
+                if s == 'group':
+                    result = db.execute(
+                        "UPDATE matches SET match_date=?, stadium=?, group_letter=?, stage=? "
+                        "WHERE home_team=? AND away_team=?",
+                        (d, st, g, s, h, a)
+                    )
+                else:
+                    # Knockout : identifie par home (placeholder), met aussi à jour away
+                    result = db.execute(
+                        "UPDATE matches SET match_date=?, stadium=?, stage=? "
+                        "WHERE home_team=? OR (home_team LIKE ? AND stage=?)",
+                        (d, st, s, h, h.split('_')[0] + '%', s)
+                    )
+                if result.rowcount > 0:
+                    updated += 1
+                else:
+                    not_found += 1
+
+            db.execute(
+                "INSERT INTO _meta_migrations (key) VALUES ('match_dates_utc_v1')"
+            )
+            print(f"[MIGRATION] ✓ {updated} matchs mis à jour, {not_found} non trouvés")
+
 
 def seed_data():
     with get_db() as db:
@@ -273,181 +320,14 @@ def seed_data():
 
         if db.execute("SELECT COUNT(*) FROM matches").fetchone()[0] == 0:
             # =====================================================
-            # 104 matchs CDM 2026 (72 phase de groupes + 32 phase finale)
+            # 104 matchs CDM 2026 — dates UTC officielles FIFA
+            # Source : inside.fifa.com (6 décembre 2025)
+            # Format : dates en UTC ISO 8601, converties par le frontend
+            #          dans le fuseau du visiteur
             # =====================================================
-            # Stades par hôte
-            STADIUMS = {
-                'MEX_AZ': 'Estadio Azteca, Mexico',
-                'MEX_GUA': 'Estadio Akron, Guadalajara',
-                'MEX_MTY': 'Estadio BBVA, Monterrey',
-                'CAN_TOR': 'BMO Field, Toronto',
-                'CAN_VAN': 'BC Place, Vancouver',
-                'USA_LA': 'SoFi Stadium, Los Angeles',
-                'USA_NY': 'MetLife Stadium, New York',
-                'USA_DAL': 'AT&T Stadium, Dallas',
-                'USA_KC': 'Arrowhead Stadium, Kansas City',
-                'USA_ATL': 'Mercedes-Benz Stadium, Atlanta',
-                'USA_BOS': 'Gillette Stadium, Boston',
-                'USA_HOU': 'NRG Stadium, Houston',
-                'USA_MIA': 'Hard Rock Stadium, Miami',
-                'USA_PHI': 'Lincoln Financial Field, Philadelphie',
-                'USA_SEA': 'Lumen Field, Seattle',
-                'USA_SF': 'Levi\'s Stadium, San Francisco',
-            }
+            from wc2026_schedule import ALL_MATCHES
 
-            # Groupes officiels (tirage du 5 décembre 2025)
-            G = {
-                'A': ['MEX', 'KOR', 'RSA', 'CZE'],
-                'B': ['CAN', 'SUI', 'QAT', 'BIH'],
-                'C': ['BRA', 'MAR', 'HAI', 'SCO'],
-                'D': ['USA', 'PAR', 'AUS', 'TUR'],
-                'E': ['GER', 'ECU', 'CIV', 'CUW'],
-                'F': ['NED', 'JPN', 'SWE', 'TUN'],
-                'G': ['BEL', 'EGY', 'IRN', 'NZL'],
-                'H': ['ESP', 'URU', 'KSA', 'CPV'],
-                'I': ['FRA', 'SEN', 'NOR', 'IRQ'],
-                'J': ['ARG', 'AUT', 'ALG', 'JOR'],
-                'K': ['POR', 'COL', 'UZB', 'COD'],
-                'L': ['ENG', 'CRO', 'GHA', 'PAN'],
-            }
-
-            matches = []
-
-            # =====================================================
-            # PHASE DE GROUPES (72 matchs : 6 par groupe × 12 groupes)
-            # 3 dates par groupe, format round-robin :
-            # J1: 1-2, 3-4 / J2: 1-3, 2-4 / J3: 1-4, 2-3
-            # =====================================================
-            # Calendrier indicatif basé sur le format FIFA officiel
-            group_schedule = [
-                # (groupe, jour_offset_depuis_11_juin, heures_des_2_matchs, stades)
-                ('A', 0, ['20:00'], ['MEX_AZ']),                         # MEX vs RSA (ouverture)
-                ('A', 5, ['18:00'], ['MEX_GUA']),                        # KOR vs CZE
-                ('A', 5, ['21:00'], ['MEX_AZ']),                         # MEX vs ?
-                ('A', 10, ['16:00'], ['MEX_MTY']),                       # ...
-            ]
-
-            # Plus simple : on génère programmatiquement
-            from datetime import datetime as dt, timedelta as td
-            start = dt(2026, 6, 11, 20, 0)
-
-            # Stades par hôte (rotation)
-            HOST_STADIUMS = {
-                'MEX': ['MEX_AZ', 'MEX_GUA', 'MEX_MTY'],
-                'CAN': ['CAN_TOR', 'CAN_VAN'],
-                'USA': ['USA_LA', 'USA_NY', 'USA_DAL', 'USA_KC', 'USA_ATL',
-                        'USA_BOS', 'USA_HOU', 'USA_MIA', 'USA_PHI', 'USA_SEA', 'USA_SF'],
-            }
-
-            # Mapping groupe -> hôte (selon calendrier officiel)
-            GROUP_HOST = {
-                'A': 'MEX', 'B': 'CAN', 'C': 'USA', 'D': 'USA',
-                'E': 'USA', 'F': 'USA', 'G': 'USA', 'H': 'USA',
-                'I': 'USA', 'J': 'USA', 'K': 'USA', 'L': 'USA',
-            }
-
-            stadium_idx = {h: 0 for h in HOST_STADIUMS}
-
-            def next_stadium(host):
-                stadiums = HOST_STADIUMS[host]
-                s = stadiums[stadium_idx[host] % len(stadiums)]
-                stadium_idx[host] += 1
-                return STADIUMS[s]
-
-            # Génération phase de groupes
-            # Chaque groupe : 3 journées, 6 matchs au total
-            # Pattern de matchs : (1,2)(3,4) puis (1,3)(2,4) puis (1,4)(2,3)
-            day_offset = 0
-            hour_slots = ['12:00', '15:00', '18:00', '21:00']
-            slot_idx = 0
-
-            # On répartit les 72 matchs sur 14 jours (11-24 juin)
-            # ~5-6 matchs par jour
-            all_group_matches = []
-            for letter, teams in G.items():
-                t = teams
-                pairings = [
-                    (t[0], t[1]), (t[2], t[3]),  # J1
-                    (t[0], t[2]), (t[1], t[3]),  # J2
-                    (t[0], t[3]), (t[1], t[2]),  # J3
-                ]
-                # 3 journées séparées d'environ 5 jours
-                for journee_idx in range(3):
-                    for match_idx in range(2):
-                        idx = journee_idx * 2 + match_idx
-                        all_group_matches.append({
-                            'group': letter,
-                            'journee': journee_idx,
-                            'home': pairings[idx][0],
-                            'away': pairings[idx][1],
-                            'host': GROUP_HOST[letter],
-                        })
-
-            # Tri : journée par journée, en répartissant les groupes sur les jours
-            all_group_matches.sort(key=lambda m: (m['journee'], m['group']))
-
-            # Étalement sur les jours (J1 = jours 0-4, J2 = jours 5-9, J3 = jours 10-13)
-            for i, m in enumerate(all_group_matches):
-                # 6 matchs par jour max (étalés sur 14 jours)
-                day = m['journee'] * 5 + (i // 6) % 5
-                hour = hour_slots[i % len(hour_slots)]
-                match_dt = dt(2026, 6, 11) + td(days=day)
-                date_str = match_dt.strftime('%Y-%m-%d') + f' {hour}'
-                stadium = next_stadium(m['host'])
-                matches.append((m['home'], m['away'], date_str, 'group', m['group'], stadium))
-
-            # =====================================================
-            # PHASE FINALE — 32 matchs (placeholders avec équipes 'TBD')
-            # 16es de finale (Round of 32) : 16 matchs (28 juin - 3 juillet)
-            # 8es de finale (Round of 16) : 8 matchs (4 - 7 juillet)
-            # Quarts : 4 matchs (9 - 11 juillet)
-            # Demies : 2 matchs (14, 15 juillet)
-            # 3e place : 1 match (18 juillet)
-            # Finale : 1 match (19 juillet)
-            # =====================================================
-            knockout = [
-                # Round of 32 (16e de finale) - 28 juin au 3 juillet
-                ('R32_1',  'R32_2',  '2026-06-28 16:00', 'r32', None, STADIUMS['USA_PHI']),
-                ('R32_3',  'R32_4',  '2026-06-28 19:00', 'r32', None, STADIUMS['USA_BOS']),
-                ('R32_5',  'R32_6',  '2026-06-29 12:00', 'r32', None, STADIUMS['USA_DAL']),
-                ('R32_7',  'R32_8',  '2026-06-29 15:00', 'r32', None, STADIUMS['MEX_GUA']),
-                ('R32_9',  'R32_10', '2026-06-29 18:00', 'r32', None, STADIUMS['USA_LA']),
-                ('R32_11', 'R32_12', '2026-06-30 16:00', 'r32', None, STADIUMS['USA_KC']),
-                ('R32_13', 'R32_14', '2026-06-30 19:00', 'r32', None, STADIUMS['USA_NY']),
-                ('R32_15', 'R32_16', '2026-07-01 12:00', 'r32', None, STADIUMS['USA_HOU']),
-                ('R32_17', 'R32_18', '2026-07-01 15:00', 'r32', None, STADIUMS['MEX_MTY']),
-                ('R32_19', 'R32_20', '2026-07-01 18:00', 'r32', None, STADIUMS['CAN_TOR']),
-                ('R32_21', 'R32_22', '2026-07-02 12:00', 'r32', None, STADIUMS['USA_ATL']),
-                ('R32_23', 'R32_24', '2026-07-02 15:00', 'r32', None, STADIUMS['USA_MIA']),
-                ('R32_25', 'R32_26', '2026-07-02 18:00', 'r32', None, STADIUMS['USA_SEA']),
-                ('R32_27', 'R32_28', '2026-07-03 12:00', 'r32', None, STADIUMS['USA_SF']),
-                ('R32_29', 'R32_30', '2026-07-03 15:00', 'r32', None, STADIUMS['CAN_VAN']),
-                ('R32_31', 'R32_32', '2026-07-03 18:00', 'r32', None, STADIUMS['MEX_AZ']),
-                # Round of 16 (8es) - 4-7 juillet
-                ('R16_1', 'R16_2', '2026-07-04 12:00', 'r16', None, STADIUMS['USA_LA']),
-                ('R16_3', 'R16_4', '2026-07-04 16:00', 'r16', None, STADIUMS['USA_PHI']),
-                ('R16_5', 'R16_6', '2026-07-05 12:00', 'r16', None, STADIUMS['USA_NY']),
-                ('R16_7', 'R16_8', '2026-07-05 16:00', 'r16', None, STADIUMS['MEX_AZ']),
-                ('R16_9', 'R16_10', '2026-07-06 12:00', 'r16', None, STADIUMS['USA_BOS']),
-                ('R16_11', 'R16_12', '2026-07-06 16:00', 'r16', None, STADIUMS['USA_KC']),
-                ('R16_13', 'R16_14', '2026-07-07 12:00', 'r16', None, STADIUMS['USA_MIA']),
-                ('R16_15', 'R16_16', '2026-07-07 16:00', 'r16', None, STADIUMS['USA_DAL']),
-                # Quarts - 9-11 juillet
-                ('QF_1', 'QF_2', '2026-07-09 16:00', 'qf', None, STADIUMS['USA_LA']),
-                ('QF_3', 'QF_4', '2026-07-09 20:00', 'qf', None, STADIUMS['USA_BOS']),
-                ('QF_5', 'QF_6', '2026-07-11 16:00', 'qf', None, STADIUMS['USA_MIA']),
-                ('QF_7', 'QF_8', '2026-07-11 20:00', 'qf', None, STADIUMS['USA_KC']),
-                # Demi-finales - 14-15 juillet
-                ('SF_1', 'SF_2', '2026-07-14 20:00', 'sf', None, STADIUMS['USA_DAL']),
-                ('SF_3', 'SF_4', '2026-07-15 20:00', 'sf', None, STADIUMS['USA_ATL']),
-                # 3e place - 18 juillet
-                ('TBD_3', 'TBD_4', '2026-07-18 16:00', '3rd', None, STADIUMS['USA_MIA']),
-                # FINALE - 19 juillet, MetLife Stadium
-                ('TBD_F1', 'TBD_F2', '2026-07-19 15:00', 'final', None, STADIUMS['USA_NY']),
-            ]
-            matches.extend(knockout)
-
-            for h, a, d, s, g, st in matches:
+            for h, a, d, s, g, st in ALL_MATCHES:
                 db.execute(
                     "INSERT INTO matches (home_team, away_team, match_date, stage, group_letter, stadium) VALUES (?,?,?,?,?,?)",
                     (h, a, d, s, g, st),
