@@ -29,6 +29,7 @@ RUN pip install --user --no-cache-dir --upgrade pip && \
 
 # Code applicatif
 COPY --chown=appuser:appuser main.py .
+COPY --chown=appuser:appuser wc2026_schedule.py .
 
 # Volume pour la DB et les secrets (persistance)
 VOLUME ["/app/data"]

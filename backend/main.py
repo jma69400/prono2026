@@ -261,6 +261,8 @@ def init_db():
     # - Identifie chaque match par (home_team, away_team)
     # - Met à jour ses dates/stades sans toucher aux pronos liés
     # - Tag les matchs déjà migrés via une table `_meta` pour ne le faire qu'une fois
+    # - RÉSILIENT : si wc2026_schedule.py manque (ex: Dockerfile pas à jour),
+    #   on log un warning mais on ne fait PAS crasher le backend
     with get_db() as db:
         # Crée une table meta pour tracer les migrations one-shot
         db.execute("""
@@ -274,34 +276,44 @@ def init_db():
         ).fetchone()
 
         if not already:
-            print("[MIGRATION] Mise à jour des dates des matchs vers UTC officiel FIFA")
-            from wc2026_schedule import ALL_MATCHES
-            updated, not_found = 0, 0
-            for h, a, d, s, g, st in ALL_MATCHES:
-                # Pour les matchs de groupes : identifie par (home, away)
-                # Pour les knockouts : par home (placeholder unique : R32_73, etc.)
-                if s == 'group':
-                    result = db.execute(
-                        "UPDATE matches SET match_date=?, stadium=?, group_letter=?, stage=? "
-                        "WHERE home_team=? AND away_team=?",
-                        (d, st, g, s, h, a)
-                    )
-                else:
-                    # Knockout : identifie par home (placeholder), met aussi à jour away
-                    result = db.execute(
-                        "UPDATE matches SET match_date=?, stadium=?, stage=? "
-                        "WHERE home_team=? OR (home_team LIKE ? AND stage=?)",
-                        (d, st, s, h, h.split('_')[0] + '%', s)
-                    )
-                if result.rowcount > 0:
-                    updated += 1
-                else:
-                    not_found += 1
+            try:
+                from wc2026_schedule import ALL_MATCHES
+                print("[MIGRATION] Mise à jour des dates des matchs vers UTC officiel FIFA")
+                updated, not_found = 0, 0
+                for h, a, d, s, g, st in ALL_MATCHES:
+                    # Pour les matchs de groupes : identifie par (home, away)
+                    # Pour les knockouts : par home (placeholder unique : R32_73, etc.)
+                    if s == 'group':
+                        result = db.execute(
+                            "UPDATE matches SET match_date=?, stadium=?, group_letter=?, stage=? "
+                            "WHERE home_team=? AND away_team=?",
+                            (d, st, g, s, h, a)
+                        )
+                    else:
+                        # Knockout : identifie par home (placeholder), met aussi à jour away
+                        result = db.execute(
+                            "UPDATE matches SET match_date=?, stadium=?, stage=? "
+                            "WHERE home_team=? OR (home_team LIKE ? AND stage=?)",
+                            (d, st, s, h, h.split('_')[0] + '%', s)
+                        )
+                    if result.rowcount > 0:
+                        updated += 1
+                    else:
+                        not_found += 1
 
-            db.execute(
-                "INSERT INTO _meta_migrations (key) VALUES ('match_dates_utc_v1')"
-            )
-            print(f"[MIGRATION] ✓ {updated} matchs mis à jour, {not_found} non trouvés")
+                db.execute(
+                    "INSERT INTO _meta_migrations (key) VALUES ('match_dates_utc_v1')"
+                )
+                print(f"[MIGRATION] ✓ {updated} matchs mis à jour, {not_found} non trouvés")
+            except ModuleNotFoundError as e:
+                # Le fichier wc2026_schedule.py n'est pas dans le container Docker.
+                # On NE marque PAS la migration comme appliquée → elle sera retentée au prochain démarrage.
+                print(f"[MIGRATION] ⚠️  wc2026_schedule.py introuvable, migration UTC reportée: {e}")
+                print(f"[MIGRATION] ⚠️  Vérifier le Dockerfile backend (doit COPY wc2026_schedule.py)")
+            except Exception as e:
+                # Toute autre erreur : log mais ne crashe pas le backend
+                print(f"[MIGRATION] ⚠️  Erreur lors de la migration UTC: {e}")
+                # On NE marque PAS appliquée pour pouvoir réessayer
 
 
 def seed_data():
@@ -325,13 +337,20 @@ def seed_data():
             # Format : dates en UTC ISO 8601, converties par le frontend
             #          dans le fuseau du visiteur
             # =====================================================
-            from wc2026_schedule import ALL_MATCHES
+            try:
+                from wc2026_schedule import ALL_MATCHES
 
-            for h, a, d, s, g, st in ALL_MATCHES:
-                db.execute(
-                    "INSERT INTO matches (home_team, away_team, match_date, stage, group_letter, stadium) VALUES (?,?,?,?,?,?)",
-                    (h, a, d, s, g, st),
-                )
+                for h, a, d, s, g, st in ALL_MATCHES:
+                    db.execute(
+                        "INSERT INTO matches (home_team, away_team, match_date, stage, group_letter, stadium) VALUES (?,?,?,?,?,?)",
+                        (h, a, d, s, g, st),
+                    )
+                print(f"[SEED] ✓ {len(ALL_MATCHES)} matchs insérés depuis wc2026_schedule")
+            except ModuleNotFoundError:
+                # Fallback : si le fichier n'est pas là, on n'insère rien
+                # et l'admin verra "0 matchs" → diagnostic clair côté Docker
+                print("[SEED] ⚠️  wc2026_schedule.py introuvable, aucun match inséré")
+                print("[SEED] ⚠️  Vérifier le Dockerfile backend")
 
 
 # =====================================================
