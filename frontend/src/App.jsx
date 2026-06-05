@@ -257,8 +257,14 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
 // =====================================================
 // HELPERS
 // =====================================================
+// Un code est "TBD" (équipe non encore connue) s'il est vide OU s'il s'agit d'un placeholder
+// de match de phase finale. Les vrais codes sont des trigrammes ISO (FRA, BRA, MEX...).
+// Placeholders : R32_xx (16es), R16_xx (8es), QF_xx (quarts), SF_xx (demis),
+//                TP_xx (3e place), FINAL_xx, TBD_xx (legacy)
 const isTBD = (code) => !code || code.startsWith('R32_') || code.startsWith('R16_') ||
-                       code.startsWith('QF_') || code.startsWith('SF_') || code.startsWith('TBD_')
+                       code.startsWith('QF_') || code.startsWith('SF_') ||
+                       code.startsWith('TP_') || code.startsWith('FINAL_') ||
+                       code.startsWith('TBD_')
 
 const stageLabel = (stage, t) => ({
   group: t('matches.stage.group'), r32: t('matches.stage.r32'), r16: t('matches.stage.r16'),
@@ -335,8 +341,9 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               {t('matches.live')}
             </span>
           )}
-          {/* Badge "sans pronostic" : visible si match à venir, pas de prédiction, et user connecté */}
-          {!isGuest && !locked && !isLive && !prediction && (
+          {/* Badge "sans pronostic" : visible si match à venir, pas de prédiction, user connecté,
+              ET les deux équipes sont connues (pas un placeholder TBD type R32_xx, QF_xx, etc.) */}
+          {!isGuest && !locked && !isLive && !prediction && !homeTBD && !awayTBD && (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded font-bold animate-pulse">
               <span>⏳</span> {t('matches.cardNoPredBadge')}
             </span>
@@ -536,9 +543,14 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
   const [predFilter, setPredFilter] = useState('all')  // all | missing | done
 
   // === Calcul de la progression des pronostics ===
-  // On ne compte que les matchs sur lesquels on PEUT encore parier (status='scheduled')
-  // Les matchs déjà joués ne devraient pas pénaliser l'utilisateur s'il n'a pas pronostiqué dessus
-  const upcomingMatches = matches.filter(m => m.status === 'scheduled')
+  // On compte uniquement les matchs PRONOSTIQUABLES :
+  // - Statut "scheduled" (pas encore joué)
+  // - Les deux équipes sont connues (pas de placeholder TBD type R32_73, QF_98, etc.)
+  // Les matchs de phase finale avec équipes inconnues ne pénalisent donc pas la jauge.
+  const isPredictableMatch = (m) =>
+    m.status === 'scheduled' && !isTBD(m.home_team) && !isTBD(m.away_team)
+
+  const upcomingMatches = matches.filter(isPredictableMatch)
   const predictedIds = new Set(predictions.map(p => p.match_id))
   const upcomingPredicted = upcomingMatches.filter(m => predictedIds.has(m.id))
   const totalUpcoming = upcomingMatches.length
@@ -550,7 +562,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
   const filtered = matches.filter(m => {
     if (filter !== 'all' && m.status !== filter) return false
     if (stageFilter !== 'all' && m.stage !== stageFilter) return false
-    if (predFilter === 'missing' && (predictedIds.has(m.id) || m.status !== 'scheduled')) return false
+    if (predFilter === 'missing' && (predictedIds.has(m.id) || !isPredictableMatch(m))) return false
     if (predFilter === 'done' && !predictedIds.has(m.id)) return false
     return true
   })
@@ -3762,9 +3774,11 @@ export default function App() {
     // === DÉTECTION 100% PRONOS COMPLÉTÉS ===
     // Si l'utilisateur vient de saisir SON DERNIER pronostic manquant,
     // on déclenche un modal contextuel pour proposer de soutenir (UNE seule fois).
-    // Critère : tous les matchs à venir ont une prédiction.
+    // Critère : tous les matchs PRONOSTIQUABLES (équipes connues + à venir) ont une prédiction.
     if (user && !isGuest) {
-      const upcomingMatches = matches.filter(m => m.status === 'scheduled')
+      const upcomingMatches = matches.filter(m =>
+        m.status === 'scheduled' && !isTBD(m.home_team) && !isTBD(m.away_team)
+      )
       const predictedIds = new Set(p.map(pp => pp.match_id))
       const upcomingPredicted = upcomingMatches.filter(m => predictedIds.has(m.id))
       const isComplete = upcomingMatches.length > 0 && upcomingPredicted.length === upcomingMatches.length
