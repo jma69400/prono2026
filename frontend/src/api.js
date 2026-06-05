@@ -70,6 +70,10 @@ export const api = {
   },
   // Classement des GROUPES (score équilibré performance × engagement)
   leaderboardGroups: () => request('/leaderboard/groups'),
+  // === Donations / Supporters ===
+  donationsStats: () => request('/donations/stats'),
+  declareDonation: () => request('/donations/declare', { method: 'POST' }),
+  meIsSupporter: () => request('/me/is-supporter'),
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

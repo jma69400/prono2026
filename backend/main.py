@@ -250,6 +250,28 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_reset_user ON password_reset_tokens(user_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_reset_expires ON password_reset_tokens(expires_at)")
 
+    # === MIGRATION : table donations (pour le compteur de supporters) ===
+    # Stocke les utilisateurs qui ont déclaré avoir fait un don (auto-déclaration).
+    # Choix conscient : on NE stocke PAS de montants, juste l'identité du supporter
+    # pour reconnaître les contributeurs avec un badge ❤️.
+    # Note : on ne peut pas tracker automatiquement les paiements Ko-fi/Stripe sans
+    # configurer leurs webhooks ; on permet donc à l'utilisateur de se déclarer
+    # supporter après don. Un admin peut valider/invalider via le panel admin.
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS donations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                amount_eur REAL,
+                provider TEXT,
+                declared_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                verified INTEGER DEFAULT 1,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_donations_verified ON donations(verified)")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -1207,7 +1229,8 @@ def leaderboard():
                    COUNT(p.id) AS predictions_count,
                    g.name AS group_name,
                    g.logo_data AS group_logo,
-                   g.slug AS group_slug
+                   g.slug AS group_slug,
+                   EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
             FROM users u
             LEFT JOIN predictions p ON p.user_id = u.id
             LEFT JOIN groups g ON g.id = u.group_id
@@ -3548,6 +3571,99 @@ def admin_delete_conversation(conv_id: int, user=Depends(require_admin)):
 @app.get("/api/health")
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
+
+
+# =====================================================
+# DONATIONS — Système de reconnaissance des supporters
+# =====================================================
+# Le site est gratuit et sans pub. Le financement repose sur les dons volontaires.
+# Pour reconnaître les contributeurs sans tracking publicitaire, on permet aux
+# utilisateurs de se déclarer "supporters" après un don, et on affiche :
+#   - Un compteur global (nb de supporters)
+#   - Un badge ❤️ sur leur pseudo
+#   - Leur pseudo sur la page Crédits (avec leur consentement implicite)
+
+@app.get("/api/donations/stats")
+def donations_stats():
+    """Stats publiques pour la page de transparence + page crédits.
+    PAS de montants individuels exposés (RGPD + souhait utilisateur).
+    Renvoie seulement le COUNT de supporters distincts validés.
+    """
+    with get_db() as db:
+        # Compte les utilisateurs DISTINCTS qui ont fait au moins 1 don validé
+        count_row = db.execute("""
+            SELECT COUNT(DISTINCT user_id) AS n
+            FROM donations
+            WHERE verified = 1
+        """).fetchone()
+        supporter_count = count_row["n"] if count_row else 0
+
+        # Liste publique : pseudos des supporters (ordre antichronologique de leur 1er don)
+        supporters = db.execute("""
+            SELECT u.username, MIN(d.declared_at) AS first_donation_at
+            FROM donations d
+            JOIN users u ON u.id = d.user_id
+            WHERE d.verified = 1
+            GROUP BY u.id, u.username
+            ORDER BY first_donation_at DESC
+            LIMIT 200
+        """).fetchall()
+
+        return {
+            "supporter_count": supporter_count,
+            "supporters": [dict(s) for s in supporters],
+        }
+
+
+@app.post("/api/donations/declare")
+def declare_donation(user=Depends(require_user)):
+    """L'utilisateur se déclare supporter après avoir fait un don sur Ko-fi/Stripe.
+    Aucune vérification automatique (les webhooks Ko-fi/Stripe ne sont pas configurés).
+    Un admin peut invalider une fausse déclaration si abus.
+
+    Note : ce n'est PAS une fraude possible — c'est juste un badge symbolique.
+    Si quelqu'un se déclare faussement supporter sans avoir donné, il ne gagne rien
+    de monétisable (pas de fonctionnalité premium, juste un badge ❤️).
+    """
+    with get_db() as db:
+        # Évite les doublons : un seul enregistrement par utilisateur
+        existing = db.execute(
+            "SELECT id FROM donations WHERE user_id = ? AND verified = 1",
+            (user["id"],)
+        ).fetchone()
+
+        if existing:
+            return {"ok": True, "already_supporter": True}
+
+        db.execute(
+            "INSERT INTO donations (user_id, verified) VALUES (?, 1)",
+            (user["id"],)
+        )
+        log_action(user["id"], "declared_supporter", "", db=db)
+        return {"ok": True, "already_supporter": False}
+
+
+@app.get("/api/me/is-supporter")
+def me_is_supporter(user=Depends(require_user)):
+    """Indique si l'utilisateur courant est un supporter (pour afficher son badge)."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT 1 FROM donations WHERE user_id = ? AND verified = 1 LIMIT 1",
+            (user["id"],)
+        ).fetchone()
+        return {"is_supporter": bool(row)}
+
+
+@app.delete("/api/admin/donations/{user_id}")
+def admin_invalidate_supporter(user_id: int, admin=Depends(require_admin)):
+    """Permet à un admin d'invalider un statut de supporter (fausse déclaration, abus, etc.)."""
+    with get_db() as db:
+        db.execute(
+            "UPDATE donations SET verified = 0 WHERE user_id = ?",
+            (user_id,)
+        )
+        log_action(admin["id"], "invalidate_supporter", str(user_id), db=db)
+        return {"ok": True}
 
 
 @app.get("/api/config")

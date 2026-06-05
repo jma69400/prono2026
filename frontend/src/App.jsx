@@ -9,6 +9,16 @@ import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
 import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
 import { GroupsLeaderboardTab } from './GroupsLeaderboardTab.jsx'
+import {
+  HeaderSupportButton,
+  HeaderSupportButtonMobile,
+  SupportPage,
+  SupporterBadge,
+  ContextualDonationModal,
+  shouldShowContextualModal,
+  markContextualModalShown,
+  SupportersWallPage,
+} from './SupportSystem.jsx'
 
 // =====================================================
 // GOOGLE ANALYTICS 4 — Chargement dynamique
@@ -745,6 +755,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
           <div className="flex-1 min-w-0">
             <div className="font-bold flex items-center gap-2 flex-wrap">
               {entry.username}
+              {entry.is_supporter && <SupporterBadge small />}
               {entry.role === 'leader' && <span className="text-xs text-purple-300">👑</span>}
             </div>
             <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
@@ -3660,6 +3671,7 @@ export default function App() {
   const [showGuestPrompt, setShowGuestPrompt] = useState(false)
   const [showDonate, setShowDonate] = useState(false)
   const [showContact, setShowContact] = useState(false)
+  const [contextualDonation, setContextualDonation] = useState(null)  // null | 'all_pronos_done' | 'podium_reached' | 'group_active'
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('matches')
   const [matches, setMatches] = useState([])
@@ -3746,6 +3758,25 @@ export default function App() {
     await api.savePrediction(matchId, h, a)
     const [p, l] = await Promise.all([api.myPredictions(), api.leaderboard()])
     setPredictions(p); setLeaderboard(l)
+
+    // === DÉTECTION 100% PRONOS COMPLÉTÉS ===
+    // Si l'utilisateur vient de saisir SON DERNIER pronostic manquant,
+    // on déclenche un modal contextuel pour proposer de soutenir (UNE seule fois).
+    // Critère : tous les matchs à venir ont une prédiction.
+    if (user && !isGuest) {
+      const upcomingMatches = matches.filter(m => m.status === 'scheduled')
+      const predictedIds = new Set(p.map(pp => pp.match_id))
+      const upcomingPredicted = upcomingMatches.filter(m => predictedIds.has(m.id))
+      const isComplete = upcomingMatches.length > 0 && upcomingPredicted.length === upcomingMatches.length
+
+      if (isComplete && shouldShowContextualModal('all_pronos_done')) {
+        // Léger délai pour laisser l'animation de save se terminer
+        setTimeout(() => {
+          setContextualDonation('all_pronos_done')
+          markContextualModalShown('all_pronos_done')
+        }, 800)
+      }
+    }
   }
 
   const handleAdminSetScore = async (matchId, h, a) => {
@@ -3918,10 +3949,12 @@ export default function App() {
               {user ? '💬' : '✉️'} <span className="hidden sm:inline">{t('contact.menuItem')}</span>
             </button>
             {config.donations?.enabled && (
-              <button onClick={() => setShowDonate(true)}
-                className="px-2.5 py-1.5 bg-gradient-to-r from-orange-500/20 to-pink-500/20 hover:from-orange-500/30 hover:to-pink-500/30 border border-orange-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5"
-                title={t('donate.title')}>
-                ☕ <span className="hidden sm:inline">{t('donate.menuItem')}</span>
+              <button
+                onClick={() => setActiveTab('support')}
+                className="px-2.5 py-1.5 bg-gradient-to-r from-pink-500/20 to-orange-500/20 hover:from-pink-500/30 hover:to-orange-500/30 border border-pink-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group"
+                title={t('support.headerTooltip')}>
+                <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
+                <span className="hidden sm:inline">{t('support.headerButton')}</span>
               </button>
             )}
             {user ? (
@@ -3969,6 +4002,8 @@ export default function App() {
         )}
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} isAdmin={isAdmin} />}
         {activeTab === 'groupsleaderboard' && <GroupsLeaderboardTab user={user} currentGroupId={user?.group_id} />}
+        {activeTab === 'support' && <SupportPage user={user} onClose={(nextTab) => nextTab === 'credits' ? setActiveTab('credits') : setActiveTab('matches')} />}
+        {activeTab === 'credits' && <SupportersWallPage />}
         {activeTab === 'groups' && <GroupsTab />}
         {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
@@ -4019,6 +4054,15 @@ export default function App() {
       {showGuestPrompt && <GuestPrompt onClose={() => setShowGuestPrompt(false)} onSignin={goToAuth} />}
       {showDonate && config.donations?.enabled && <DonateModal onClose={() => setShowDonate(false)} links={config.donations} />}
       {showContact && <ContactModal onClose={() => setShowContact(false)} currentUser={user} turnstileSiteKey={config.turnstile?.site_key} />}
+
+      {/* Modal contextuel de don : déclenché après actions positives (100% pronos, etc.) */}
+      {contextualDonation && (
+        <ContextualDonationModal
+          trigger={contextualDonation}
+          onClose={() => setContextualDonation(null)}
+          onGoToSupport={() => setActiveTab('support')}
+        />
+      )}
 
       {/* Chat-box flottante pour les utilisateurs connectés (résout le problème délivrabilité Outlook) */}
       <FloatingChatBox user={user} />
