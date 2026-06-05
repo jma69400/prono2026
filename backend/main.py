@@ -294,39 +294,69 @@ def init_db():
             )
         """)
         already = db.execute(
-            "SELECT 1 FROM _meta_migrations WHERE key='match_dates_utc_v1'"
+            "SELECT 1 FROM _meta_migrations WHERE key='match_dates_utc_v2_official'"
         ).fetchone()
 
         if not already:
             try:
-                from wc2026_schedule import ALL_MATCHES
-                print("[MIGRATION] Mise à jour des dates des matchs vers UTC officiel FIFA")
+                from wc2026_schedule import ALL_MATCHES, GROUP_MATCHES
+                print("[MIGRATION v2] Reconstruction complète du calendrier officiel FIFA")
+
+                # === STRATÉGIE v2 ===
+                # On identifie les matchs existants par (group_letter, position chronologique)
+                # plutôt que par (home, away) car les équipes peuvent être fausses dans la BDD.
+                # Pour chaque groupe, on trie les matchs par date et on UPDATE en ordre.
+
+                from collections import defaultdict
+                # Groupe les nouveaux matchs officiels par lettre, en ordre chronologique
+                new_by_group = defaultdict(list)
+                for m in GROUP_MATCHES:
+                    h, a, d, s, g, st = m
+                    new_by_group[g].append((h, a, d, st))
+                # Trie chaque groupe par date pour stabilité
+                for g in new_by_group:
+                    new_by_group[g].sort(key=lambda x: x[2])
+
                 updated, not_found = 0, 0
+
+                # Pour chaque groupe, récupère les matchs existants en BDD (triés par date)
+                # et les UPDATE position par position
+                for g_letter, new_matches in new_by_group.items():
+                    existing = db.execute(
+                        "SELECT id FROM matches WHERE group_letter=? ORDER BY id",
+                        (g_letter,)
+                    ).fetchall()
+                    if len(existing) != len(new_matches):
+                        print(f"[MIGRATION v2] ⚠️ Groupe {g_letter}: {len(existing)} matchs en BDD vs {len(new_matches)} attendus")
+                    # On remappe les N premiers (ou tous si moins en BDD)
+                    for i, ex in enumerate(existing[:len(new_matches)]):
+                        h, a, d, st = new_matches[i]
+                        db.execute(
+                            "UPDATE matches SET home_team=?, away_team=?, match_date=?, stadium=?, stage='group', group_letter=? "
+                            "WHERE id=?",
+                            (h, a, d, st, g_letter, ex["id"])
+                        )
+                        updated += 1
+
+                # Pour les knockouts : juste mettre à jour les dates/stades (sans toucher aux équipes
+                # qui sont des placeholders type R32_73)
                 for h, a, d, s, g, st in ALL_MATCHES:
-                    # Pour les matchs de groupes : identifie par (home, away)
-                    # Pour les knockouts : par home (placeholder unique : R32_73, etc.)
                     if s == 'group':
-                        result = db.execute(
-                            "UPDATE matches SET match_date=?, stadium=?, group_letter=?, stage=? "
-                            "WHERE home_team=? AND away_team=?",
-                            (d, st, g, s, h, a)
-                        )
-                    else:
-                        # Knockout : identifie par home (placeholder), met aussi à jour away
-                        result = db.execute(
-                            "UPDATE matches SET match_date=?, stadium=?, stage=? "
-                            "WHERE home_team=? OR (home_team LIKE ? AND stage=?)",
-                            (d, st, s, h, h.split('_')[0] + '%', s)
-                        )
+                        continue  # déjà fait
+                    result = db.execute(
+                        "UPDATE matches SET match_date=?, stadium=?, stage=? "
+                        "WHERE home_team=? OR (home_team LIKE ? AND stage=?)",
+                        (d, st, s, h, h.split('_')[0] + '%', s)
+                    )
                     if result.rowcount > 0:
                         updated += 1
                     else:
                         not_found += 1
 
                 db.execute(
-                    "INSERT INTO _meta_migrations (key) VALUES ('match_dates_utc_v1')"
+                    "INSERT INTO _meta_migrations (key) VALUES ('match_dates_utc_v2_official')"
                 )
-                print(f"[MIGRATION] ✓ {updated} matchs mis à jour, {not_found} non trouvés")
+                print(f"[MIGRATION v2] ✓ {updated} matchs mis à jour, {not_found} knockouts non trouvés")
             except ModuleNotFoundError as e:
                 # Le fichier wc2026_schedule.py n'est pas dans le container Docker.
                 # On NE marque PAS la migration comme appliquée → elle sera retentée au prochain démarrage.
