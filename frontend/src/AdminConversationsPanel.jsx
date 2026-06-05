@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { api } from './api'
+import { EmojiPicker } from './EmojiPicker.jsx'
 
 // =====================================================
 // PANNEAU ADMIN — Gestion des conversations
@@ -251,10 +252,25 @@ export function AdminConversationsPanel() {
 
 function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDeleteConv }) {
   const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState([])
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [showEmojis, setShowEmojis] = useState(false)
+
+  const insertEmoji = (emoji) => {
+    const ta = textareaRef.current
+    if (!ta) { setContent(prev => prev + emoji); return }
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    setContent(content.slice(0, start) + emoji + content.slice(end))
+    setTimeout(() => {
+      ta.focus()
+      const pos = start + emoji.length
+      ta.setSelectionRange(pos, pos)
+    }, 0)
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -395,6 +411,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
         </div>
         <div className="flex items-end gap-2">
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Tape ta réponse..."
@@ -402,6 +419,28 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
             maxLength={10000}
             className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none max-h-32"
           />
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojis(v => !v)}
+              className={`p-2 border rounded-lg text-sm w-10 h-10 flex items-center justify-center transition ${
+                showEmojis
+                  ? 'bg-orange-500/20 border-orange-400/40'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10'
+              }`}
+              title="Ajouter un emoji"
+              aria-label="Ajouter un emoji"
+            >
+              😊
+            </button>
+            {showEmojis && (
+              <EmojiPicker
+                onSelect={insertEmoji}
+                onClose={() => setShowEmojis(false)}
+                position="top"
+              />
+            )}
+          </div>
           <label className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer text-sm" title="Ajouter une image">
             📎
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
@@ -429,6 +468,21 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState([])
   const [sending, setSending] = useState(false)
+  const [showEmojis, setShowEmojis] = useState(false)
+  const textareaRef = useRef(null)
+
+  const insertEmoji = (emoji) => {
+    const ta = textareaRef.current
+    if (!ta) { setContent(prev => prev + emoji); return }
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    setContent(content.slice(0, start) + emoji + content.slice(end))
+    setTimeout(() => {
+      ta.focus()
+      const pos = start + emoji.length
+      ta.setSelectionRange(pos, pos)
+    }, 0)
+  }
   const [loadingUsers, setLoadingUsers] = useState(true)
 
   // Charge la liste des utilisateurs au montage
@@ -626,6 +680,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
               Message
             </label>
             <textarea
+              ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Écris ton message..."
@@ -636,6 +691,29 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
             <div className="flex items-center justify-between mt-1 text-xs text-white/30">
               <span>{content.length} / 10000 caractères</span>
               <span>💡 Tu peux coller (Ctrl+V) une capture d'écran</span>
+            </div>
+            {/* Bouton emoji picker */}
+            <div className="relative inline-flex mt-2">
+              <button
+                type="button"
+                onClick={() => setShowEmojis(v => !v)}
+                className={`p-1.5 border rounded-lg text-base flex items-center justify-center transition ${
+                  showEmojis
+                    ? 'bg-orange-500/20 border-orange-400/40'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10'
+                }`}
+                title="Ajouter un emoji"
+                aria-label="Ajouter un emoji"
+              >
+                😊
+              </button>
+              {showEmojis && (
+                <EmojiPicker
+                  onSelect={insertEmoji}
+                  onClose={() => setShowEmojis(false)}
+                  position="top"
+                />
+              )}
             </div>
           </div>
 

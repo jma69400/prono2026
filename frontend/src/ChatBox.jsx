@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { api } from './api'
 import { useTranslation } from './i18n'
+import { EmojiPicker } from './EmojiPicker.jsx'
 
 // =====================================================
 // CHAT-BOX FLOTTANTE — Pour les utilisateurs connectés
@@ -561,6 +562,25 @@ function NewConversationForm({ onCancel, onCreated }) {
   const [attachments, setAttachments] = useState([])
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [showEmojis, setShowEmojis] = useState(false)
+  const textareaRef = useRef(null)
+
+  // Insère un emoji à la position du curseur
+  const insertEmoji = (emoji) => {
+    const ta = textareaRef.current
+    if (!ta) {
+      setContent(prev => prev + emoji)
+      return
+    }
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    setContent(content.slice(0, start) + emoji + content.slice(end))
+    setTimeout(() => {
+      ta.focus()
+      const pos = start + emoji.length
+      ta.setSelectionRange(pos, pos)
+    }, 0)
+  }
 
   const handleFile = (e) => {
     const files = Array.from(e.target.files || [])
@@ -612,6 +632,7 @@ function NewConversationForm({ onCancel, onCreated }) {
         className="w-full px-3 py-2 mb-2 bg-white/5 border border-white/10 rounded-lg text-sm"
       />
       <textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Décris ta question ou ton problème..."
@@ -620,6 +641,29 @@ function NewConversationForm({ onCancel, onCreated }) {
         autoFocus
         className="w-full flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none"
       />
+      {/* Bouton emoji picker (sous la textarea) */}
+      <div className="relative inline-flex mt-2">
+        <button
+          type="button"
+          onClick={() => setShowEmojis(v => !v)}
+          className={`p-1.5 border rounded-lg text-base flex items-center justify-center transition ${
+            showEmojis
+              ? 'bg-orange-500/20 border-orange-400/40'
+              : 'bg-white/5 hover:bg-white/10 border-white/10'
+          }`}
+          title="Ajouter un emoji"
+          aria-label="Ajouter un emoji"
+        >
+          😊
+        </button>
+        {showEmojis && (
+          <EmojiPicker
+            onSelect={insertEmoji}
+            onClose={() => setShowEmojis(false)}
+            position="top"
+          />
+        )}
+      </div>
       {attachments.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {attachments.map((a, i) => (
@@ -655,10 +699,33 @@ function NewConversationForm({ onCancel, onCreated }) {
 // ─────────────────────────────────────────────
 function ConversationView({ conv, onMessageSent }) {
   const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState([])
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [showEmojis, setShowEmojis] = useState(false)
+
+  // Insère un emoji à la position du curseur dans le textarea
+  const insertEmoji = (emoji) => {
+    const ta = textareaRef.current
+    if (!ta) {
+      // Fallback : ajoute à la fin
+      setContent(prev => prev + emoji)
+      return
+    }
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    const newContent = content.slice(0, start) + emoji + content.slice(end)
+    setContent(newContent)
+    // Repositionne le curseur APRÈS l'emoji inséré
+    // (utiliser setTimeout car React rerender d'abord)
+    setTimeout(() => {
+      ta.focus()
+      const pos = start + emoji.length
+      ta.setSelectionRange(pos, pos)
+    }, 0)
+  }
 
   // Scroll auto en bas quand nouveaux messages
   useEffect(() => {
@@ -749,6 +816,7 @@ function ConversationView({ conv, onMessageSent }) {
         {error && <div className="text-xs text-red-300 mb-2">{error}</div>}
         <div className="flex items-end gap-2">
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={(e) => {
@@ -759,6 +827,29 @@ function ConversationView({ conv, onMessageSent }) {
             maxLength={5000}
             className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm resize-none max-h-32"
           />
+          {/* Bouton emoji picker */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowEmojis(v => !v)}
+              className={`p-2 border rounded-lg text-sm w-10 h-10 flex items-center justify-center transition ${
+                showEmojis
+                  ? 'bg-orange-500/20 border-orange-400/40'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10'
+              }`}
+              title="Ajouter un emoji"
+              aria-label="Ajouter un emoji"
+            >
+              😊
+            </button>
+            {showEmojis && (
+              <EmojiPicker
+                onSelect={insertEmoji}
+                onClose={() => setShowEmojis(false)}
+                position="top"
+              />
+            )}
+          </div>
           <label className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer text-sm" title="Ajouter une image">
             📎
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
