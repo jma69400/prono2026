@@ -263,7 +263,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Matchs', 'tabs.leaderboard': 'Classement', 'tabs.groupsLeaderboard': '🏆 Groupes',
     'tabs.groups': 'Groupes', 'tabs.news': 'Actualités', 'tabs.info': 'Infos', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
-    'matches.all': 'Tous', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
+    'matches.all': 'Tous', 'matches.progressTitle': 'Tes pronostics', 'matches.progressComplete': 'Tous tes pronostics sont saisis !', 'matches.progressAllDone': 'Bravo, rien à compléter ! 🎉', 'matches.progressMatches': 'matchs pronostiqués', 'matches.progressRemaining': 'restants', 'matches.progressShowMissing': 'Voir les matchs sans pronostic', 'matches.predFilterAll': 'Tous', 'matches.predFilterMissing': 'Sans prono', 'matches.predFilterDone': 'Pronostiqués', 'matches.cardNoPredBadge': 'Sans prono', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
     'matches.aiPredict': 'IA prédit', 'matches.confidence': 'Confiance',
     'matches.confidenceHigh': 'élevée', 'matches.confidenceMedium': 'moyenne', 'matches.confidenceLow': 'faible',
     'matches.locked': 'Match terminé', 'matches.noPrediction': 'Pas de prono',
@@ -548,7 +548,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Matches', 'tabs.leaderboard': 'Standings', 'tabs.groupsLeaderboard': '🏆 Groups',
     'tabs.groups': 'Groups', 'tabs.news': 'News', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
-    'matches.all': 'All', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
+    'matches.all': 'All', 'matches.progressTitle': 'Your predictions', 'matches.progressComplete': 'All your predictions are saved!', 'matches.progressAllDone': 'Well done, nothing left to do! 🎉', 'matches.progressMatches': 'matches predicted', 'matches.progressRemaining': 'remaining', 'matches.progressShowMissing': 'Show matches without prediction', 'matches.predFilterAll': 'All', 'matches.predFilterMissing': 'Missing', 'matches.predFilterDone': 'Predicted', 'matches.cardNoPredBadge': 'No prediction', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
     'matches.aiPredict': 'AI predicts', 'matches.confidence': 'Confidence',
     'matches.confidenceHigh': 'high', 'matches.confidenceMedium': 'medium', 'matches.confidenceLow': 'low',
     'matches.locked': 'Match ended', 'matches.noPrediction': 'No prediction',
@@ -833,7 +833,7 @@ const TRANSLATIONS = {
     'tabs.matches': 'Partidos', 'tabs.leaderboard': 'Clasificación', 'tabs.groupsLeaderboard': '🏆 Grupos',
     'tabs.groups': 'Grupos', 'tabs.news': 'Noticias', 'tabs.info': 'Info', 'tabs.faq': 'FAQ', 'tabs.admin': 'Admin',
 
-    'matches.all': 'Todos', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
+    'matches.all': 'Todos', 'matches.progressTitle': 'Tus pronósticos', 'matches.progressComplete': '¡Todos tus pronósticos están guardados!', 'matches.progressAllDone': '¡Bien hecho, nada que completar! 🎉', 'matches.progressMatches': 'partidos pronosticados', 'matches.progressRemaining': 'restantes', 'matches.progressShowMissing': 'Ver partidos sin pronóstico', 'matches.predFilterAll': 'Todos', 'matches.predFilterMissing': 'Sin prono', 'matches.predFilterDone': 'Pronosticados', 'matches.cardNoPredBadge': 'Sin prono', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
     'matches.aiPredict': 'IA predice', 'matches.confidence': 'Confianza',
     'matches.confidenceHigh': 'alta', 'matches.confidenceMedium': 'media', 'matches.confidenceLow': 'baja',
     'matches.locked': 'Partido terminado', 'matches.noPrediction': 'Sin pronóstico',

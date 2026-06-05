@@ -325,6 +325,12 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               {t('matches.live')}
             </span>
           )}
+          {/* Badge "sans pronostic" : visible si match à venir, pas de prédiction, et user connecté */}
+          {!isGuest && !locked && !isLive && !prediction && (
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded font-bold animate-pulse">
+              <span>⏳</span> {t('matches.cardNoPredBadge')}
+            </span>
+          )}
           <Calendar className="w-3 h-3" /> <span title={dateTitle} className="cursor-help">{dateLabel}</span>
         </span>
         <span className="flex items-center gap-2 flex-wrap justify-end">
@@ -517,10 +523,25 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
   const { t } = useTranslation()
   const [filter, setFilter] = useState('all')
   const [stageFilter, setStageFilter] = useState('all')
+  const [predFilter, setPredFilter] = useState('all')  // all | missing | done
+
+  // === Calcul de la progression des pronostics ===
+  // On ne compte que les matchs sur lesquels on PEUT encore parier (status='scheduled')
+  // Les matchs déjà joués ne devraient pas pénaliser l'utilisateur s'il n'a pas pronostiqué dessus
+  const upcomingMatches = matches.filter(m => m.status === 'scheduled')
+  const predictedIds = new Set(predictions.map(p => p.match_id))
+  const upcomingPredicted = upcomingMatches.filter(m => predictedIds.has(m.id))
+  const totalUpcoming = upcomingMatches.length
+  const totalPredicted = upcomingPredicted.length
+  const missingCount = totalUpcoming - totalPredicted
+  const progressPct = totalUpcoming > 0 ? Math.round((totalPredicted / totalUpcoming) * 100) : 0
+  const isComplete = totalPredicted === totalUpcoming && totalUpcoming > 0
 
   const filtered = matches.filter(m => {
     if (filter !== 'all' && m.status !== filter) return false
     if (stageFilter !== 'all' && m.stage !== stageFilter) return false
+    if (predFilter === 'missing' && (predictedIds.has(m.id) || m.status !== 'scheduled')) return false
+    if (predFilter === 'done' && !predictedIds.has(m.id)) return false
     return true
   })
 
@@ -528,6 +549,69 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
 
   return (
     <div>
+      {/* === JAUGE DE PROGRESSION (visible si user connecté avec des matchs à venir) === */}
+      {!isGuest && totalUpcoming > 0 && (
+        <div className={`mb-5 p-4 rounded-xl border transition ${
+          isComplete
+            ? 'bg-green-500/10 border-green-400/40'
+            : missingCount > 5
+              ? 'bg-orange-500/10 border-orange-400/30'
+              : 'bg-white/5 border-white/10'
+        }`}>
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">{isComplete ? '🎉' : '📋'}</span>
+              <div>
+                <div className="font-bold text-sm">
+                  {isComplete
+                    ? t('matches.progressComplete')
+                    : t('matches.progressTitle')
+                  }
+                </div>
+                <div className="text-xs text-white/60 mt-0.5">
+                  {isComplete
+                    ? t('matches.progressAllDone')
+                    : `${totalPredicted}/${totalUpcoming} ${t('matches.progressMatches')} · ${missingCount} ${t('matches.progressRemaining')}`
+                  }
+                </div>
+              </div>
+            </div>
+            <div className={`text-3xl font-black ${
+              isComplete ? 'text-green-300' : progressPct >= 75 ? 'text-orange-300' : 'text-white/80'
+            }`}>
+              {progressPct}%
+            </div>
+          </div>
+
+          {/* Barre de progression visuelle */}
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${
+                isComplete
+                  ? 'bg-gradient-to-r from-green-400 to-emerald-500'
+                  : 'bg-gradient-to-r from-orange-400 to-pink-500'
+              }`}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+
+          {/* CTA rapide : "Voir les matchs sans pronostic" */}
+          {missingCount > 0 && predFilter !== 'missing' && (
+            <button
+              onClick={() => {
+                setPredFilter('missing')
+                setFilter('all')
+                setStageFilter('all')
+              }}
+              className="mt-3 text-xs font-semibold text-orange-300 hover:text-orange-200 underline underline-offset-2 transition"
+            >
+              → {t('matches.progressShowMissing')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* === FILTRES par statut (Tous / À venir / Terminés) === */}
       <div className="flex flex-wrap gap-2 mb-4">
         {[
           { id: 'all', label: t('matches.all'), count: matches.length },
@@ -540,6 +624,30 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
           </button>
         ))}
       </div>
+
+      {/* === FILTRES par pronostic (visible aux users connectés) === */}
+      {!isGuest && totalUpcoming > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { id: 'all', label: t('matches.predFilterAll'), icon: '🎯', count: matches.length },
+            { id: 'missing', label: t('matches.predFilterMissing'), icon: '⏳', count: missingCount, highlight: missingCount > 0 },
+            { id: 'done', label: t('matches.predFilterDone'), icon: '✅', count: totalPredicted },
+          ].map(f => (
+            <button key={f.id} onClick={() => setPredFilter(f.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                predFilter === f.id
+                  ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                  : f.highlight
+                    ? 'bg-orange-500/15 text-orange-200 border border-orange-400/30 hover:bg-orange-500/25 animate-pulse'
+                    : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
+              }`}>
+              <span>{f.icon}</span>
+              <span>{f.label}</span>
+              <span className="opacity-70">({f.count})</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-white/10">
         {stages.map(s => {
@@ -556,7 +664,16 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
 
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-white/40">Aucun match</div>
+          <div className="text-center py-12 text-white/40">
+            {predFilter === 'missing' ? (
+              <>
+                <div className="text-5xl mb-3">🎉</div>
+                <div className="font-semibold">{t('matches.progressAllDone')}</div>
+              </>
+            ) : (
+              t('matches.noMatches') || 'Aucun match'
+            )}
+          </div>
         ) : (
           filtered.map(m => (
             <MatchCard key={m.id} match={m} prediction={predictions.find(p => p.match_id === m.id)}
