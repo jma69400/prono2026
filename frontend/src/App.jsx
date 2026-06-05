@@ -718,13 +718,152 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
   const rankedCount = leaderboard?.ranked_count ?? ranked.length
   const excludedAdmins = leaderboard?.excluded_admins ?? 0
 
+  // === États de recherche et navigation ===
+  const [searchQuery, setSearchQuery] = useState('')
+  const [groupFilter, setGroupFilter] = useState('all')  // 'all' | 'mygroup'
+
+  // === Position de l'utilisateur courant dans le classement complet ===
+  // Calculée AVANT filtrage pour rester juste même après recherche
+  const myRankIndex = currentUserId ? ranked.findIndex(e => e.id === currentUserId) : -1
+  const myEntry = myRankIndex >= 0 ? ranked[myRankIndex] : null
+  const myGroupId = myEntry?.group_id || null
+  const topEntry = ranked[0]
+  const pointsBehindLeader = myEntry && topEntry ? topEntry.total_points - myEntry.total_points : 0
+
+  // === Liste des groupes uniques (pour info du filtre) ===
+  const hasGroup = !!myGroupId
+
+  // === Filtrage / Recherche ===
+  const filtered = ranked.filter(entry => {
+    // Filtre par groupe (seulement si user a un groupe)
+    if (groupFilter === 'mygroup' && entry.group_id !== myGroupId) return false
+    // Filtre recherche (sur username, insensible à la casse + accents)
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase().trim()
+      const username = (entry.username || '').toLowerCase()
+      const groupName = (entry.group_name || '').toLowerCase()
+      if (!username.includes(q) && !groupName.includes(q)) return false
+    }
+    return true
+  })
+
+  // === Scroll automatique vers ma position ===
+  const scrollToMe = () => {
+    if (!currentUserId) return
+    // Si on est filtré et qu'on ne se voit pas, on reset les filtres
+    if (!filtered.some(e => e.id === currentUserId)) {
+      setSearchQuery('')
+      setGroupFilter('all')
+    }
+    // Léger délai pour laisser le DOM se rafraîchir après reset éventuel
+    setTimeout(() => {
+      const el = document.getElementById(`leaderboard-entry-${currentUserId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Flash visuel pour attirer l'attention
+        el.classList.add('ring-2', 'ring-orange-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-orange-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+        }, 2000)
+      }
+    }, 50)
+  }
+
   return (
     <div className="space-y-2">
+      {/* === CARTE "MA POSITION" (sticky en haut si connecté et classé) === */}
+      {myEntry && (
+        <div className="sticky top-0 z-10 mb-3 p-3 bg-gradient-to-r from-orange-500/15 to-pink-500/15 border border-orange-400/40 rounded-xl backdrop-blur-md shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-center justify-center px-2 py-1 bg-orange-500/30 rounded-lg min-w-[52px]">
+              <div className="text-[10px] uppercase tracking-wide text-orange-200/80 font-semibold">{t('leaderboard.yourRank')}</div>
+              <div className="text-xl font-black text-orange-200">#{myRankIndex + 1}</div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-white/60">{t('leaderboard.yourPosition')}</div>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-bold text-white">{myEntry.total_points} {t('leaderboard.pts')}</span>
+                {myRankIndex > 0 && pointsBehindLeader > 0 && (
+                  <span className="text-xs text-white/50">
+                    · {pointsBehindLeader} {t('leaderboard.behindLeader')}
+                  </span>
+                )}
+                {myRankIndex === 0 && (
+                  <span className="text-xs text-yellow-300 font-semibold">🥇 {t('leaderboard.youAreFirst')}</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={scrollToMe}
+              className="px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0"
+              title={t('leaderboard.findMeTooltip')}>
+              🎯 <span className="hidden sm:inline">{t('leaderboard.findMe')}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === BARRE DE RECHERCHE + FILTRE GROUPE === */}
+      {ranked.length > 5 && (
+        <div className="mb-3 space-y-2">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('leaderboard.searchPlaceholder')}
+              className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-400/50 transition placeholder-white/30"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">🔍</span>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition text-sm"
+                title={t('leaderboard.clearSearch')}>
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Filtres rapides */}
+          {hasGroup && (
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setGroupFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  groupFilter === 'all'
+                    ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                    : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
+                }`}>
+                🌍 {t('leaderboard.filterAll')}
+              </button>
+              <button
+                onClick={() => setGroupFilter('mygroup')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  groupFilter === 'mygroup'
+                    ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                    : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
+                }`}>
+                👥 {t('leaderboard.filterMyGroup')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bandeau d'info : nombre de joueurs classés (transparence) */}
       {ranked.length > 0 && (
         <div className="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs text-white/60">
           <span>
-            <strong className="text-white/90">{rankedCount}</strong> {rankedCount > 1 ? 'joueurs classés' : 'joueur classé'}
+            {searchQuery || groupFilter !== 'all' ? (
+              <>
+                <strong className="text-orange-300">{filtered.length}</strong> / {rankedCount} {t('leaderboard.shown')}
+              </>
+            ) : (
+              <>
+                <strong className="text-white/90">{rankedCount}</strong> {rankedCount > 1 ? t('leaderboard.playersRanked') : t('leaderboard.playerRanked')}
+              </>
+            )}
           </span>
           {isAdmin && excludedAdmins > 0 && (
             <span className="text-white/40" title="Les admins sans pronostic ne figurent pas dans le classement public">
@@ -734,10 +873,31 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
         </div>
       )}
 
-      {ranked.length === 0 ? (
-        <div className="text-center py-12 text-white/40">Aucun participant</div>
-      ) : ranked.map((entry, i) => (
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          {searchQuery ? (
+            <>
+              <div className="text-4xl mb-3">🔍</div>
+              <div className="font-semibold">{t('leaderboard.noMatch')}</div>
+              <button
+                onClick={() => { setSearchQuery(''); setGroupFilter('all') }}
+                className="mt-3 text-sm text-orange-300 hover:text-orange-200 underline">
+                {t('leaderboard.resetFilters')}
+              </button>
+            </>
+          ) : ranked.length === 0 ? (
+            t('leaderboard.noParticipant') || 'Aucun participant'
+          ) : (
+            t('leaderboard.noMatch')
+          )}
+        </div>
+      ) : filtered.map((entry) => {
+        // i correspond au rang DANS LE CLASSEMENT GLOBAL (pas dans la liste filtrée)
+        const globalRank = ranked.indexOf(entry) + 1
+        const i = globalRank - 1  // pour les emojis 🥇🥈🥉
+        return (
         <div key={entry.id}
+          id={`leaderboard-entry-${entry.id}`}
           className={`flex items-center gap-3 p-4 rounded-xl border transition ${
             entry.id === currentUserId ? 'bg-orange-500/10 border-orange-400/40' : 'bg-white/5 border-white/10'
           }`}>
@@ -779,7 +939,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
             {entry.total_points}<span className="text-sm text-white/40 ml-1">{t('matches.points')}</span>
           </div>
         </div>
-      ))}
+      )})}
     </div>
   )
 }
