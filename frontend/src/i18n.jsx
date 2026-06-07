@@ -21,7 +21,8 @@ const TRANSLATIONS = {
     'auth.guestLogin': 'Se connecter',
 
     // Homepage / Hero
-    'home.heroTitle': 'Le mondial 2026 commence ici',
+    'home.heroTitle': 'Pronostics Coupe du Monde 2026 entre amis',
+    'home.heroH2': 'Votre concours de pronos gratuit pour le Mondial 2026 — ligue privée, classement en direct, IA prédictive',
     'home.heroSubtitle': 'Pronostique chaque match · Défie tes amis · IA prédictive intégrée',
     'home.heroPitch': '🚀 La seule plateforme qui s\'adapte à tous : joueur solo, groupe d\'amis, équipe d\'entreprise',
     'home.startCta': 'Créer mon compte gratuit',
@@ -372,7 +373,8 @@ const TRANSLATIONS = {
     'auth.guestBanner': 'Guest mode — sign in to predict',
     'auth.guestLogin': 'Sign in',
 
-    'home.heroTitle': 'The 2026 World Cup starts here',
+    'home.heroTitle': 'World Cup 2026 Predictions with Friends',
+    'home.heroH2': 'Your free prediction contest for the 2026 World Cup — private league, live ranking, AI predictions',
     'home.heroSubtitle': 'Predict every match · Challenge your friends · Built-in AI predictions',
     'home.heroPitch': '🚀 The only platform built for everyone: solo player, friend group or company team',
     'home.startCta': 'Create free account',
@@ -713,7 +715,8 @@ const TRANSLATIONS = {
     'auth.guestBanner': 'Modo visitante — conéctate para pronosticar',
     'auth.guestLogin': 'Iniciar sesión',
 
-    'home.heroTitle': 'El Mundial 2026 empieza aquí',
+    'home.heroTitle': 'Pronósticos Mundial 2026 entre Amigos',
+    'home.heroH2': 'Tu concurso de pronósticos gratis para el Mundial 2026 — liga privada, clasificación en vivo, IA predictiva',
     'home.heroSubtitle': 'Pronostica cada partido · Desafía a tus amigos · IA predictiva integrada',
     'home.heroPitch': '🚀 La única plataforma para todos: jugador solo, grupo de amigos o equipo de empresa',
     'home.startCta': 'Crear mi cuenta gratis',

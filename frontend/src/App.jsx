@@ -1736,7 +1736,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Trophy className="w-7 h-7 text-orange-400" />
-            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</h1>
+            <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</div>
           </div>
           <div className="flex items-center gap-2">
             <LangSwitch />
@@ -1765,6 +1765,10 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
               {t('home.heroTitle')}
             </span>
           </h1>
+          {/* H2 SEO : renforce le maillage sémantique avec un mot-clé secondaire */}
+          <h2 className="text-xl sm:text-2xl font-bold text-white/90 mb-4 max-w-3xl mx-auto">
+            {t('home.heroH2')}
+          </h2>
           <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-4">
             {t('home.heroSubtitle')}
           </p>
@@ -4104,7 +4108,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Trophy className="w-7 h-7 text-orange-400 shrink-0" />
-            <h1 className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">United Pronos</h1>
+            <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">United Pronos</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <LangSwitch />

@@ -182,12 +182,83 @@
     </script>
   </head>
   <body>
+    <!--
+      Contenu SEO indexable par les moteurs de recherche.
+      Affiché aux utilisateurs SANS JavaScript (Googlebot pre-render, lecteurs RSS, etc.)
+      Caché en JavaScript : la SPA React le remplace par l'interface interactive.
+      Ce bloc EST important pour le référencement Google car :
+        - Le crawler indexe le contenu HTML brut AVANT exécution JS (snapshot initial)
+        - Le H1, H2, H3, et le texte sémantique sont des signaux SEO majeurs
+        - Inclut les principaux mots-clés cibles (Coupe du Monde 2026, pronostics gratuits, ligue privée)
+    -->
     <noscript>
-      <div style="text-align:center;padding:40px;font-family:sans-serif;color:#fff;background:#0a0e27;min-height:100vh;">
-        <h1>🏆 United Pronos</h1>
-        <p>Ce site nécessite JavaScript activé pour fonctionner.</p>
-        <p>Pronostics gratuits pour la Coupe du Monde de la FIFA 2026 (USA · Canada · Mexique), du 11 juin au 19 juillet 2026.</p>
-      </div>
+      <main style="max-width:900px;margin:0 auto;padding:32px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;background:#0a0e27;min-height:100vh;line-height:1.6;">
+        <header style="text-align:center;padding:32px 0 48px;">
+          <h1 style="font-size:clamp(1.8rem,4vw,2.8rem);margin:0 0 16px;font-weight:900;line-height:1.2;">
+            🏆 Pronostics Coupe du Monde 2026 gratuits entre amis
+          </h1>
+          <p style="font-size:1.15rem;color:#cbd5e1;max-width:680px;margin:0 auto;">
+            <strong>United Pronos</strong> — Crée ta ligue privée, défie tes amis et collègues sur les 104 matchs du Mondial 2026. 100% gratuit, sans pub, en français, anglais et espagnol.
+          </p>
+        </header>
+
+        <section style="margin:32px 0;">
+          <h2 style="font-size:1.5rem;margin:0 0 16px;color:#f97316;">Le jeu de pronostics du Mondial 2026 entre amis et collègues</h2>
+          <p>United Pronos est la plateforme française gratuite pour organiser ton concours de pronostics pour la <strong>Coupe du Monde FIFA 2026</strong> qui se déroule du 11 juin au 19 juillet 2026 aux États-Unis, au Canada et au Mexique. Tu peux créer ta <strong>ligue privée</strong> en moins de 30 secondes, inviter tes amis ou collègues, et pronostiquer ensemble les <strong>104 matchs</strong> du tournoi, du match d'ouverture Mexique-Afrique du Sud jusqu'à la finale au MetLife Stadium de New York.</p>
+        </section>
+
+        <section style="margin:32px 0;">
+          <h2 style="font-size:1.5rem;margin:0 0 16px;color:#f97316;">Pourquoi choisir United Pronos pour ton concours de pronos ?</h2>
+          <ul style="padding-left:20px;">
+            <li><strong>100% gratuit</strong> — aucun abonnement, aucune carte bancaire, aucune fonctionnalité payante</li>
+            <li><strong>Sans publicité</strong> — zéro bannière, zéro tracking commercial</li>
+            <li><strong>Ligues privées illimitées</strong> — entre amis, en famille, en entreprise (CSE, équipes, étudiants)</li>
+            <li><strong>Classement en direct</strong> — mis à jour automatiquement après chaque match</li>
+            <li><strong>Prédictions IA</strong> — modèle Dixon-Coles avec 10 000 simulations Monte Carlo</li>
+            <li><strong>Multilingue</strong> — disponible en français, anglais et espagnol pour les groupes internationaux</li>
+          </ul>
+        </section>
+
+        <section style="margin:32px 0;">
+          <h2 style="font-size:1.5rem;margin:0 0 16px;color:#f97316;">Comment créer ta ligue de pronostics en 2 minutes</h2>
+          <ol style="padding-left:20px;">
+            <li>Inscris-toi en mode <strong>"Leader"</strong> avec ton prénom et ton email</li>
+            <li>Personnalise ta ligue (nom, logo de ton entreprise ou photo de groupe)</li>
+            <li>Partage le lien d'invitation par WhatsApp, Slack, Teams ou email</li>
+            <li>Tes amis rejoignent ta ligue en 1 clic et commencent à pronostiquer</li>
+            <li>Suivez le classement de votre groupe en direct pendant tout le Mondial</li>
+          </ol>
+        </section>
+
+        <section style="margin:32px 0;">
+          <h2 style="font-size:1.5rem;margin:0 0 16px;color:#f97316;">Barème de points officiel</h2>
+          <p>Le système de points est simple et équitable, basé sur le barème classique des concours de pronostics :</p>
+          <ul style="padding-left:20px;">
+            <li><strong>5 points</strong> — Score exact (ex: tu pronostiques 2-1, le match finit 2-1)</li>
+            <li><strong>3 points</strong> — Bon vainqueur + bonne différence de buts (ex: tu mises 3-1, finit 2-0)</li>
+            <li><strong>1 point</strong> — Bon vainqueur uniquement (ex: tu mises 2-1, finit 3-0)</li>
+            <li><strong>0 point</strong> — Pronostic incorrect</li>
+          </ul>
+        </section>
+
+        <section style="margin:32px 0;">
+          <h2 style="font-size:1.5rem;margin:0 0 16px;color:#f97316;">En savoir plus sur la Coupe du Monde 2026</h2>
+          <p>Découvre nos pages dédiées au Mondial 2026 :</p>
+          <ul style="padding-left:20px;">
+            <li><a href="/pronostics-coupe-du-monde-entre-amis" style="color:#f97316;">Pronostics entre amis : guide complet</a></li>
+            <li><a href="/seo/favoris-coupe-du-monde-2026.html" style="color:#f97316;">Top 10 des favoris du Mondial</a></li>
+            <li><a href="/seo/calendrier-coupe-du-monde-2026.html" style="color:#f97316;">Calendrier complet des 104 matchs</a></li>
+            <li><a href="/seo/groupes-coupe-du-monde-2026.html" style="color:#f97316;">Les 12 groupes de la phase finale</a></li>
+            <li><a href="/seo/equipes-qualifiees-mondial-2026.html" style="color:#f97316;">Les 48 équipes qualifiées</a></li>
+            <li><a href="/seo/stades-coupe-du-monde-2026.html" style="color:#f97316;">Les 16 stades du tournoi</a></li>
+            <li><a href="/seo/format-48-equipes-mondial-2026.html" style="color:#f97316;">Le nouveau format à 48 équipes expliqué</a></li>
+          </ul>
+        </section>
+
+        <p style="margin:48px 0 16px;padding:16px;background:#1a1f3a;border-radius:8px;text-align:center;">
+          ⚠️ <strong>Cette application nécessite JavaScript activé.</strong> Pour profiter de l'interface complète de United Pronos, merci d'activer JavaScript dans ton navigateur.
+        </p>
+      </main>
     </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
