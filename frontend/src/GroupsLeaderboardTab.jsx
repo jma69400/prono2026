@@ -140,7 +140,7 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
     <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="text-center mb-5">
-        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent mb-1">
+        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent mb-1">
           🏆 {L.title}
         </h1>
         <p className="text-white/60 text-sm">{L.subtitle}</p>
@@ -166,7 +166,7 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
           {/* Formule */}
           <div>
             <h3 className="font-bold text-blue-200 mb-2">{L.formulaTitle}</h3>
-            <div className="bg-white/5 border border-white/10 rounded-lg p-3 font-mono text-center text-orange-200">
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 font-mono text-center text-sport-200">
               {L.formula}
             </div>
           </div>
@@ -229,7 +229,7 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
               <div key={g.id}
                 className={`flex items-center gap-3 p-4 rounded-xl border transition ${
                   isMine
-                    ? 'bg-orange-500/15 border-orange-400/50 shadow-md shadow-orange-500/10'
+                    ? 'bg-sport-500/15 border-sport-400/50 shadow-md shadow-orange-500/10'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
                 }`}>
 
@@ -238,14 +238,14 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
                   {rankEmoji ? (
                     <span className="text-2xl">{rankEmoji}</span>
                   ) : (
-                    <span className={`font-mono font-bold ${isMine ? 'text-orange-300' : 'text-white/40'}`}>
+                    <span className={`font-mono font-bold ${isMine ? 'text-sport-300' : 'text-white/40'}`}>
                       #{rank}
                     </span>
                   )}
                 </div>
 
                 {/* Logo / Avatar groupe */}
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-base flex-shrink-0 overflow-hidden">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-base flex-shrink-0 overflow-hidden">
                   {g.logo_data ? (
                     <img src={g.logo_data} alt={g.name} className="w-full h-full object-cover" />
                   ) : (
@@ -258,7 +258,7 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
                   <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
                     <span className="truncate">{g.name}</span>
                     {isMine && (
-                      <span className="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                      <span className="text-[10px] bg-cta-500 text-white px-1.5 py-0.5 rounded-full font-bold">
                         {L.yourGroup}
                       </span>
                     )}
@@ -272,7 +272,7 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
 
                 {/* Score équilibré */}
                 <div className="text-right flex-shrink-0">
-                  <div className={`text-xl font-black ${isMine ? 'text-orange-300' : 'text-white/90'}`}>
+                  <div className={`text-xl font-black ${isMine ? 'text-sport-300' : 'text-white/90'}`}>
                     {g.balanced_score}
                   </div>
                   <div className="text-[10px] text-white/40 uppercase tracking-wide">{L.score}</div>

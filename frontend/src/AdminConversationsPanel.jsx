@@ -127,7 +127,7 @@ export function AdminConversationsPanel() {
           {/* Bouton : démarrer une nouvelle conversation avec un utilisateur */}
           <button
             onClick={() => setShowNewModal(true)}
-            className="w-full mb-3 px-3 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
+            className="w-full mb-3 px-3 py-2 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
           >
             ✏️ Nouveau message à un utilisateur
           </button>
@@ -141,7 +141,7 @@ export function AdminConversationsPanel() {
             ].map(f => (
               <button key={f.id} onClick={() => setStatusFilter(f.id)}
                 className={`px-2.5 py-1 rounded-full text-xs font-semibold transition ${
-                  statusFilter === f.id ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  statusFilter === f.id ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
                 }`}>
                 {f.label} ({f.count})
               </button>
@@ -170,14 +170,14 @@ export function AdminConversationsPanel() {
               <button key={c.id} onClick={() => openConv(c.id)}
                 className={`w-full text-left p-3 rounded-lg border transition ${
                   activeConv?.conversation?.id === c.id
-                    ? 'bg-orange-500/20 border-orange-400/50'
+                    ? 'bg-sport-500/20 border-sport-400/50'
                     : c.unread_admin > 0
-                      ? 'bg-orange-500/10 border-orange-400/30 hover:bg-orange-500/20'
+                      ? 'bg-sport-500/10 border-sport-400/30 hover:bg-sport-500/20'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                 }`}>
                 <div className="flex items-center gap-2 mb-1">
                   {c.unread_admin > 0 && (
-                    <span className="min-w-[20px] h-[20px] px-1 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center">
+                    <span className="min-w-[20px] h-[20px] px-1 rounded-full bg-cta-500 text-white text-xs font-bold flex items-center justify-center">
                       {c.unread_admin}
                     </span>
                   )}
@@ -369,7 +369,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
             <div key={m.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl p-3 ${
                 isAdmin
-                  ? 'bg-gradient-to-br from-orange-500/30 to-pink-500/30 border border-orange-400/30 text-white'
+                  ? 'bg-gradient-to-br from-sport-500/30 to-sport-600/30 border border-sport-400/30 text-white'
                   : 'bg-white/10 border border-white/10 text-white/90'
               }`}>
                 <div className="text-[10px] font-semibold uppercase mb-1 opacity-70">
@@ -425,7 +425,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
               onClick={() => setShowEmojis(v => !v)}
               className={`p-2 border rounded-lg text-sm w-10 h-10 flex items-center justify-center transition ${
                 showEmojis
-                  ? 'bg-orange-500/20 border-orange-400/40'
+                  ? 'bg-sport-500/20 border-sport-400/40'
                   : 'bg-white/5 hover:bg-white/10 border-white/10'
               }`}
               title="Ajouter un emoji"
@@ -446,7 +446,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
           </label>
           <button onClick={send} disabled={sending || !content.trim()}
-            className="p-2 bg-gradient-to-r from-orange-500 to-pink-500 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
+            className="p-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
             {sending ? '⏳' : '📤'}
           </button>
         </div>
@@ -584,7 +584,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}>
-      <div className="bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-orange-400/30 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+      <div className="bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-sport-400/30 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
@@ -603,8 +603,8 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
               Destinataire
             </label>
             {selectedUser ? (
-              <div className="flex items-center gap-3 p-3 bg-orange-500/20 border border-orange-400/40 rounded-lg">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm flex-shrink-0">
+              <div className="flex items-center gap-3 p-3 bg-sport-500/20 border border-sport-400/40 rounded-lg">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-sm flex-shrink-0">
                   {selectedUser.username[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -635,7 +635,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
                     filteredUsers.map(u => (
                       <button key={u.id} onClick={() => setSelectedUser(u)}
                         className="w-full flex items-center gap-2 p-2 bg-white/5 hover:bg-white/10 rounded-lg text-left transition">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-xs flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-xs flex-shrink-0">
                           {u.username[0].toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -699,7 +699,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
                 onClick={() => setShowEmojis(v => !v)}
                 className={`p-1.5 border rounded-lg text-base flex items-center justify-center transition ${
                   showEmojis
-                    ? 'bg-orange-500/20 border-orange-400/40'
+                    ? 'bg-sport-500/20 border-sport-400/40'
                     : 'bg-white/5 hover:bg-white/10 border-white/10'
                 }`}
                 title="Ajouter un emoji"
@@ -741,7 +741,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
         {/* Footer */}
         <div className="p-4 border-t border-white/10 flex items-center gap-2 flex-wrap">
           <button onClick={send} disabled={sending || !selectedUser || !content.trim()}
-            className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
+            className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
             {sending ? '⏳ Envoi...' : '📤 Envoyer le message'}
           </button>
           <label className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer text-sm flex items-center gap-1.5">

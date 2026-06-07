@@ -75,7 +75,7 @@ function LangSwitch() {
         <button key={code}
           onClick={() => setLang(code)}
           title={labels[code]}
-          className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-orange-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+          className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-cta-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
         >
           <img src={flags[code]} alt={code} style={{width: '18px', height: '13px', borderRadius: '2px'}} />
           <span>{code.toUpperCase()}</span>
@@ -132,12 +132,12 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
 
         {/* Bandeau invitation */}
         {invitedGroup && (
-          <div className="mb-4 p-4 bg-gradient-to-r from-orange-500/20 to-pink-500/20 border border-orange-400/30 rounded-2xl text-center">
+          <div className="mb-4 p-4 bg-gradient-to-r from-sport-500/20 to-sport-600/20 border border-sport-400/30 rounded-2xl text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
               {invitedGroup.logo_data ? (
-                <img src={invitedGroup.logo_data} alt={invitedGroup.name} className="w-12 h-12 rounded-full object-cover border-2 border-orange-400" />
+                <img src={invitedGroup.logo_data} alt={invitedGroup.name} className="w-12 h-12 rounded-full object-cover border-2 border-sport-400" />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-orange-500/30 flex items-center justify-center text-2xl">🏆</div>
+                <div className="w-12 h-12 rounded-full bg-sport-500/30 flex items-center justify-center text-2xl">🏆</div>
               )}
               <div className="text-left">
                 <div className="text-xs text-white/60">{t('signup.invitedTo')}</div>
@@ -156,11 +156,11 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
             <>
           <div className="flex gap-2 mb-6">
             <button type="button" onClick={() => { setMode('login'); setError('') }}
-              className={`flex-1 py-2 rounded-lg font-semibold transition ${mode === 'login' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+              className={`flex-1 py-2 rounded-lg font-semibold transition ${mode === 'login' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
               {t('auth.login')}
             </button>
             <button type="button" onClick={() => { setMode('signup'); setError('') }}
-              className={`flex-1 py-2 rounded-lg font-semibold transition ${mode === 'signup' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+              className={`flex-1 py-2 rounded-lg font-semibold transition ${mode === 'signup' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
               {t('auth.signup')}
             </button>
           </div>
@@ -168,20 +168,20 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
           <form onSubmit={submit} className="space-y-4">
             <input type="email" placeholder={t('auth.email')} required value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400" />
             {mode === 'signup' && (
               <input type="text" placeholder={t('auth.username')} required minLength={2} value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400" />
             )}
             <input type="password" placeholder={t('auth.password')} required minLength={6} value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400" />
 
             {/* Lien Mot de passe oublié (uniquement en mode login) */}
             {mode === 'login' && (
               <button type="button" onClick={() => setShowForgotPassword(true)}
-                className="text-sm text-orange-400 hover:text-orange-300 transition self-start -mt-2 underline-offset-2 hover:underline">
+                className="text-sm text-sport-400 hover:text-sport-300 transition self-start -mt-2 underline-offset-2 hover:underline">
                 🔐 Mot de passe oublié ?
               </button>
             )}
@@ -193,7 +193,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
                 <button type="button" onClick={() => setSignupRole('solo')}
                   className={`w-full p-3 rounded-lg border text-left transition ${
                     signupRole === 'solo'
-                      ? 'bg-orange-500/20 border-orange-400/50'
+                      ? 'bg-sport-500/20 border-sport-400/50'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}>
                   <div className="flex items-center gap-3">
@@ -202,13 +202,13 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
                       <div className="font-semibold">{t('role.solo')}</div>
                       <div className="text-xs text-white/60">{t('role.solo.desc')}</div>
                     </div>
-                    {signupRole === 'solo' && <Check className="w-5 h-5 text-orange-400" />}
+                    {signupRole === 'solo' && <Check className="w-5 h-5 text-sport-400" />}
                   </div>
                 </button>
                 <button type="button" onClick={() => setSignupRole('leader')}
                   className={`w-full p-3 rounded-lg border text-left transition ${
                     signupRole === 'leader'
-                      ? 'bg-orange-500/20 border-orange-400/50'
+                      ? 'bg-sport-500/20 border-sport-400/50'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}>
                   <div className="flex items-center gap-3">
@@ -217,11 +217,11 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
                       <div className="font-semibold">{t('role.leader')}</div>
                       <div className="text-xs text-white/60">{t('role.leader.desc')}</div>
                     </div>
-                    {signupRole === 'leader' && <Check className="w-5 h-5 text-orange-400" />}
+                    {signupRole === 'leader' && <Check className="w-5 h-5 text-sport-400" />}
                   </div>
                 </button>
                 {signupRole === 'leader' && (
-                  <p className="text-xs text-orange-300/80 italic">→ {t('signup.continueAsLeader')}</p>
+                  <p className="text-xs text-sport-300/80 italic">→ {t('signup.continueAsLeader')}</p>
                 )}
               </div>
             )}
@@ -233,7 +233,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
             )}
 
             <button type="submit" disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+              className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-50 rounded-lg font-bold transition">
               {loading ? '...' : (mode === 'login' ? t('auth.loginBtn') : t('auth.signupBtn'))}
             </button>
           </form>
@@ -241,7 +241,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
           {/* Lien retour visiteur */}
           {onGuest && (
             <div className="mt-4 text-center">
-              <button onClick={onGuest} className="text-sm text-white/50 hover:text-orange-400 transition">
+              <button onClick={onGuest} className="text-sm text-white/50 hover:text-sport-400 transition">
                 ← {t('auth.guestBack')}
               </button>
             </div>
@@ -344,7 +344,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
           {/* Badge "sans pronostic" : visible si match à venir, pas de prédiction, user connecté,
               ET les deux équipes sont connues (pas un placeholder TBD type R32_xx, QF_xx, etc.) */}
           {!isGuest && !locked && !isLive && !prediction && !homeTBD && !awayTBD && (
-            <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded font-bold animate-pulse">
+            <span className="flex items-center gap-1 px-2 py-0.5 bg-sport-500/20 text-sport-300 rounded font-bold animate-pulse">
               <span>⏳</span> {t('matches.cardNoPredBadge')}
             </span>
           )}
@@ -356,7 +356,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               isFinal ? 'bg-yellow-400/20 text-yellow-300' : 'bg-purple-500/20 text-purple-300'
             }`}>{stageLabel(match.stage, t)}</span>
           )}
-          {match.group_letter && <span className="px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded">{t('matches.stage.group')} {match.group_letter}</span>}
+          {match.group_letter && <span className="px-2 py-0.5 bg-sport-500/20 text-sport-300 rounded">{t('matches.stage.group')} {match.group_letter}</span>}
           <span className="text-white/40">{match.stadium}</span>
         </span>
       </div>
@@ -365,12 +365,12 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
         <div className="flex-1 text-right">
           <div className="mb-2 flex justify-end">{homeTBD ? <TBDBadge /> : <Flag code={match.home_team} size={48} />}</div>
           <div className="font-bold">{homeTBD ? t('matches.tbd') : teamName(match.home_team, lang)}</div>
-          {odds && !locked && !isLive && <div className="text-xs text-orange-300 mt-1 font-mono">@{odds.home}</div>}
+          {odds && !locked && !isLive && <div className="text-xs text-sport-300 mt-1 font-mono">@{odds.home}</div>}
         </div>
 
         <div className="text-center min-w-[120px]">
           {(locked || isLive) ? (
-            <div className={`text-3xl font-black ${isLive ? 'text-red-400' : 'text-orange-400'}`}>
+            <div className={`text-3xl font-black ${isLive ? 'text-red-400' : 'text-sport-400'}`}>
               {match.home_score} - {match.away_score}
             </div>
           ) : (
@@ -384,7 +384,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
         <div className="flex-1 text-left">
           <div className="mb-2 flex justify-start">{awayTBD ? <TBDBadge /> : <Flag code={match.away_team} size={48} />}</div>
           <div className="font-bold">{awayTBD ? t('matches.tbd') : teamName(match.away_team, lang)}</div>
-          {odds && !locked && <div className="text-xs text-orange-300 mt-1 font-mono">@{odds.away}</div>}
+          {odds && !locked && <div className="text-xs text-sport-300 mt-1 font-mono">@{odds.away}</div>}
         </div>
       </div>
 
@@ -420,14 +420,14 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               <div>
                 <div className="text-xs text-white/50 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> 1X2</div>
                 <div className="flex h-2 rounded-full overflow-hidden bg-white/5">
-                  <div style={{ width: `${ai.probHome}%` }} className="bg-orange-500" title={`${ai.probHome}%`}></div>
+                  <div style={{ width: `${ai.probHome}%` }} className="bg-cta-500" title={`${ai.probHome}%`}></div>
                   <div style={{ width: `${ai.probDraw}%` }} className="bg-white/30" title={`${ai.probDraw}%`}></div>
-                  <div style={{ width: `${ai.probAway}%` }} className="bg-pink-500" title={`${ai.probAway}%`}></div>
+                  <div style={{ width: `${ai.probAway}%` }} className="bg-cta-500" title={`${ai.probAway}%`}></div>
                 </div>
                 <div className="flex justify-between text-xs mt-1">
-                  <span className="text-orange-300">{teamName(match.home_team, lang)} {ai.probHome}%</span>
+                  <span className="text-sport-300">{teamName(match.home_team, lang)} {ai.probHome}%</span>
                   <span className="text-white/50">{t('matches.draw')} {ai.probDraw}%</span>
-                  <span className="text-pink-300">{teamName(match.away_team, lang)} {ai.probAway}%</span>
+                  <span className="text-cta-300">{teamName(match.away_team, lang)} {ai.probAway}%</span>
                 </div>
               </div>
 
@@ -451,11 +451,11 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                 </div>
                 <div className="bg-white/5 rounded p-2">
                   <div className="text-xs text-white/50 mb-1">{t('matches.over25')}</div>
-                  <div className="font-mono font-bold text-sm text-orange-300">{ai.over25}%</div>
+                  <div className="font-mono font-bold text-sm text-sport-300">{ai.over25}%</div>
                 </div>
                 <div className="bg-white/5 rounded p-2">
                   <div className="text-xs text-white/50 mb-1">{t('matches.btts')}</div>
-                  <div className="font-mono font-bold text-sm text-orange-300">{ai.btts}%</div>
+                  <div className="font-mono font-bold text-sm text-sport-300">{ai.btts}%</div>
                 </div>
               </div>
 
@@ -478,7 +478,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
             {prediction ? (
               <>
                 {t('matches.yourPred')} : <strong>{prediction.home_score}-{prediction.away_score}</strong>
-                <span className="px-2 py-0.5 bg-orange-500/20 text-orange-300 rounded text-xs">
+                <span className="px-2 py-0.5 bg-sport-500/20 text-sport-300 rounded text-xs">
                   {prediction.points} {t('matches.points')}
                 </span>
               </>
@@ -497,7 +497,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               className="w-16 px-2 py-1 bg-white/5 border border-white/10 rounded text-center font-bold disabled:opacity-50" />
             <button onClick={save}
               disabled={!isGuest && (predH === '' || predA === '')}
-              className="ml-2 px-4 py-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded font-semibold text-sm transition flex items-center gap-1">
+              className="ml-2 px-4 py-1 bg-cta-500 hover:bg-cta-600 disabled:opacity-30 rounded font-semibold text-sm transition flex items-center gap-1">
               {isGuest ? <><LogIn className="w-3 h-3" /> {t('auth.guestLogin')}</> : (saved ? <><Check className="w-3 h-3" /> OK</> : t('matches.pronostic'))}
             </button>
           </>
@@ -577,7 +577,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
           isComplete
             ? 'bg-green-500/10 border-green-400/40'
             : missingCount > 5
-              ? 'bg-orange-500/10 border-orange-400/30'
+              ? 'bg-sport-500/10 border-sport-400/30'
               : 'bg-white/5 border-white/10'
         }`}>
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -599,7 +599,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
               </div>
             </div>
             <div className={`text-3xl font-black ${
-              isComplete ? 'text-green-300' : progressPct >= 75 ? 'text-orange-300' : 'text-white/80'
+              isComplete ? 'text-green-300' : progressPct >= 75 ? 'text-sport-300' : 'text-white/80'
             }`}>
               {progressPct}%
             </div>
@@ -611,7 +611,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
               className={`h-full transition-all duration-500 ${
                 isComplete
                   ? 'bg-gradient-to-r from-green-400 to-emerald-500'
-                  : 'bg-gradient-to-r from-orange-400 to-pink-500'
+                  : 'bg-gradient-to-r from-cta-500 to-cta-600'
               }`}
               style={{ width: `${progressPct}%` }}
             />
@@ -625,7 +625,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
                 setFilter('all')
                 setStageFilter('all')
               }}
-              className="mt-3 text-xs font-semibold text-orange-300 hover:text-orange-200 underline underline-offset-2 transition"
+              className="mt-3 text-xs font-semibold text-sport-300 hover:text-sport-200 underline underline-offset-2 transition"
             >
               → {t('matches.progressShowMissing')}
             </button>
@@ -641,7 +641,7 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
           { id: 'finished', label: t('matches.finished'), count: matches.filter(m => m.status === 'finished').length },
         ].map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${filter === f.id ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition ${filter === f.id ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
             {f.label} ({f.count})
           </button>
         ))}
@@ -658,9 +658,9 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
             <button key={f.id} onClick={() => setPredFilter(f.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
                 predFilter === f.id
-                  ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                  ? 'bg-cta-500/30 text-cta-100 border border-cta-400/40'
                   : f.highlight
-                    ? 'bg-orange-500/15 text-orange-200 border border-orange-400/30 hover:bg-orange-500/25 animate-pulse'
+                    ? 'bg-sport-500/15 text-sport-200 border border-sport-400/30 hover:bg-sport-500/25 animate-pulse'
                     : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
               }`}>
               <span>{f.icon}</span>
@@ -761,9 +761,9 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         // Flash visuel pour attirer l'attention
-        el.classList.add('ring-2', 'ring-orange-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+        el.classList.add('ring-2', 'ring-sport-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
         setTimeout(() => {
-          el.classList.remove('ring-2', 'ring-orange-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+          el.classList.remove('ring-2', 'ring-sport-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
         }, 2000)
       }
     }, 50)
@@ -773,11 +773,11 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
     <div className="space-y-2">
       {/* === CARTE "MA POSITION" (sticky en haut si connecté et classé) === */}
       {myEntry && (
-        <div className="sticky top-0 z-10 mb-3 p-3 bg-gradient-to-r from-orange-500/15 to-pink-500/15 border border-orange-400/40 rounded-xl backdrop-blur-md shadow-lg">
+        <div className="sticky top-0 z-10 mb-3 p-3 bg-gradient-to-r from-sport-500/15 to-sport-600/15 border border-sport-400/40 rounded-xl backdrop-blur-md shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center justify-center px-2 py-1 bg-orange-500/30 rounded-lg min-w-[52px]">
-              <div className="text-[10px] uppercase tracking-wide text-orange-200/80 font-semibold">{t('leaderboard.yourRank')}</div>
-              <div className="text-xl font-black text-orange-200">#{myRankIndex + 1}</div>
+            <div className="flex flex-col items-center justify-center px-2 py-1 bg-sport-500/30 rounded-lg min-w-[52px]">
+              <div className="text-[10px] uppercase tracking-wide text-sport-200/80 font-semibold">{t('leaderboard.yourRank')}</div>
+              <div className="text-xl font-black text-sport-200">#{myRankIndex + 1}</div>
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-white/60">{t('leaderboard.yourPosition')}</div>
@@ -795,7 +795,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
             </div>
             <button
               onClick={scrollToMe}
-              className="px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0"
+              className="px-3 py-2 bg-cta-500 hover:bg-cta-600 text-white rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0"
               title={t('leaderboard.findMeTooltip')}>
               🎯 <span className="hidden sm:inline">{t('leaderboard.findMe')}</span>
             </button>
@@ -812,7 +812,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('leaderboard.searchPlaceholder')}
-              className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-400/50 transition placeholder-white/30"
+              className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sport-400/50 transition placeholder-white/30"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">🔍</span>
             {searchQuery && (
@@ -832,7 +832,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
                 onClick={() => setGroupFilter('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   groupFilter === 'all'
-                    ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                    ? 'bg-cta-500/30 text-cta-100 border border-cta-400/40'
                     : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
                 }`}>
                 🌍 {t('leaderboard.filterAll')}
@@ -841,7 +841,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
                 onClick={() => setGroupFilter('mygroup')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                   groupFilter === 'mygroup'
-                    ? 'bg-pink-500/30 text-pink-100 border border-pink-400/40'
+                    ? 'bg-cta-500/30 text-cta-100 border border-cta-400/40'
                     : 'bg-white/5 text-white/60 border border-transparent hover:bg-white/10'
                 }`}>
                 👥 {t('leaderboard.filterMyGroup')}
@@ -857,7 +857,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
           <span>
             {searchQuery || groupFilter !== 'all' ? (
               <>
-                <strong className="text-orange-300">{filtered.length}</strong> / {rankedCount} {t('leaderboard.shown')}
+                <strong className="text-sport-300">{filtered.length}</strong> / {rankedCount} {t('leaderboard.shown')}
               </>
             ) : (
               <>
@@ -881,7 +881,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
               <div className="font-semibold">{t('leaderboard.noMatch')}</div>
               <button
                 onClick={() => { setSearchQuery(''); setGroupFilter('all') }}
-                className="mt-3 text-sm text-orange-300 hover:text-orange-200 underline">
+                className="mt-3 text-sm text-sport-300 hover:text-sport-200 underline">
                 {t('leaderboard.resetFilters')}
               </button>
             </>
@@ -899,19 +899,19 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
         <div key={entry.id}
           id={`leaderboard-entry-${entry.id}`}
           className={`flex items-center gap-3 p-4 rounded-xl border transition ${
-            entry.id === currentUserId ? 'bg-orange-500/10 border-orange-400/40' : 'bg-white/5 border-white/10'
+            entry.id === currentUserId ? 'bg-sport-500/10 border-sport-400/40' : 'bg-white/5 border-white/10'
           }`}>
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black shrink-0 ${
             i === 0 ? 'bg-yellow-400/20 text-yellow-300' :
             i === 1 ? 'bg-gray-300/20 text-gray-200' :
-            i === 2 ? 'bg-orange-700/30 text-orange-400' : 'bg-white/5 text-white/60'
+            i === 2 ? 'bg-orange-700/30 text-sport-400' : 'bg-white/5 text-white/60'
           }`}>{i + 1}</div>
           {/* Avatar utilisateur (ou initiales si pas d'avatar) */}
           {entry.avatar_data ? (
             <img src={entry.avatar_data} alt={entry.username}
               className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0" />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-xs font-black shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center text-xs font-black shrink-0">
               {entry.username.slice(0, 2).toUpperCase()}
             </div>
           )}
@@ -920,7 +920,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
             <img src={entry.group_logo} alt={entry.group_name} title={entry.group_name}
               className="w-9 h-9 rounded-lg object-cover border border-white/10 shrink-0" />
           ) : entry.group_name ? (
-            <div className="w-9 h-9 rounded-lg bg-orange-500/20 flex items-center justify-center text-sm shrink-0" title={entry.group_name}>
+            <div className="w-9 h-9 rounded-lg bg-sport-500/20 flex items-center justify-center text-sm shrink-0" title={entry.group_name}>
               🏆
             </div>
           ) : null}
@@ -931,11 +931,11 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
               {entry.role === 'leader' && <span className="text-xs text-purple-300">👑</span>}
             </div>
             <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
-              {entry.group_name && <span className="text-orange-300/70">{entry.group_name} ·</span>}
+              {entry.group_name && <span className="text-sport-300/70">{entry.group_name} ·</span>}
               <span>{entry.predictions_count} {entry.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}</span>
             </div>
           </div>
-          <div className="text-2xl font-black text-orange-400 shrink-0">
+          <div className="text-2xl font-black text-sport-400 shrink-0">
             {entry.total_points}<span className="text-sm text-white/40 ml-1">{t('matches.points')}</span>
           </div>
         </div>
@@ -954,7 +954,7 @@ function GroupsTab() {
       {Object.entries(GROUPS).map(([letter, teams]) => (
         <div key={letter} className="bg-white/5 border border-white/10 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3 pb-3 border-b border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black">{letter}</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black">{letter}</div>
             <span className="text-sm text-white/50">{t('groups.title')} {letter}</span>
           </div>
           <div className="space-y-2">
@@ -1004,12 +1004,12 @@ function NewsTab({ news, onRefresh, isAdmin }) {
       {/* Filtre par équipe */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setTeamFilter('')} className={`px-3 py-1.5 rounded-full text-sm ${!teamFilter ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+          <button onClick={() => setTeamFilter('')} className={`px-3 py-1.5 rounded-full text-sm ${!teamFilter ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
             {t('news.all')}
           </button>
           {availableTeams.map(team => (
             <button key={team} onClick={() => setTeamFilter(team)}
-              className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${teamFilter === team ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+              className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1 ${teamFilter === team ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
               <Flag code={team} size={20} /> {teamName(team, lang)}
             </button>
           ))}
@@ -1028,7 +1028,7 @@ function NewsTab({ news, onRefresh, isAdmin }) {
       </div>
 
       {translateMsg && (
-        <div className="mb-3 p-2 bg-orange-500/10 border border-orange-400/30 rounded-lg text-sm text-orange-200 text-center">
+        <div className="mb-3 p-2 bg-sport-500/10 border border-sport-400/30 rounded-lg text-sm text-sport-200 text-center">
           {translateMsg}
         </div>
       )}
@@ -1197,15 +1197,15 @@ function AdminScoresPanel() {
       {/* Stats globales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
-          <div className="text-2xl font-black text-orange-300">{stats.total}</div>
+          <div className="text-2xl font-black text-sport-300">{stats.total}</div>
           <div className="text-xs text-white/50 mt-0.5">Matchs total</div>
         </div>
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
           <div className="text-2xl font-black text-green-300">{stats.finished}</div>
           <div className="text-xs text-white/50 mt-0.5">Joués</div>
         </div>
-        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
-          <div className="text-2xl font-black text-orange-300">{stats.today}</div>
+        <div className="bg-sport-500/10 border border-sport-500/30 rounded-xl p-3 text-center">
+          <div className="text-2xl font-black text-sport-300">{stats.today}</div>
           <div className="text-xs text-white/50 mt-0.5">Aujourd'hui</div>
         </div>
         <div className={`border rounded-xl p-3 text-center ${
@@ -1234,7 +1234,7 @@ function AdminScoresPanel() {
             onClick={() => setFilter(f.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
               filter === f.id
-                ? (f.urgent && f.count > 0 ? 'bg-red-500 text-white' : 'bg-orange-500 text-white')
+                ? (f.urgent && f.count > 0 ? 'bg-red-500 text-white' : 'bg-cta-500 text-white')
                 : f.urgent && f.count > 0
                 ? 'bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500/20'
                 : 'bg-white/5 text-white/60 hover:text-white border border-white/10'
@@ -1304,7 +1304,7 @@ function AdminScoresPanel() {
                       onChange={(e) => updateScore(m.id, 'h', e.target.value)}
                       disabled={isSaving || homeTBD || awayTBD}
                       placeholder="–"
-                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-orange-400 disabled:opacity-30"
+                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-sport-400 disabled:opacity-30"
                     />
                     <span className="text-white/40">-</span>
                     <input
@@ -1314,7 +1314,7 @@ function AdminScoresPanel() {
                       onChange={(e) => updateScore(m.id, 'a', e.target.value)}
                       disabled={isSaving || homeTBD || awayTBD}
                       placeholder="–"
-                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-orange-400 disabled:opacity-30"
+                      className="w-12 px-2 py-1.5 bg-white/5 border border-white/20 rounded text-center font-bold focus:outline-none focus:border-sport-400 disabled:opacity-30"
                     />
                   </div>
 
@@ -1323,7 +1323,7 @@ function AdminScoresPanel() {
                     <button
                       onClick={() => saveScore(m)}
                       disabled={isSaving || s.h === '' || s.a === '' || homeTBD || awayTBD}
-                      className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded text-sm font-bold transition flex items-center gap-1"
+                      className="px-3 py-1.5 bg-cta-500 hover:bg-cta-600 disabled:opacity-30 rounded text-sm font-bold transition flex items-center gap-1"
                       title={isFinished ? 'Modifier le score' : 'Valider le score'}
                     >
                       {isSaving ? '...' : isFinished ? '✏️' : <Check className="w-4 h-4" />}
@@ -1427,39 +1427,39 @@ function AdminTab({ user }) {
   return (
     <div>
       {/* Bouton fetch résultats — toujours visible pour l'admin */}
-      <div className="mb-4 p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 border border-orange-400/30 rounded-xl">
+      <div className="mb-4 p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 border border-sport-400/30 rounded-xl">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div className="font-bold text-orange-200 mb-0.5">⚽ Résultats des matchs</div>
+            <div className="font-bold text-sport-200 mb-0.5">⚽ Résultats des matchs</div>
             <div className="text-xs text-white/50">Récupération automatique toutes les 5 min via Football-Data.org</div>
           </div>
           <button onClick={handleFetchResults} disabled={fetchingResults}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 rounded-lg text-sm font-semibold flex items-center gap-2">
+            className="px-4 py-2 bg-cta-500 hover:bg-cta-600 disabled:opacity-50 rounded-lg text-sm font-semibold flex items-center gap-2">
             <RefreshCw className={`w-4 h-4 ${fetchingResults ? 'animate-spin' : ''}`} />
             {fetchingResults ? '...' : 'Actualiser maintenant'}
           </button>
         </div>
         {resultsMsg && (
-          <div className="mt-3 p-2 bg-white/5 border border-white/10 rounded text-sm text-orange-100">
+          <div className="mt-3 p-2 bg-white/5 border border-white/10 rounded text-sm text-sport-100">
             {resultsMsg}
           </div>
         )}
       </div>
 
       <div className="flex gap-2 mb-4 flex-wrap">
-        <button onClick={() => setTab('scores')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'scores' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('scores')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'scores' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           ⚽ Scores
         </button>
-        <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.users')} ({users.length})
         </button>
-        <button onClick={() => setTab('groups')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'groups' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('groups')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'groups' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           👥 {t('admin.groups')}
         </button>
-        <button onClick={() => setTab('contact')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'contact' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('contact')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'contact' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           ✉️ {t('contact.adminTitle')}
         </button>
-        <button onClick={() => setTab('conversations')} className={`relative px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'conversations' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('conversations')} className={`relative px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'conversations' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           💬 Chats
           {convsUnread > 0 && (
             <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
@@ -1467,7 +1467,7 @@ function AdminTab({ user }) {
             </span>
           )}
         </button>
-        <button onClick={() => setTab('audit')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'audit' ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60'}`}>
+        <button onClick={() => setTab('audit')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'audit' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.audit')}
         </button>
       </div>
@@ -1487,7 +1487,7 @@ function AdminTab({ user }) {
           {auditLog.map(log => (
             <div key={log.id} className="flex items-center gap-3 p-2 bg-white/5 rounded text-sm flex-wrap">
               <span className="text-xs text-white/40 w-32 shrink-0">{log.created_at}</span>
-              <span className="font-semibold text-orange-300 w-32 shrink-0">{log.action}</span>
+              <span className="font-semibold text-sport-300 w-32 shrink-0">{log.action}</span>
               <span className="text-white/60 truncate flex-1">{log.username || 'anonyme'} {log.details && `· ${log.details}`}</span>
             </div>
           ))}
@@ -1595,7 +1595,7 @@ function DeleteUserGDPRModal({ target, onCancel, onConfirm }) {
             placeholder="Ex: Demande utilisateur (RGPD), Compte inactif, Violation des CGU..."
             maxLength={200}
             rows={2}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-orange-400/50 resize-none"
+            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sport-400/50 resize-none"
           />
           <div className="text-[11px] text-white/40 mt-1">
             Si renseigné, sera inclus dans l'email RGPD envoyé à l'utilisateur.
@@ -1613,7 +1613,7 @@ function DeleteUserGDPRModal({ target, onCancel, onConfirm }) {
             />
             <span className="text-sm">
               📧 Envoyer l'email de confirmation RGPD à <strong>{target.email}</strong>
-              <span className="text-orange-300 text-xs ml-1">(recommandé)</span>
+              <span className="text-sport-300 text-xs ml-1">(recommandé)</span>
             </span>
           </label>
           {!notify && (
@@ -1627,7 +1627,7 @@ function DeleteUserGDPRModal({ target, onCancel, onConfirm }) {
         {/* Double confirmation : taper le username */}
         <div className="mb-4">
           <label className="block text-xs font-semibold text-white/70 mb-1">
-            Pour confirmer, tape <code className="px-1.5 py-0.5 bg-white/10 rounded text-orange-300 font-mono">{target.username}</code> ci-dessous :
+            Pour confirmer, tape <code className="px-1.5 py-0.5 bg-white/10 rounded text-sport-300 font-mono">{target.username}</code> ci-dessous :
           </label>
           <input
             type="text"
@@ -1672,9 +1672,9 @@ function GuestPrompt({ onClose, onSignin }) {
   const { t } = useTranslation()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-orange-400/30 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-sport-400/30 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-3">
-          <Lock className="w-6 h-6 text-orange-400" />
+          <Lock className="w-6 h-6 text-sport-400" />
           <h3 className="text-xl font-bold">{t('auth.guestPromptTitle')}</h3>
         </div>
         <p className="text-white/70 mb-6">{t('auth.guestPromptText')}</p>
@@ -1682,7 +1682,7 @@ function GuestPrompt({ onClose, onSignin }) {
           <button onClick={onClose} className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm">
             {t('common.cancel')}
           </button>
-          <button onClick={onSignin} className="flex-1 py-2 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg text-sm font-bold">
+          <button onClick={onSignin} className="flex-1 py-2 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 rounded-lg text-sm font-bold">
             {t('auth.guestPromptCTA')}
           </button>
         </div>
@@ -1755,13 +1755,13 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
 
       {/* HERO */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 via-transparent to-transparent pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-sport-500/10 via-transparent to-transparent pointer-events-none"></div>
         <div className="relative max-w-5xl mx-auto px-4 py-16 sm:py-24 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 bg-orange-500/10 border border-orange-400/20 rounded-full text-sm text-orange-200">
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 bg-sport-500/10 border border-sport-400/20 rounded-full text-sm text-sport-200">
             <Zap className="w-4 h-4" /> 11 juin – 19 juillet 2026 · USA · Canada · Mexique
           </div>
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-orange-400 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cta-400 via-cta-500 to-cta-400 bg-clip-text text-transparent">
               {t('home.heroTitle')}
             </span>
           </h1>
@@ -1772,12 +1772,12 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
           <p className="text-lg sm:text-xl text-white/70 max-w-2xl mx-auto mb-4">
             {t('home.heroSubtitle')}
           </p>
-          <p className="text-base text-orange-300/90 max-w-2xl mx-auto mb-10 font-semibold">
+          <p className="text-base text-sport-300/90 max-w-2xl mx-auto mb-10 font-semibold">
             {t('home.heroPitch')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={onSignup}
-              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition">
+              className="px-8 py-4 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 transition">
               <Sparkles className="w-5 h-5" /> {t('home.startCta')}
             </button>
             <button onClick={onLogin}
@@ -1795,7 +1795,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       <section className="py-10 border-y border-white/10 bg-black/20">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-6">
-            <div className="inline-block px-3 py-1 mb-2 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
+            <div className="inline-block px-3 py-1 mb-2 bg-sport-500/10 border border-sport-400/30 rounded-full text-xs font-bold text-sport-300 uppercase tracking-wider">
               📚 {t('home.seoBadge')}
             </div>
             <h2 className="text-2xl sm:text-3xl font-black mb-2">{t('home.seoLinksTitle')}</h2>
@@ -1817,31 +1817,31 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoFriendsLeagueSub')}</div>
             </a>
             <a href={urls.schedule}
-              className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
+              className="group relative p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 hover:from-sport-500/20 hover:to-sport-600/10 border border-white/10 hover:border-sport-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">📅</div>
               <div className="font-bold text-sm">{t('home.seoSchedule')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoScheduleSub')}</div>
             </a>
             <a href={urls.groups}
-              className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
+              className="group relative p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 hover:from-sport-500/20 hover:to-sport-600/10 border border-white/10 hover:border-sport-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">👥</div>
               <div className="font-bold text-sm">{t('home.seoGroups')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoGroupsSub')}</div>
             </a>
             <a href={urls.teams}
-              className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
+              className="group relative p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 hover:from-sport-500/20 hover:to-sport-600/10 border border-white/10 hover:border-sport-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">🌍</div>
               <div className="font-bold text-sm">{t('home.seoTeams')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoTeamsSub')}</div>
             </a>
             <a href={urls.stadiums}
-              className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
+              className="group relative p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 hover:from-sport-500/20 hover:to-sport-600/10 border border-white/10 hover:border-sport-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">🏟️</div>
               <div className="font-bold text-sm">{t('home.seoStadiums')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoStadiumsSub')}</div>
             </a>
             <a href={urls.format}
-              className="group relative p-4 bg-gradient-to-br from-orange-500/10 to-pink-500/5 hover:from-orange-500/20 hover:to-pink-500/10 border border-white/10 hover:border-orange-400/50 rounded-xl transition text-center">
+              className="group relative p-4 bg-gradient-to-br from-sport-500/10 to-sport-600/5 hover:from-sport-500/20 hover:to-sport-600/10 border border-white/10 hover:border-sport-400/50 rounded-xl transition text-center">
               <div className="text-2xl mb-1.5">📋</div>
               <div className="font-bold text-sm">{t('home.seoFormat')}</div>
               <div className="text-xs text-white/40 mt-0.5">{t('home.seoFormatSub')}</div>
@@ -1854,19 +1854,19 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       <section className="py-10 border-y border-white/10 bg-black/20">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           <div>
-            <div className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">104</div>
+            <div className="text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent">104</div>
             <div className="text-sm text-white/50 mt-1">{t('home.statsMatches')}</div>
           </div>
           <div>
-            <div className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">48</div>
+            <div className="text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent">48</div>
             <div className="text-sm text-white/50 mt-1">{t('home.statsTeams')}</div>
           </div>
           <div>
-            <div className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">3</div>
+            <div className="text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent">3</div>
             <div className="text-sm text-white/50 mt-1">{t('home.statsLanguages')}</div>
           </div>
           <div>
-            <div className="text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">100%</div>
+            <div className="text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent">100%</div>
             <div className="text-sm text-white/50 mt-1">{t('home.statsFree')}</div>
           </div>
         </div>
@@ -1876,7 +1876,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
-            <div className="inline-block px-4 py-1.5 mb-4 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
+            <div className="inline-block px-4 py-1.5 mb-4 bg-sport-500/10 border border-sport-400/30 rounded-full text-xs font-bold text-sport-300 uppercase tracking-wider">
               {t('home.modes.badge')}
             </div>
             <h2 className="text-3xl sm:text-5xl font-black mb-4">{t('home.modes.title')}</h2>
@@ -1886,10 +1886,10 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
             {/* MODE 1 — SOLO */}
-            <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-orange-400/40 transition group">
+            <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-sport-400/40 transition group">
               <div className="text-5xl mb-4">🏃</div>
               <h3 className="text-2xl font-black mb-2">{t('home.modes.solo.title')}</h3>
-              <p className="text-orange-300 font-semibold mb-4 text-sm">{t('home.modes.solo.tagline')}</p>
+              <p className="text-sport-300 font-semibold mb-4 text-sm">{t('home.modes.solo.tagline')}</p>
               <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.solo.desc')}</p>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.solo.bullet1')}</span></li>
@@ -1897,20 +1897,20 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
                 <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.solo.bullet3')}</span></li>
               </ul>
               <button onClick={onSignup}
-                className="w-full py-3 bg-white/5 hover:bg-orange-500 border border-white/10 hover:border-orange-500 rounded-lg font-bold text-sm transition group-hover:bg-orange-500/10">
+                className="w-full py-3 bg-white/5 hover:bg-cta-500 border border-white/10 hover:border-sport-500 rounded-lg font-bold text-sm transition group-hover:bg-sport-500/10">
                 {t('home.modes.solo.cta')} →
               </button>
               <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
             </div>
 
             {/* MODE 2 — GROUPE (mis en avant) */}
-            <div className="relative bg-gradient-to-br from-orange-500/10 to-pink-500/10 border-2 border-orange-400/40 rounded-3xl p-8 hover:border-orange-400/60 transition group shadow-xl shadow-orange-500/10 md:scale-105">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap">
+            <div className="relative bg-gradient-to-br from-sport-500/10 to-sport-600/10 border-2 border-sport-400/40 rounded-3xl p-8 hover:border-sport-400/60 transition group shadow-xl shadow-sport-500/10 md:scale-105">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cta-500 to-cta-600 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap">
                 ⭐ {t('home.modes.popular')}
               </div>
               <div className="text-5xl mb-4">👥</div>
               <h3 className="text-2xl font-black mb-2">{t('home.modes.group.title')}</h3>
-              <p className="text-orange-300 font-semibold mb-4 text-sm">{t('home.modes.group.tagline')}</p>
+              <p className="text-sport-300 font-semibold mb-4 text-sm">{t('home.modes.group.tagline')}</p>
               <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.group.desc')}</p>
               <ul className="space-y-2 mb-6 text-sm">
                 <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet1')}</span></li>
@@ -1919,7 +1919,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
                 <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.group.bullet4')}</span></li>
               </ul>
               <button onClick={onSignup}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-lg font-bold text-sm transition shadow-lg shadow-orange-500/20">
+                className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 rounded-lg font-bold text-sm transition shadow-lg shadow-orange-500/20">
                 {t('home.modes.group.cta')} →
               </button>
               <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
@@ -1961,8 +1961,8 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
             <p className="text-white/60">{t('home.featuresSubtitle')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-gradient-to-br from-orange-500/10 to-orange-700/10 border border-orange-400/20 rounded-2xl p-6">
-              <Calendar className="w-10 h-10 mb-3 text-orange-300" />
+            <div className="bg-gradient-to-br from-sport-500/10 to-sport-700/10 border border-sport-400/20 rounded-2xl p-6">
+              <Calendar className="w-10 h-10 mb-3 text-sport-300" />
               <h3 className="text-xl font-bold mb-2">{t('home.feature1Title')}</h3>
               <p className="text-white/70 text-sm leading-relaxed">{t('home.feature1Desc')}</p>
             </div>
@@ -1992,7 +1992,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
           <div className="space-y-4">
             {[t('home.scoringStep1'), t('home.scoringStep2'), t('home.scoringStep3'), t('home.scoringStep4')].map((step, i) => (
               <div key={i} className="flex items-center gap-4 p-4 bg-white/5 border border-white/10 rounded-xl">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black">
+                <div className="shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black">
                   {i + 1}
                 </div>
                 <div className="font-semibold">{step}</div>
@@ -2003,12 +2003,12 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
           <div className="mt-12 bg-white/5 border border-white/10 rounded-2xl p-6">
             <p className="text-center text-sm text-white/60 mb-4 font-semibold">{t('home.scoringSystem')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-              <div className="p-3 bg-orange-500/10 border border-orange-400/30 rounded-lg">
-                <div className="text-2xl font-black text-orange-400">15</div>
+              <div className="p-3 bg-sport-500/10 border border-sport-400/30 rounded-lg">
+                <div className="text-2xl font-black text-sport-400">15</div>
                 <div className="text-xs text-white/60 mt-1">{t('home.points15')}</div>
               </div>
-              <div className="p-3 bg-orange-500/5 border border-orange-400/20 rounded-lg">
-                <div className="text-2xl font-black text-orange-300">8</div>
+              <div className="p-3 bg-cta-500/5 border border-sport-400/20 rounded-lg">
+                <div className="text-2xl font-black text-sport-300">8</div>
                 <div className="text-xs text-white/60 mt-1">{t('home.points8')}</div>
               </div>
               <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
@@ -2027,11 +2027,11 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       {/* FINAL CTA */}
       <section className="py-20 border-t border-white/10 bg-black/20">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <Trophy className="w-16 h-16 mx-auto mb-6 text-orange-400" />
+          <Trophy className="w-16 h-16 mx-auto mb-6 text-sport-400" />
           <h2 className="text-3xl sm:text-4xl font-black mb-4">{t('home.finalCta')}</h2>
           <p className="text-white/60 mb-8">{t('home.finalCtaSub')}</p>
           <button onClick={onSignup}
-            className="px-10 py-5 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 transition inline-flex items-center gap-2">
+            className="px-10 py-5 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 rounded-xl font-bold text-lg shadow-lg shadow-orange-500/20 transition inline-flex items-center gap-2">
             <Sparkles className="w-5 h-5" /> {t('home.signupNow')}
           </button>
           <button onClick={onContinueAsGuest} className="block mx-auto mt-4 text-sm text-white/40 hover:text-white/70 transition">
@@ -2045,7 +2045,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       {/* Texte indexable par Google, structuré en H2/H3 */}
       {/* ============================================ */}
       <section className="py-12 px-4 sm:px-6 max-w-4xl mx-auto">
-        <h2 className="text-2xl sm:text-3xl font-black mb-4 bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">
+        <h2 className="text-2xl sm:text-3xl font-black mb-4 bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent">
           {t('home.seoSection1Title')}
         </h2>
         <p className="text-white/70 leading-relaxed mb-3">{t('home.seoSection1P1')}</p>
@@ -2068,14 +2068,14 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
 
         {/* Liens internes contextuels */}
         <div className="mt-8 p-5 bg-white/5 border border-white/10 rounded-xl">
-          <h3 className="text-base font-bold mb-3 text-orange-300">{t('home.seoInternalTitle')}</h3>
+          <h3 className="text-base font-bold mb-3 text-sport-300">{t('home.seoInternalTitle')}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-            <a href={urls.friendsLeague} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkFriends')}</a>
-            <a href={urls.favorites} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkFavorites')}</a>
-            <a href={urls.schedule} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkSchedule')}</a>
-            <a href={urls.groups} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkGroups')}</a>
-            <a href={urls.teams} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkTeams')}</a>
-            <a href={urls.stadiums} className="text-white/70 hover:text-orange-400 transition">→ {t('home.seoLinkStadiums')}</a>
+            <a href={urls.friendsLeague} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkFriends')}</a>
+            <a href={urls.favorites} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkFavorites')}</a>
+            <a href={urls.schedule} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkSchedule')}</a>
+            <a href={urls.groups} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkGroups')}</a>
+            <a href={urls.teams} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkTeams')}</a>
+            <a href={urls.stadiums} className="text-white/70 hover:text-sport-400 transition">→ {t('home.seoLinkStadiums')}</a>
           </div>
         </div>
       </section>
@@ -2096,9 +2096,9 @@ function DonateModal({ onClose, links }) {
   if (!links) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-orange-400/30 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-sport-400/30 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
         <div className="text-center mb-6">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-3xl">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center text-3xl">
             ☕
           </div>
           <h3 className="text-2xl font-black mb-2">{t('donate.title')}</h3>
@@ -2108,7 +2108,7 @@ function DonateModal({ onClose, links }) {
           {/* Ko-fi en premier : 0% de frais, meilleur pour le créateur */}
           {links.kofi && (
             <a href={links.kofi} target="_blank" rel="noopener noreferrer"
-              className="group relative block w-full py-4 px-5 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl font-bold text-center transition transform hover:scale-[1.02] shadow-lg">
+              className="group relative block w-full py-4 px-5 bg-sport-gradient hover:from-sport-700 hover:to-sport-600 rounded-xl font-bold text-center transition transform hover:scale-[1.02] shadow-lg">
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl">☕</span>
                 <span className="text-white">{t('donate.viaKofi')}</span>
@@ -2211,10 +2211,10 @@ function ContactModal({ onClose, currentUser, turnstileSiteKey }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-orange-400/30 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+      <div className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-sport-400/30 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
            onClick={e => e.stopPropagation()}>
         <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-2xl">
+          <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center text-2xl">
             ✉️
           </div>
           <h3 className="text-xl font-black mb-1">{t('contact.title')}</h3>
@@ -2232,20 +2232,20 @@ function ContactModal({ onClose, currentUser, turnstileSiteKey }) {
           <form onSubmit={submit} className="space-y-3">
             <input type="text" placeholder={t('contact.name')} required minLength={2} maxLength={80} value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 text-sm" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 text-sm" />
             <input type="email" placeholder={t('contact.email')} required value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 text-sm" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 text-sm" />
             <input type="text" placeholder={t('contact.subjectPlaceholder')} maxLength={120} value={subject}
               onChange={e => setSubject(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 text-sm" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 text-sm" />
             <textarea placeholder={t('contact.messagePlaceholder')} required minLength={10} maxLength={2000} rows={5} value={message}
               onChange={e => setMessage(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 text-sm resize-none" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 text-sm resize-none" />
 
             {/* Compteur de caractères + indication minimum */}
             <div className="flex justify-between items-center text-xs -mt-1">
-              <span className={message.length < 10 ? 'text-orange-400' : 'text-white/40'}>
+              <span className={message.length < 10 ? 'text-sport-400' : 'text-white/40'}>
                 {message.length < 10
                   ? `Minimum 10 caractères (${10 - message.length} de plus)`
                   : `${message.length} / 2000 caractères`}
@@ -2275,7 +2275,7 @@ function ContactModal({ onClose, currentUser, turnstileSiteKey }) {
             )}
 
             <button type="submit" disabled={loading || message.length < 10}
-              className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+              className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-50 rounded-lg font-bold transition">
               {loading ? t('contact.sending') : t('contact.send')}
             </button>
 
@@ -2466,7 +2466,7 @@ function AdminUsersPanel({ users, currentUserId, onDelete }) {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-              filter === f.id ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
+              filter === f.id ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
             }`}
           >
             {f.label} ({f.count})
@@ -2487,7 +2487,7 @@ function AdminUsersPanel({ users, currentUserId, onDelete }) {
             const lastSeenText = formatLastSeen(u.last_seen_at)
             return (
               <div key={u.id} className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-sm flex-shrink-0">
                   {u.username[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -2682,7 +2682,7 @@ function AdminContactPanel() {
   }
 
   const statusColor = (s) => ({
-    new: 'bg-orange-500/20 text-orange-300 border-orange-400/30',
+    new: 'bg-sport-500/20 text-sport-300 border-sport-400/30',
     read: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
     replied: 'bg-green-500/20 text-green-300 border-green-400/30',
     archived: 'bg-white/5 text-white/40 border-white/10',
@@ -2716,7 +2716,7 @@ function AdminContactPanel() {
           return (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                statusFilter === s ? 'bg-orange-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
+                statusFilter === s ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'
               }`}>
               {s === 'all' ? t('matches.all') : statusLabel(s)}
             </button>
@@ -2758,8 +2758,8 @@ function AdminContactPanel() {
 
               {/* Formulaire de réponse (inline) */}
               {replyingId === m.id ? (
-                <div className="bg-orange-500/5 border border-orange-400/20 rounded-lg p-3 mb-3 space-y-2">
-                  <div className="text-xs text-orange-300 font-semibold">
+                <div className="bg-cta-500/5 border border-sport-400/20 rounded-lg p-3 mb-3 space-y-2">
+                  <div className="text-xs text-sport-300 font-semibold">
                     📨 Répondre à {m.name} ({m.email})
                   </div>
                   <div className="text-xs text-white/50">
@@ -2771,7 +2771,7 @@ function AdminContactPanel() {
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
-                    className={`relative ${dragOver ? 'ring-2 ring-orange-400 rounded-lg' : ''}`}
+                    className={`relative ${dragOver ? 'ring-2 ring-sport-400 rounded-lg' : ''}`}
                   >
                     <textarea
                       value={replyText}
@@ -2783,8 +2783,8 @@ function AdminContactPanel() {
                       autoFocus
                     />
                     {dragOver && (
-                      <div className="absolute inset-0 bg-orange-500/20 border-2 border-dashed border-orange-400 rounded-lg flex items-center justify-center pointer-events-none">
-                        <span className="text-orange-200 font-bold">📎 Dépose tes images ici</span>
+                      <div className="absolute inset-0 bg-sport-500/20 border-2 border-dashed border-sport-400 rounded-lg flex items-center justify-center pointer-events-none">
+                        <span className="text-sport-200 font-bold">📎 Dépose tes images ici</span>
                       </div>
                     )}
                   </div>
@@ -2824,7 +2824,7 @@ function AdminContactPanel() {
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <button onClick={() => sendReply(m.id)} disabled={sending || !replyText.trim()}
-                      className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/30 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition">
+                      className="px-4 py-2 bg-cta-500 hover:bg-cta-600 disabled:bg-sport-500/30 disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition">
                       {sending ? '⏳ Envoi...' : '📤 Envoyer la réponse'}
                     </button>
 
@@ -2849,7 +2849,7 @@ function AdminContactPanel() {
               ) : (
                 <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-white/5">
                   <button onClick={() => startReply(m)}
-                    className="px-3 py-1 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded text-xs font-semibold transition">
+                    className="px-3 py-1 bg-sport-500/20 hover:bg-sport-500/30 text-sport-300 rounded text-xs font-semibold transition">
                     {m.admin_reply ? '↻ Re-répondre' : '↪ Répondre'}
                   </button>
                   {m.status !== 'read' && (
@@ -2949,7 +2949,7 @@ function InfoTab() {
   return (
     <div>
       <div className="text-center mb-8">
-        <div className="inline-block px-3 py-1 mb-3 bg-orange-500/10 border border-orange-400/30 rounded-full text-xs font-bold text-orange-300 uppercase tracking-wider">
+        <div className="inline-block px-3 py-1 mb-3 bg-sport-500/10 border border-sport-400/30 rounded-full text-xs font-bold text-sport-300 uppercase tracking-wider">
           📚 {t('info.badge')}
         </div>
         <h2 className="text-2xl sm:text-3xl font-black mb-2">{t('info.title')}</h2>
@@ -2962,7 +2962,7 @@ function InfoTab() {
             className={`group relative p-5 rounded-2xl border transition transform hover:scale-105 ${
               card.featured
                 ? 'bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border-yellow-400/40 hover:border-yellow-400/70'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-orange-400/50'
+                : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-sport-400/50'
             }`}>
             {card.featured && (
               <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
@@ -2972,7 +2972,7 @@ function InfoTab() {
             <div className="text-4xl mb-3">{card.icon}</div>
             <div className="font-bold text-base mb-1">{card.title}</div>
             <div className="text-sm text-white/50">{card.subtitle}</div>
-            <div className="mt-3 text-xs text-orange-300 group-hover:text-orange-200 font-semibold">
+            <div className="mt-3 text-xs text-sport-300 group-hover:text-sport-200 font-semibold">
               {t('info.readMore')} →
             </div>
           </a>
@@ -3099,16 +3099,16 @@ function ProfileTab({ currentUser, onUserUpdate }) {
         <div className="flex flex-col items-center mb-6">
           <div className="relative mb-3">
             {avatarData ? (
-              <img src={avatarData} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-orange-400/50 shadow-lg" />
+              <img src={avatarData} alt="Avatar" className="w-28 h-28 rounded-full object-cover border-4 border-sport-400/50 shadow-lg" />
             ) : (
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-3xl font-black text-white border-4 border-orange-400/50 shadow-lg">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center text-3xl font-black text-white border-4 border-sport-400/50 shadow-lg">
                 {initials}
               </div>
             )}
           </div>
           <div className="flex gap-2 flex-wrap justify-center">
             <input id="avatar-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handleAvatarUpload} className="hidden" />
-            <label htmlFor="avatar-upload" className="cursor-pointer px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold transition">
+            <label htmlFor="avatar-upload" className="cursor-pointer px-4 py-2 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-semibold transition">
               📷 {avatarData ? t('profile.avatarChange') : t('profile.avatarChoose')}
             </label>
             {avatarData && (
@@ -3125,7 +3125,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
           <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.username')}</label>
           <input type="text" value={username} onChange={e => setUsername(e.target.value)}
             minLength={2} maxLength={40}
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-sport-400" />
         </div>
 
         {/* Bio */}
@@ -3133,7 +3133,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
           <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.bio')}</label>
           <textarea value={bio} onChange={e => setBio(e.target.value)}
             maxLength={140} rows={2} placeholder={t('profile.bioPlaceholder')}
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 resize-none" />
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 resize-none" />
           <div className="text-xs text-white/40 text-right mt-1">{bio.length} / 140</div>
         </div>
 
@@ -3156,7 +3156,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
               <button key={l.code} type="button" onClick={() => setProfileLang(l.code)}
                 className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${
                   profileLang === l.code
-                    ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                    ? 'bg-sport-500/20 border-sport-400/50 text-sport-200'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
                 }`}>
                 <img src={`https://flagcdn.com/w40/${l.flag}.png`} alt={l.code} style={{width: '20px', height: '15px', borderRadius: '2px'}} />
@@ -3173,7 +3173,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
             <button type="button" onClick={() => setProfileTheme('dark')}
               className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
                 profileTheme === 'dark'
-                  ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                  ? 'bg-sport-500/20 border-sport-400/50 text-sport-200'
                   : 'bg-white/5 border-white/10 hover:bg-white/10'
               }`}>
               🌙 {t('profile.themeDark')}
@@ -3181,7 +3181,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
             <button type="button" onClick={() => setProfileTheme('light')}
               className={`flex-1 px-3 py-2 rounded-lg border text-sm transition ${
                 profileTheme === 'light'
-                  ? 'bg-orange-500/20 border-orange-400/50 text-orange-200'
+                  ? 'bg-sport-500/20 border-sport-400/50 text-sport-200'
                   : 'bg-white/5 border-white/10 hover:bg-white/10'
               }`}>
               ☀️ {t('profile.themeLight')}
@@ -3202,7 +3202,7 @@ function ProfileTab({ currentUser, onUserUpdate }) {
         )}
 
         <button onClick={saveProfile} disabled={saving}
-          className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+          className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-50 rounded-lg font-bold transition">
           {saving ? '...' : '💾 ' + t('profile.save')}
         </button>
       </div>
@@ -3215,17 +3215,17 @@ function ProfileTab({ currentUser, onUserUpdate }) {
           <div>
             <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.currentPwd')}</label>
             <input type="password" required value={currentPwd} onChange={e => setCurrentPwd(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-sport-400" />
           </div>
           <div>
             <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.newPwd')}</label>
             <input type="password" required minLength={6} value={newPwd} onChange={e => setNewPwd(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-sport-400" />
           </div>
           <div>
             <label className="text-sm font-semibold text-white/70 block mb-1">{t('profile.confirmPwd')}</label>
             <input type="password" required minLength={6} value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-sport-400" />
           </div>
 
           {pwdError && (
@@ -3293,7 +3293,7 @@ function GroupCreateScreen({ onCreated, onSkip }) {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
       <div className="w-full max-w-lg">
         <div className="text-center mb-6">
-          <Trophy className="w-12 h-12 text-orange-400 mx-auto mb-2" />
+          <Trophy className="w-12 h-12 text-sport-400 mx-auto mb-2" />
           <h1 className="text-3xl font-black mb-2">{t('group.create.title')}</h1>
           <p className="text-white/60">{t('group.create.subtitle')}</p>
         </div>
@@ -3327,14 +3327,14 @@ function GroupCreateScreen({ onCreated, onSkip }) {
             <label className="text-sm font-semibold text-white/70 block mb-1">{t('group.name')}</label>
             <input type="text" required minLength={2} maxLength={80} placeholder={t('group.namePlaceholder')} value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400" />
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400" />
           </div>
 
           <div>
             <label className="text-sm font-semibold text-white/70 block mb-1">{t('group.description')}</label>
             <textarea maxLength={500} rows={3} placeholder={t('group.descriptionPlaceholder')} value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-orange-400 resize-none" />
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-sport-400 resize-none" />
           </div>
 
           {error && (
@@ -3344,7 +3344,7 @@ function GroupCreateScreen({ onCreated, onSkip }) {
           )}
 
           <button type="submit" disabled={loading || name.length < 2}
-            className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+            className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-50 rounded-lg font-bold transition">
             {loading ? t('group.creating') : t('group.create.cta')}
           </button>
         </form>
@@ -3388,7 +3388,7 @@ function JoinGroupScreen({ inviteCode, onJoined, onCancel, currentUser }) {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <Trophy className="w-12 h-12 text-orange-400 mx-auto mb-2" />
+          <Trophy className="w-12 h-12 text-sport-400 mx-auto mb-2" />
           <h1 className="text-2xl font-black">{t('group.joinTitle')}</h1>
         </div>
 
@@ -3401,12 +3401,12 @@ function JoinGroupScreen({ inviteCode, onJoined, onCancel, currentUser }) {
             </button>
           </div>
         ) : preview && (
-          <div className="bg-white/5 backdrop-blur-xl border border-orange-400/30 rounded-2xl p-6">
+          <div className="bg-white/5 backdrop-blur-xl border border-sport-400/30 rounded-2xl p-6">
             <div className="flex flex-col items-center gap-3 mb-4">
               {preview.logo_data ? (
-                <img src={preview.logo_data} alt={preview.name} className="w-24 h-24 rounded-2xl object-cover border-2 border-orange-400/50" />
+                <img src={preview.logo_data} alt={preview.name} className="w-24 h-24 rounded-2xl object-cover border-2 border-sport-400/50" />
               ) : (
-                <div className="w-24 h-24 rounded-2xl bg-orange-500/20 flex items-center justify-center text-4xl">🏆</div>
+                <div className="w-24 h-24 rounded-2xl bg-sport-500/20 flex items-center justify-center text-4xl">🏆</div>
               )}
               <h2 className="text-2xl font-black text-center">{preview.name}</h2>
               {preview.description && <p className="text-sm text-white/70 text-center">{preview.description}</p>}
@@ -3416,7 +3416,7 @@ function JoinGroupScreen({ inviteCode, onJoined, onCancel, currentUser }) {
               </div>
             </div>
 
-            <div className="bg-orange-500/10 border border-orange-400/30 rounded-lg p-3 text-xs text-orange-200 mb-4">
+            <div className="bg-sport-500/10 border border-sport-400/30 rounded-lg p-3 text-xs text-sport-200 mb-4">
               {t('group.joinNote')}
             </div>
 
@@ -3424,7 +3424,7 @@ function JoinGroupScreen({ inviteCode, onJoined, onCancel, currentUser }) {
               <p className="text-center text-sm text-white/60 mb-4">{t('signup.invitedTo')} <strong>{preview.name}</strong>. {t('auth.signup')} pour rejoindre.</p>
             ) : (
               <button onClick={join} disabled={joining}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-50 rounded-lg font-bold transition">
+                className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-50 rounded-lg font-bold transition">
                 {joining ? '...' : t('group.joinCta')}
               </button>
             )}
@@ -3537,12 +3537,12 @@ function GroupTab({ user }) {
   return (
     <div className="space-y-4">
       {/* Carte groupe */}
-      <div className="bg-gradient-to-br from-orange-500/10 to-pink-500/10 border border-orange-400/30 rounded-2xl p-5">
+      <div className="bg-gradient-to-br from-sport-500/10 to-sport-600/10 border border-sport-400/30 rounded-2xl p-5">
         <div className="flex items-start gap-4 mb-4">
           {group.logo_data ? (
-            <img src={group.logo_data} alt={group.name} className="w-20 h-20 rounded-2xl object-cover border-2 border-orange-400/50" />
+            <img src={group.logo_data} alt={group.name} className="w-20 h-20 rounded-2xl object-cover border-2 border-sport-400/50" />
           ) : (
-            <div className="w-20 h-20 rounded-2xl bg-orange-500/20 flex items-center justify-center text-3xl">🏆</div>
+            <div className="w-20 h-20 rounded-2xl bg-sport-500/20 flex items-center justify-center text-3xl">🏆</div>
           )}
           <div className="flex-1 min-w-0">
             {editing ? (
@@ -3574,7 +3574,7 @@ function GroupTab({ user }) {
                 {t('group.logoChange')}
               </label>
               {logoData && <button onClick={() => setLogoData(null)} className="text-sm text-red-300">{t('group.logoRemove')}</button>}
-              <button onClick={save} disabled={saving} className="ml-auto px-4 py-1.5 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold">
+              <button onClick={save} disabled={saving} className="ml-auto px-4 py-1.5 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-semibold">
                 {saving ? '...' : t('group.save')}
               </button>
               <button onClick={() => { setEditing(false); reload() }} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm">
@@ -3595,10 +3595,10 @@ function GroupTab({ user }) {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <h3 className="font-semibold mb-3">{t('group.inviteLink')}</h3>
           <div className="flex items-center gap-2 mb-2">
-            <code className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-orange-300 text-sm break-all">
+            <code className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-sport-300 text-sm break-all">
               {window.location.origin}/join/{group.invite_code}
             </code>
-            <button onClick={copyInviteLink} className="shrink-0 px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-semibold whitespace-nowrap">
+            <button onClick={copyInviteLink} className="shrink-0 px-3 py-2 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-semibold whitespace-nowrap">
               {copyMsg ? '✓ ' + t('group.inviteCopied') : '📋 ' + t('group.inviteCopy')}
             </button>
           </div>
@@ -3614,7 +3614,7 @@ function GroupTab({ user }) {
               🏆 {t('group.ranking')}
               <span className="text-xs text-white/40 font-normal">({members.length} {members.length > 1 ? t('group.membersPlural') : t('group.membersSingular')})</span>
             </h3>
-            <button onClick={reload} className="text-xs text-white/40 hover:text-orange-400 transition" title="Rafraîchir">
+            <button onClick={reload} className="text-xs text-white/40 hover:text-sport-400 transition" title="Rafraîchir">
               🔄
             </button>
           </div>
@@ -3628,7 +3628,7 @@ function GroupTab({ user }) {
                 <div key={m.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition ${
                     isMe
-                      ? 'bg-orange-500/15 border-orange-400/50 shadow-md shadow-orange-500/10'
+                      ? 'bg-sport-500/15 border-sport-400/50 shadow-md shadow-sport-500/10'
                       : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}>
 
@@ -3637,14 +3637,14 @@ function GroupTab({ user }) {
                     {rankEmoji ? (
                       <span className="text-2xl">{rankEmoji}</span>
                     ) : (
-                      <span className={`font-mono font-bold ${isMe ? 'text-orange-300' : 'text-white/40'}`}>
+                      <span className={`font-mono font-bold ${isMe ? 'text-sport-300' : 'text-white/40'}`}>
                         #{rank}
                       </span>
                     )}
                   </div>
 
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center font-black text-sm flex-shrink-0 overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-sm flex-shrink-0 overflow-hidden">
                     {m.avatar_data ? (
                       <img src={m.avatar_data} alt={m.username} className="w-full h-full object-cover" />
                     ) : (
@@ -3656,8 +3656,8 @@ function GroupTab({ user }) {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm flex items-center gap-1.5 flex-wrap">
                       <span className="truncate">{m.username}</span>
-                      {isMe && <span className="text-[10px] bg-orange-500 text-white px-1.5 py-0.5 rounded-full font-bold">{t('group.you')}</span>}
-                      {m.is_leader && <span className="text-[11px] text-orange-300" title={t('group.leader')}>👑</span>}
+                      {isMe && <span className="text-[10px] bg-cta-500 text-white px-1.5 py-0.5 rounded-full font-bold">{t('group.you')}</span>}
+                      {m.is_leader && <span className="text-[11px] text-sport-300" title={t('group.leader')}>👑</span>}
                     </div>
                     <div className="text-xs text-white/40 mt-0.5">
                       {m.predictions_count} {m.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}
@@ -3669,7 +3669,7 @@ function GroupTab({ user }) {
 
                   {/* Points */}
                   <div className="text-right flex-shrink-0">
-                    <div className={`text-lg font-black ${isMe ? 'text-orange-300' : 'text-white/90'}`}>
+                    <div className={`text-lg font-black ${isMe ? 'text-sport-300' : 'text-white/90'}`}>
                       {m.points}
                     </div>
                     <div className="text-[10px] text-white/40 uppercase">{t('group.points')}</div>
@@ -3743,13 +3743,13 @@ function AdminGroupsPanel() {
         <div key={g.id} className="bg-white/5 border border-white/10 rounded-xl">
           <div className="p-4 flex items-center gap-3">
             {g.logo_data ? <img src={g.logo_data} className="w-12 h-12 rounded-lg object-cover" alt={g.name} />
-              : <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center text-xl">🏆</div>}
+              : <div className="w-12 h-12 rounded-lg bg-sport-500/20 flex items-center justify-center text-xl">🏆</div>}
             <div className="flex-1 min-w-0">
               <div className="font-bold">{g.name}</div>
               <div className="text-xs text-white/50 flex items-center gap-3 flex-wrap">
                 <span>👥 {g.member_count}</span>
                 <span>👑 {g.leader?.username}</span>
-                <code className="text-orange-300">{g.invite_code}</code>
+                <code className="text-sport-300">{g.invite_code}</code>
               </div>
             </div>
             <button onClick={() => toggleExpand(g.id)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm">
@@ -3769,7 +3769,7 @@ function AdminGroupsPanel() {
                   <div className="flex items-center gap-2">
                     <span>{m.username}</span>
                     <span className="text-xs text-white/40">{m.email}</span>
-                    {m.role === 'leader' && <span className="text-xs text-orange-300">👑</span>}
+                    {m.role === 'leader' && <span className="text-xs text-sport-300">👑</span>}
                   </div>
                   {m.role !== 'leader' && (
                     <button onClick={() => removeMember(g.id, m.id)} className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded text-xs">
@@ -3810,7 +3810,7 @@ function AuthScreenWithInvite({ inviteCode, onLogin, onCancel }) {
         <div className="max-w-md text-center bg-red-500/10 border border-red-500/30 rounded-2xl p-6">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
           <p className="text-red-300 mb-4">Code d'invitation invalide</p>
-          <button onClick={onCancel} className="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg">
+          <button onClick={onCancel} className="px-6 py-2 bg-cta-500 hover:bg-cta-600 rounded-lg">
             ← Retour
           </button>
         </div>
@@ -4030,7 +4030,7 @@ export default function App() {
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
           <p className="text-red-300 mb-4">{t('group.joinErrorAlreadyIn')}</p>
           <button onClick={() => { setInviteCode(null); window.history.replaceState({}, '', '/') }}
-            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg">
+            className="px-6 py-2 bg-cta-500 hover:bg-cta-600 rounded-lg">
             ← {t('auth.guestBack')}
           </button>
         </div>
@@ -4092,12 +4092,12 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
       {/* Bandeau visiteur */}
       {isGuest && (
-        <div className="bg-gradient-to-r from-orange-500/20 to-pink-500/20 border-b border-orange-400/30 backdrop-blur">
+        <div className="bg-gradient-to-r from-sport-500/20 to-sport-600/20 border-b border-sport-400/30 backdrop-blur">
           <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-            <span className="text-sm text-orange-200 flex items-center gap-2">
+            <span className="text-sm text-sport-200 flex items-center gap-2">
               <Zap className="w-4 h-4" /> {t('auth.guestBanner')}
             </span>
-            <button onClick={() => setShowAuth(true)} className="px-3 py-1 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
+            <button onClick={() => setShowAuth(true)} className="px-3 py-1 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
               <LogIn className="w-3.5 h-3.5" /> {t('auth.guestLogin')}
             </button>
           </div>
@@ -4129,7 +4129,7 @@ export default function App() {
             {config.donations?.enabled && (
               <button
                 onClick={() => setActiveTab('support')}
-                className="px-2.5 py-1.5 bg-gradient-to-r from-pink-500/20 to-orange-500/20 hover:from-pink-500/30 hover:to-orange-500/30 border border-pink-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group"
+                className="px-2.5 py-1.5 bg-gradient-to-r from-sport-500/15 to-sport-600/15 hover:from-sport-500/25 hover:to-sport-600/25 border border-cta-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group"
                 title={t('support.headerTooltip')}>
                 <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
                 <span className="hidden sm:inline">{t('support.headerButton')}</span>
@@ -4147,7 +4147,7 @@ export default function App() {
               </>
             ) : (
               <button onClick={() => setShowAuth(true)}
-                className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
+                className="px-3 py-1.5 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
                 <LogIn className="w-3.5 h-3.5" /> {t('auth.login')}
               </button>
             )}
@@ -4162,7 +4162,7 @@ export default function App() {
             return (
               <button key={tab.id} onClick={() => { setActiveTab(tab.id); trackPageView(tab.label) }}
                 className={`px-4 py-3 flex items-center gap-2 text-sm font-semibold whitespace-nowrap border-b-2 transition ${
-                  activeTab === tab.id ? 'border-orange-400 text-orange-400' : 'border-transparent text-white/60 hover:text-white'
+                  activeTab === tab.id ? 'border-sport-400 text-sport-400' : 'border-transparent text-white/60 hover:text-white'
                 }`}>
                 <Icon className="w-4 h-4" /> {tab.label}
               </button>
@@ -4216,7 +4216,7 @@ export default function App() {
                 ]
                 return links.map((link, idx) => (
                   <a key={idx} href={link.url} target="_blank" rel="noopener"
-                    className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange-400/40 rounded-full text-white/70 hover:text-orange-300 transition">
+                    className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-sport-400/40 rounded-full text-white/70 hover:text-sport-300 transition">
                     {link.label}
                   </a>
                 ))

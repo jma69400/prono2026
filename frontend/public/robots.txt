@@ -10,9 +10,6 @@ Disallow: /api/
 Disallow: /admin
 Disallow: /auth/
 
-# Crawl-delay pour ne pas surcharger le serveur
-Crawl-delay: 1
-
 # =====================================================
 # Bloque uniquement les bots IA non-search
 # (scrapers qui aspirent ton contenu sans rien donner en retour)
@@ -37,6 +34,8 @@ Disallow: /
 
 # =====================================================
 # Autoriser explicitement les moteurs de recherche et SEO
+# AUCUN crawl-delay pour ces bots de confiance (Bing/Google
+# le respectent et ça les ralentit inutilement)
 # =====================================================
 User-agent: Googlebot
 Allow: /
@@ -52,17 +51,22 @@ Allow: /
 
 User-agent: AhrefsBot
 Allow: /
+Crawl-delay: 10
 
 User-agent: SemrushBot
 Allow: /
+Crawl-delay: 10
 
 User-agent: MJ12bot
 Allow: /
+Crawl-delay: 30
 
 User-agent: DotBot
 Allow: /
+Crawl-delay: 30
 
 # =====================================================
 # Sitemap
 # =====================================================
 Sitemap: https://unitedpronos.com/sitemap.xml
+

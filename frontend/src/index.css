@@ -13,10 +13,11 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Scrollbar en bleu sport (cohérent avec la palette) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); }
-::-webkit-scrollbar-thumb { background: rgba(255,107,53,0.3); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,107,53,0.5); }
+::-webkit-scrollbar-thumb { background: rgba(30,64,175,0.5); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(59,130,246,0.6); }
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -27,4 +28,62 @@ input[type=number] { -moz-appearance: textfield; }
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ============================================
+   CLASSES UTILITAIRES SÉMANTIQUES
+   ============================================
+   Permet de migrer progressivement le site
+   sans réécrire toutes les classes Tailwind */
+
+/* CTA primaire (action principale) - VERT ÉLECTRIQUE */
+.btn-cta {
+  background: linear-gradient(to right, #10b981, #059669);
+  color: white;
+  font-weight: 700;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba(16, 249, 129, 0.15);
+}
+.btn-cta:hover {
+  background: linear-gradient(to right, #059669, #047857);
+  box-shadow: 0 0 30px rgba(16, 249, 129, 0.25);
+}
+.btn-cta:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* CTA secondaire (action sport) - BLEU SPORT */
+.btn-sport {
+  background: linear-gradient(to right, #1e40af, #3b82f6);
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-sport:hover {
+  background: linear-gradient(to right, #1d4ed8, #2563eb);
+}
+
+/* Cards "sport" - bordure bleue subtile */
+.card-sport {
+  background: rgba(30, 64, 175, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+/* Badge "IA prédictive" - vert électrique */
+.badge-ai {
+  background: rgba(16, 249, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 249, 129, 0.3);
+}
+
+/* Animation halo pour les CTAs ultra-importants */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(16, 249, 129, 0.15); }
+  50% { box-shadow: 0 0 30px rgba(16, 249, 129, 0.35); }
+}
+.glow-cta {
+  animation: glow-pulse 2s ease-in-out infinite;
 }

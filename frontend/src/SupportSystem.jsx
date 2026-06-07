@@ -48,7 +48,7 @@ export function HeaderSupportButton({ onClick }) {
     <button
       onClick={onClick}
       title={t('support.headerTooltip')}
-      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/30 hover:border-pink-400/50 rounded-lg text-xs font-semibold text-pink-200 transition group"
+      className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-cta-500/15 hover:bg-pink-500/25 border border-cta-400/30 hover:border-pink-400/50 rounded-lg text-xs font-semibold text-cta-200 transition group"
     >
       <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
       <span>{t('support.headerButton')}</span>
@@ -64,7 +64,7 @@ export function HeaderSupportButtonMobile({ onClick }) {
       onClick={onClick}
       title={t('support.headerButton')}
       aria-label={t('support.headerButton')}
-      className="sm:hidden flex items-center justify-center w-9 h-9 bg-pink-500/15 hover:bg-pink-500/25 border border-pink-400/30 rounded-lg text-pink-200 transition"
+      className="sm:hidden flex items-center justify-center w-9 h-9 bg-cta-500/15 hover:bg-pink-500/25 border border-cta-400/30 rounded-lg text-cta-200 transition"
     >
       <span className="text-lg">❤️</span>
     </button>
@@ -146,9 +146,9 @@ export function SupportPage({ user, onClose }) {
 
       {/* Badge "Tu es supporter" si l'utilisateur l'est déjà */}
       {isSupporter && (
-        <div className="mb-6 p-4 bg-gradient-to-br from-pink-500/15 to-orange-500/10 border border-pink-400/30 rounded-xl text-center">
+        <div className="mb-6 p-4 bg-gradient-to-br from-pink-500/15 to-orange-500/10 border border-cta-400/30 rounded-xl text-center">
           <div className="text-3xl mb-2">🎉</div>
-          <div className="font-bold text-pink-200">{t('support.alreadyTitle')}</div>
+          <div className="font-bold text-cta-200">{t('support.alreadyTitle')}</div>
           <div className="text-xs text-white/60 mt-1">{t('support.alreadyText')}</div>
         </div>
       )}
@@ -157,7 +157,7 @@ export function SupportPage({ user, onClose }) {
       <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl text-center">
         <div className="flex items-center justify-center gap-2 text-2xl font-black">
           <span>❤️</span>
-          <span className="text-pink-300">{stats.supporter_count}</span>
+          <span className="text-cta-300">{stats.supporter_count}</span>
           <span className="text-white/80">{stats.supporter_count > 1 ? t('support.counterPlural') : t('support.counterSingular')}</span>
         </div>
         <p className="text-xs text-white/50 mt-2">{t('support.counterNote')}</p>
@@ -184,7 +184,7 @@ export function SupportPage({ user, onClose }) {
               <button
                 key={a.value || 'free'}
                 onClick={() => handleDonate(a.value)}
-                className="p-4 bg-gradient-to-br from-pink-500/10 to-orange-500/10 hover:from-pink-500/20 hover:to-orange-500/20 border border-white/10 hover:border-pink-400/40 rounded-xl transition group"
+                className="p-4 bg-gradient-to-br from-pink-500/10 to-orange-500/10 hover:from-pink-500/20 hover:to-orange-500/20 border border-white/10 hover:border-cta-400/40 rounded-xl transition group"
               >
                 <div className="text-3xl mb-1 group-hover:scale-110 transition-transform">{a.icon}</div>
                 <div className="font-bold text-white">
@@ -211,7 +211,7 @@ export function SupportPage({ user, onClose }) {
           <p className="text-sm text-green-100 mb-3">{t('support.afterDonateText')}</p>
           <button
             onClick={handleDeclareSupporter}
-            className="px-5 py-2 bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 rounded-lg text-sm font-bold text-white transition"
+            className="px-5 py-2 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-pink-600 hover:to-orange-600 rounded-lg text-sm font-bold text-white transition"
           >
             ❤️ {t('support.afterDonateBtn')}
           </button>
@@ -224,7 +224,7 @@ export function SupportPage({ user, onClose }) {
         <div className="text-center mt-8">
           <button
             onClick={() => onClose && onClose('credits')}
-            className="text-sm text-white/60 hover:text-pink-300 underline underline-offset-2 transition"
+            className="text-sm text-white/60 hover:text-cta-300 underline underline-offset-2 transition"
           >
             👥 {t('support.seeAllSupporters')}
           </button>
@@ -244,8 +244,8 @@ export function SupporterBadge({ small = false }) {
       title={t('support.badgeTooltip')}
       className={`inline-flex items-center justify-center ${
         small
-          ? 'text-[10px] px-1 py-0 rounded-full bg-pink-500/20 text-pink-300 border border-pink-400/30'
-          : 'text-[11px] px-1.5 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-400/30'
+          ? 'text-[10px] px-1 py-0 rounded-full bg-cta-500/20 text-cta-300 border border-cta-400/30'
+          : 'text-[11px] px-1.5 py-0.5 rounded-full bg-cta-500/20 text-cta-300 border border-cta-400/30'
       } font-bold flex-shrink-0`}
     >
       ❤️
@@ -287,7 +287,7 @@ export function ContextualDonationModal({ trigger, onClose, onGoToSupport }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-pink-400/30 rounded-2xl p-6 max-w-md w-full"
+        className="bg-gradient-to-br from-[#1a1f3a] to-[#0a0e27] border border-cta-400/30 rounded-2xl p-6 max-w-md w-full"
         onClick={e => e.stopPropagation()}
       >
         <div className="text-center">
@@ -306,7 +306,7 @@ export function ContextualDonationModal({ trigger, onClose, onGoToSupport }) {
             </button>
             <button
               onClick={() => { onGoToSupport && onGoToSupport(); onClose() }}
-              className="flex-1 py-2 px-4 bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 rounded-lg text-sm font-bold text-white transition"
+              className="flex-1 py-2 px-4 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-pink-600 hover:to-orange-600 rounded-lg text-sm font-bold text-white transition"
             >
               ❤️ {t('support.modalCTA')}
             </button>
@@ -371,8 +371,8 @@ export function SupportersWallPage() {
         </div>
       ) : (
         <>
-          <div className="mb-6 p-4 bg-pink-500/10 border border-pink-400/30 rounded-xl text-center">
-            <div className="text-3xl font-black text-pink-300">
+          <div className="mb-6 p-4 bg-cta-500/10 border border-cta-400/30 rounded-xl text-center">
+            <div className="text-3xl font-black text-cta-300">
               ❤️ {stats.supporter_count}
             </div>
             <p className="text-xs text-white/60 mt-1">

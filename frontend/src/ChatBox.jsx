@@ -322,7 +322,7 @@ export function FloatingChatBox({ user }) {
               style={{ animation: 'bubbleIn 0.4s ease-out' }}
             >
               <div className="flex items-start gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-sm flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center text-white text-sm flex-shrink-0">
                   🛠️
                 </div>
                 <div className="flex-1 min-w-0 text-left">
@@ -332,7 +332,7 @@ export function FloatingChatBox({ user }) {
                   <div className="text-sm text-gray-800 line-clamp-2">
                     {latestPreview.content}
                   </div>
-                  <div className="text-xs text-orange-500 font-semibold mt-1">
+                  <div className="text-xs text-sport-500 font-semibold mt-1">
                     👉 Cliquer pour lire
                   </div>
                 </div>
@@ -346,18 +346,18 @@ export function FloatingChatBox({ user }) {
 
           {/* Tooltip "Tu as un nouveau message" (premier passage) */}
           {showTooltipFirstTime && !showBubblePreview && (
-            <div className="bg-orange-500 text-white px-3 py-2 rounded-lg shadow-2xl text-sm font-semibold flex items-center gap-2 animate-bounce">
+            <div className="bg-cta-500 text-white px-3 py-2 rounded-lg shadow-2xl text-sm font-semibold flex items-center gap-2 animate-bounce">
               <span>👋</span>
               <span>Tu as {unreadCount > 1 ? `${unreadCount} nouveaux messages` : 'un nouveau message'} !</span>
               {/* Petit triangle pointant vers le bas */}
-              <span className="absolute -bottom-1 right-6 w-3 h-3 bg-orange-500 rotate-45"></span>
+              <span className="absolute -bottom-1 right-6 w-3 h-3 bg-cta-500 rotate-45"></span>
             </div>
           )}
 
           {/* Bouton principal */}
           <button
             onClick={() => openChatbox()}
-            className={`relative w-16 h-16 bg-gradient-to-br from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-110 ${
+            className={`relative w-16 h-16 bg-gradient-to-br from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white rounded-full shadow-2xl flex items-center justify-center transition transform hover:scale-110 ${
               justGotNewMessage ? 'animate-wiggle' : ''
             } ${hasUnread ? 'shadow-orange-400/50' : ''}`}
             style={{
@@ -416,10 +416,10 @@ export function FloatingChatBox({ user }) {
 
       {/* Fenêtre de chat */}
       {isOpen && (
-        <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-[380px] max-w-[380px] h-[600px] max-h-[calc(100vh-2rem)] bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-orange-400/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-[380px] max-w-[380px] h-[600px] max-h-[calc(100vh-2rem)] bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-sport-400/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
 
           {/* Header */}
-          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md">
+          <div className="flex items-center justify-between p-3 bg-gradient-to-r from-cta-500 to-cta-600 text-white shadow-md">
             <div className="flex items-center gap-2 min-w-0">
               {view === 'conversation' && (
                 <button onClick={backToList} className="p-1 hover:bg-white/10 rounded">
@@ -511,7 +511,7 @@ function ConversationList({ conversations, loading, onOpen, onNew }) {
           onClick={() => onOpen(c.id)}
           className={`w-full text-left p-3 rounded-lg border transition ${
             c.unread_user > 0
-              ? 'bg-orange-500/10 border-orange-400/40 hover:bg-orange-500/20'
+              ? 'bg-sport-500/10 border-sport-400/40 hover:bg-sport-500/20'
               : 'bg-white/5 border-white/10 hover:bg-white/10'
           }`}
         >
@@ -544,7 +544,7 @@ function ConversationList({ conversations, loading, onOpen, onNew }) {
 
       <button
         onClick={onNew}
-        className="w-full p-3 mt-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white rounded-lg font-semibold text-sm transition"
+        className="w-full p-3 mt-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 text-white rounded-lg font-semibold text-sm transition"
       >
         + Nouveau message
       </button>
@@ -648,7 +648,7 @@ function NewConversationForm({ onCancel, onCreated }) {
           onClick={() => setShowEmojis(v => !v)}
           className={`p-1.5 border rounded-lg text-base flex items-center justify-center transition ${
             showEmojis
-              ? 'bg-orange-500/20 border-orange-400/40'
+              ? 'bg-sport-500/20 border-sport-400/40'
               : 'bg-white/5 hover:bg-white/10 border-white/10'
           }`}
           title="Ajouter un emoji"
@@ -678,7 +678,7 @@ function NewConversationForm({ onCancel, onCreated }) {
       {error && <div className="mt-2 text-xs text-red-300">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
         <button onClick={submit} disabled={sending || !content.trim()}
-          className="flex-1 px-4 py-2 bg-gradient-to-r from-orange-500 to-pink-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
+          className="flex-1 px-4 py-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
           {sending ? 'Envoi...' : '📤 Envoyer'}
         </button>
         <label className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg cursor-pointer text-sm" title="Ajouter une image">
@@ -778,7 +778,7 @@ function ConversationView({ conv, onMessageSent }) {
               <div className={`max-w-[80%] rounded-2xl p-3 ${
                 isAdmin
                   ? 'bg-white/10 border border-white/10 text-white/90'
-                  : 'bg-gradient-to-br from-orange-500/30 to-pink-500/30 border border-orange-400/30 text-white'
+                  : 'bg-gradient-to-br from-sport-500/30 to-sport-600/30 border border-sport-400/30 text-white'
               }`}>
                 <div className="text-[10px] font-semibold uppercase mb-1 opacity-70">
                   {isAdmin ? '🛠️ United Pronos' : 'Toi'} · {formatChatTime(m.created_at)}
@@ -834,7 +834,7 @@ function ConversationView({ conv, onMessageSent }) {
               onClick={() => setShowEmojis(v => !v)}
               className={`p-2 border rounded-lg text-sm w-10 h-10 flex items-center justify-center transition ${
                 showEmojis
-                  ? 'bg-orange-500/20 border-orange-400/40'
+                  ? 'bg-sport-500/20 border-sport-400/40'
                   : 'bg-white/5 hover:bg-white/10 border-white/10'
               }`}
               title="Ajouter un emoji"
@@ -855,7 +855,7 @@ function ConversationView({ conv, onMessageSent }) {
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
           </label>
           <button onClick={send} disabled={sending || !content.trim()}
-            className="p-2 bg-gradient-to-r from-orange-500 to-pink-500 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
+            className="p-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
             {sending ? '⏳' : '📤'}
           </button>
         </div>

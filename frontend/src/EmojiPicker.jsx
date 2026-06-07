@@ -143,7 +143,7 @@ export function EmojiPicker({ onSelect, onClose, position = 'top' }) {
             aria-label={cat.label}
             className={`flex-1 py-1.5 rounded-lg text-base transition ${
               activeCategory === cat.id
-                ? 'bg-orange-500/30 ring-1 ring-orange-400/40'
+                ? 'bg-sport-500/30 ring-1 ring-sport-400/40'
                 : 'hover:bg-white/10'
             }`}>
             {cat.icon}

@@ -48,7 +48,7 @@ export function ForgotPasswordForm({ onBack }) {
           </p>
         </div>
 
-        <div className="bg-orange-500/10 border border-orange-400/30 rounded-lg p-3 text-xs text-white/70">
+        <div className="bg-sport-500/10 border border-sport-400/30 rounded-lg p-3 text-xs text-white/70">
           💡 <strong>Tu ne reçois rien ?</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li>Vérifie ton dossier <strong>spam</strong></li>
@@ -86,7 +86,7 @@ export function ForgotPasswordForm({ onBack }) {
           placeholder="ton@email.com"
           autoFocus
           required
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-orange-400/50"
+          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-sport-400/50"
         />
       </div>
 
@@ -97,7 +97,7 @@ export function ForgotPasswordForm({ onBack }) {
       )}
 
       <button type="submit" disabled={sending || !email.trim()}
-        className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">
+        className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">
         {sending ? '⏳ Envoi...' : '📧 Envoyer le lien de réinitialisation'}
       </button>
 
@@ -177,10 +177,10 @@ export function ResetPasswordPage({ token, onSuccess }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
-      <div className="max-w-md w-full bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-orange-400/30 rounded-2xl p-8">
+      <div className="max-w-md w-full bg-gradient-to-br from-[#0f1430] to-[#0a0e27] border border-sport-400/30 rounded-2xl p-8">
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">🔐</div>
-          <h2 className="text-2xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent mb-2">
+          <h2 className="text-2xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent mb-2">
             Nouveau mot de passe
           </h2>
           <p className="text-sm text-white/60">
@@ -201,7 +201,7 @@ export function ResetPasswordPage({ token, onSuccess }) {
               autoFocus
               required
               minLength={8}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-orange-400/50"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-sport-400/50"
             />
           </div>
 
@@ -216,7 +216,7 @@ export function ResetPasswordPage({ token, onSuccess }) {
               placeholder="Retape le même mot de passe"
               required
               minLength={8}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-orange-400/50"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base focus:outline-none focus:border-sport-400/50"
             />
           </div>
 
@@ -236,7 +236,7 @@ export function ResetPasswordPage({ token, onSuccess }) {
           )}
 
           <button type="submit" disabled={sending || !password || !confirmPassword}
-            className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">
+            className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition">
             {sending ? '⏳ Modification...' : '✅ Réinitialiser le mot de passe'}
           </button>
         </form>

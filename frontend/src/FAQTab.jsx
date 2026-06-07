@@ -637,7 +637,7 @@ export function FAQTab() {
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="text-center mb-6">
-        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent mb-2">
+        <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-cta-500 to-cta-600 bg-clip-text text-transparent mb-2">
           {L.title}
         </h1>
         <p className="text-white/60">{L.subtitle}</p>
@@ -650,7 +650,7 @@ export function FAQTab() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={L.search}
-          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-base focus:outline-none focus:border-orange-400/50 focus:bg-white/10 transition"
+          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-base focus:outline-none focus:border-sport-400/50 focus:bg-white/10 transition"
         />
         {search && (
           <div className="text-sm text-white/60 mt-2 px-1">
@@ -682,7 +682,7 @@ export function FAQTab() {
                 return (
                   <div
                     key={key}
-                    className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-orange-400/30 transition"
+                    className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-sport-400/30 transition"
                   >
                     <button
                       onClick={() => toggleItem(key)}
@@ -692,7 +692,7 @@ export function FAQTab() {
                       <span className="font-semibold text-white/90 flex-1">
                         {item.q}
                       </span>
-                      <span className={`text-orange-400 text-xl flex-shrink-0 transition-transform ${
+                      <span className={`text-sport-400 text-xl flex-shrink-0 transition-transform ${
                         isOpen ? 'rotate-45' : ''
                       }`}>
                         +
@@ -714,7 +714,7 @@ export function FAQTab() {
       </div>
 
       {/* Footer : invitation au contact */}
-      <div className="mt-12 p-6 bg-gradient-to-br from-orange-500/10 to-pink-500/10 border border-orange-400/30 rounded-xl text-center">
+      <div className="mt-12 p-6 bg-gradient-to-br from-sport-500/10 to-sport-600/10 border border-sport-400/30 rounded-xl text-center">
         <p className="text-white/80 mb-2">{L.stillQuestion}</p>
         <p className="text-sm text-white/60">{L.contactUs}</p>
       </div>
