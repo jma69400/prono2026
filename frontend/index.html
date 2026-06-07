@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="canonical" href="https://unitedpronos.com" />
+    <link rel="canonical" href="https://unitedpronos.com/" />
 
     <!-- ===== SEO PRIMARY ===== -->
     <title>United Pronos · Pronostics Coupe du Monde 2026 entre amis · Gratuit</title>
@@ -23,10 +23,16 @@
     <!-- Yandex Webmaster (bonus pour audience russe/internationale) -->
     <!-- <meta name="yandex-verification" content="REMPLACE_PAR_TON_CODE" /> -->
 
-    <!-- ===== LANGUE ALTERNATIVES (hreflang) ===== -->
+    <!-- ===== LANGUE ALTERNATIVES (hreflang) =====
+         IMPORTANT : United Pronos est une SPA où la langue est gérée côté client
+         via un sélecteur (FR/EN/ES). Tous les hreflang pointent donc vers l'URL
+         canonique unique, conforme à la documentation Google pour les sites SPA :
+         https://developers.google.com/search/docs/specialty/international/localized-versions
+         Le sélecteur de langue dans l'interface charge dynamiquement les traductions
+         depuis i18n.jsx (FR par défaut, détecté via navigator.language). -->
     <link rel="alternate" hreflang="fr" href="https://unitedpronos.com/" />
-    <link rel="alternate" hreflang="en" href="https://unitedpronos.com/?lang=en" />
-    <link rel="alternate" hreflang="es" href="https://unitedpronos.com/?lang=es" />
+    <link rel="alternate" hreflang="en" href="https://unitedpronos.com/" />
+    <link rel="alternate" hreflang="es" href="https://unitedpronos.com/" />
     <link rel="alternate" hreflang="x-default" href="https://unitedpronos.com/" />
 
     <!-- ===== OPEN GRAPH (Facebook, LinkedIn, WhatsApp) ===== -->
@@ -34,7 +40,7 @@
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:locale:alternate" content="en_US" />
     <meta property="og:locale:alternate" content="es_ES" />
-    <meta property="og:url" content="https://unitedpronos.com" />
+    <meta property="og:url" content="https://unitedpronos.com/" />
     <meta property="og:site_name" content="United Pronos" />
     <meta property="og:title" content="United Pronos · Pronostics Coupe du Monde 2026" />
     <meta property="og:description" content="Pronostique les 104 matchs du Mondial 2026, défie tes amis, classement temps réel. IA prédictive intégrée. Gratuit, sans pubs." />
@@ -58,12 +64,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- ===== HREFLANG (multi-langue) ===== -->
-    <link rel="alternate" hreflang="fr" href="https://unitedpronos.com" />
-    <link rel="alternate" hreflang="en" href="https://unitedpronos.com" />
-    <link rel="alternate" hreflang="es" href="https://unitedpronos.com" />
-    <link rel="alternate" hreflang="x-default" href="https://unitedpronos.com" />
-
     <!-- ===== PERFORMANCE HINTS ===== -->
     <link rel="preconnect" href="https://flagcdn.com" />
     <link rel="dns-prefetch" href="https://flagcdn.com" />
@@ -74,7 +74,7 @@
       "@context": "https://schema.org",
       "@type": "WebApplication",
       "name": "United Pronos",
-      "url": "https://unitedpronos.com",
+      "url": "https://unitedpronos.com/",
       "description": "Site de pronostics pour la Coupe du Monde de la FIFA 2026 (USA · Canada · Mexique). 104 matchs, IA prédictive, classement temps réel, multi-langues.",
       "applicationCategory": "SportsApplication",
       "operatingSystem": "Web",
@@ -171,7 +171,7 @@
       "@context": "https://schema.org",
       "@type": "Organization",
       "name": "United Pronos",
-      "url": "https://unitedpronos.com",
+      "url": "https://unitedpronos.com/",
       "logo": "https://unitedpronos.com/og-image.png",
       "description": "Site de pronostics gratuits pour la Coupe du Monde 2026 entre amis.",
       "sameAs": [
