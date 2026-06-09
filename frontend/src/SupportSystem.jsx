@@ -103,16 +103,40 @@ export function SupportPage({ user, onClose }) {
     { value: null, icon: '✨', label: t('support.amountFree') },
   ]
 
-  // Quand l'utilisateur clique sur un montant, on ouvre Ko-fi/Stripe
-  // et on lui propose de se déclarer supporter (après retour)
+  // Quand l'utilisateur clique sur un montant, on ouvre le provider choisi.
+  // Si les 2 providers sont configurés, on a un sélecteur de provider.
+  // Par défaut, Ko-fi est privilégié (commission 0%) sauf si l'utilisateur a choisi Stripe.
+  const [provider, setProvider] = useState('auto')  // 'auto' | 'kofi' | 'stripe'
+  const bothAvailable = donationConfig.kofi && donationConfig.stripe
+
   const handleDonate = (amount) => {
-    const link = donationConfig.kofi || donationConfig.stripe
-    if (!link) return
-    const finalUrl = donationConfig.kofi
-      ? kofiUrlWithAmount(donationConfig.kofi, amount)
-      : donationConfig.stripe
+    let finalUrl = null
+
+    // Choix du provider effectif
+    const effectiveProvider = provider === 'auto'
+      ? (donationConfig.kofi ? 'kofi' : 'stripe')
+      : provider
+
+    if (effectiveProvider === 'kofi' && donationConfig.kofi) {
+      finalUrl = kofiUrlWithAmount(donationConfig.kofi, amount)
+    } else if (effectiveProvider === 'stripe' && donationConfig.stripe) {
+      // Stripe Payment Links peuvent accepter ?amount=500 (en centimes) selon config
+      // Mais le plus simple : redirection directe vers le lien Stripe et l'utilisateur
+      // choisit le montant sur la page Stripe (qui le permet via les options)
+      try {
+        const url = new URL(donationConfig.stripe)
+        if (amount) {
+          // Stripe accepte amount en centimes via prefilled_amount (selon config Link)
+          url.searchParams.set('prefilled_amount', String(amount * 100))
+        }
+        finalUrl = url.toString()
+      } catch {
+        finalUrl = donationConfig.stripe
+      }
+    }
+
+    if (!finalUrl) return
     window.open(finalUrl, '_blank', 'noopener,noreferrer')
-    // Affiche immédiatement le bouton "Je viens de donner, ajoute mon badge"
     setShowThanks(true)
   }
 
@@ -179,6 +203,31 @@ export function SupportPage({ user, onClose }) {
       {donationConfig.enabled ? (
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3 text-white/90 text-center">{t('support.chooseAmount')}</h2>
+
+          {/* Sélecteur de provider si les 2 sont disponibles */}
+          {bothAvailable && (
+            <div className="mb-4 flex justify-center gap-2">
+              <button
+                onClick={() => setProvider('kofi')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                  (provider === 'kofi' || provider === 'auto')
+                    ? 'bg-cta-500/15 text-cta-200 border-cta-400/40'
+                    : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10'
+                }`}>
+                ☕ Ko-fi <span className="text-[10px] text-white/40 ml-1">(PayPal, Apple Pay)</span>
+              </button>
+              <button
+                onClick={() => setProvider('stripe')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+                  provider === 'stripe'
+                    ? 'bg-cta-500/15 text-cta-200 border-cta-400/40'
+                    : 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10'
+                }`}>
+                💳 Stripe <span className="text-[10px] text-white/40 ml-1">(CB directe)</span>
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {amounts.map(a => (
               <button
@@ -266,15 +315,25 @@ export function ContextualDonationModal({ trigger, onClose, onGoToSupport }) {
 
   // Messages contextuels selon le trigger
   const messages = {
-    'all_pronos_done': {
-      icon: '🎉',
-      title: t('support.modalDoneTitle'),
-      text: t('support.modalDoneText'),
+    'first_point_scored': {
+      icon: '⭐',
+      title: t('support.modalFirstPointTitle'),
+      text: t('support.modalFirstPointText'),
+    },
+    'top_10': {
+      icon: '🎯',
+      title: t('support.modalTop10Title'),
+      text: t('support.modalTop10Text'),
     },
     'podium_reached': {
       icon: '🏆',
       title: t('support.modalPodiumTitle'),
       text: t('support.modalPodiumText'),
+    },
+    'all_pronos_done': {
+      icon: '🎉',
+      title: t('support.modalDoneTitle'),
+      text: t('support.modalDoneText'),
     },
     'group_active': {
       icon: '👥',

@@ -87,3 +87,15 @@ input[type=number] { -moz-appearance: textfield; }
 .glow-cta {
   animation: glow-pulse 2s ease-in-out infinite;
 }
+
+/* Bouton "Soutenir" pulsation très subtile pour non-supporters
+   (animation toutes les 12s pour rappeler sans agacer) */
+@keyframes support-pulse {
+  0%, 90%, 100% { box-shadow: 0 0 0 0 rgba(16, 249, 129, 0); }
+  93% { box-shadow: 0 0 0 8px rgba(16, 249, 129, 0.2); }
+  96% { box-shadow: 0 0 0 14px rgba(16, 249, 129, 0); }
+}
+.btn-support-pulse {
+  animation: support-pulse 12s ease-in-out infinite;
+  animation-delay: 30s; /* attendre 30s après chargement pour ne pas agresser */
+}

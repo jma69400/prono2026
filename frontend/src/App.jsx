@@ -3906,6 +3906,15 @@ export default function App() {
   const [showDonate, setShowDonate] = useState(false)
   const [showContact, setShowContact] = useState(false)
   const [contextualDonation, setContextualDonation] = useState(null)  // null | 'all_pronos_done' | 'podium_reached' | 'group_active'
+  const [isSupporter, setIsSupporter] = useState(false)  // pour cacher pulsation aux supporters
+
+  // Vérifie si l'utilisateur connecté est déjà supporter (pour ne pas l'embêter avec la pulsation)
+  useEffect(() => {
+    if (!user || isGuest) { setIsSupporter(false); return }
+    api.meIsSupporter()
+      .then(r => setIsSupporter(r.is_supporter))
+      .catch(() => setIsSupporter(false))
+  }, [user, isGuest])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('matches')
   const [matches, setMatches] = useState([])
@@ -3987,6 +3996,50 @@ export default function App() {
       }
     } catch (e) { console.error(e) }
   }
+
+  // === DÉTECTION DES MOMENTS MAGIQUES ===
+  // Quand le classement change (résultats publiés), on cherche si l'utilisateur a
+  // atteint un palier symbolique pour déclencher un modal de soutien.
+  // Tous les triggers ne se déclenchent qu'UNE SEULE FOIS dans la vie du compte
+  // (mémorisé en localStorage par shouldShowContextualModal).
+  useEffect(() => {
+    if (!user || isGuest || !leaderboard) return
+    const ranked = Array.isArray(leaderboard) ? leaderboard : (leaderboard?.ranked || [])
+    if (ranked.length === 0) return
+
+    const myEntry = ranked.find(e => e.id === user.id)
+    if (!myEntry) return
+
+    const myRank = ranked.indexOf(myEntry) + 1
+    const myPoints = myEntry.total_points || 0
+
+    // Trigger #1 : Premier point gagné (le plus fort = moment de surprise positive)
+    if (myPoints > 0 && shouldShowContextualModal('first_point_scored')) {
+      setTimeout(() => {
+        setContextualDonation('first_point_scored')
+        markContextualModalShown('first_point_scored')
+      }, 1500)
+      return  // une seule modal à la fois
+    }
+
+    // Trigger #2 : Top 10 atteint (ego boost)
+    if (myRank <= 10 && ranked.length >= 20 && shouldShowContextualModal('top_10')) {
+      setTimeout(() => {
+        setContextualDonation('top_10')
+        markContextualModalShown('top_10')
+      }, 1500)
+      return
+    }
+
+    // Trigger #3 : Podium atteint (le pic émotionnel)
+    if (myRank <= 3 && shouldShowContextualModal('podium_reached')) {
+      setTimeout(() => {
+        setContextualDonation('podium_reached')
+        markContextualModalShown('podium_reached')
+      }, 1500)
+      return
+    }
+  }, [leaderboard, user, isGuest])
 
   const handleSavePrediction = async (matchId, h, a) => {
     await api.savePrediction(matchId, h, a)
@@ -4187,7 +4240,9 @@ export default function App() {
             {config.donations?.enabled && (
               <button
                 onClick={() => setActiveTab('support')}
-                className="px-2.5 py-1.5 bg-gradient-to-r from-sport-500/15 to-sport-600/15 hover:from-sport-500/25 hover:to-sport-600/25 border border-cta-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group"
+                className={`relative px-2.5 py-1.5 bg-gradient-to-r from-sport-500/15 to-sport-600/15 hover:from-sport-500/25 hover:to-sport-600/25 border border-cta-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group ${
+                  user && !isSupporter ? 'btn-support-pulse' : ''
+                }`}
                 title={t('support.headerTooltip')}>
                 <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
                 <span className="hidden sm:inline">{t('support.headerButton')}</span>
