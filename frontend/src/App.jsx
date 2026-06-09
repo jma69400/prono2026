@@ -468,16 +468,16 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
         </div>
       )}
 
-      {/* Saisie prono */}
-      <div className="mt-4 flex items-center justify-center gap-2">
+      {/* Saisie prono - zone visuellement proéminente */}
+      <div className="mt-4">
         {anyTBD ? (
-          <div className="text-white/40 text-sm italic">{t('matches.tbd')}</div>
+          <div className="text-center text-white/40 text-sm italic py-3">{t('matches.tbd')}</div>
         ) : locked ? (
-          <div className="flex items-center gap-2 text-white/60 text-sm">
+          <div className="flex items-center justify-center gap-2 text-white/60 text-sm py-2">
             <Lock className="w-4 h-4" />
             {prediction ? (
               <>
-                {t('matches.yourPred')} : <strong>{prediction.home_score}-{prediction.away_score}</strong>
+                {t('matches.yourPred')} : <strong className="text-white">{prediction.home_score}-{prediction.away_score}</strong>
                 <span className="px-2 py-0.5 bg-sport-500/20 text-sport-300 rounded text-xs">
                   {prediction.points} {t('matches.points')}
                 </span>
@@ -487,20 +487,78 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
             )}
           </div>
         ) : (
-          <>
-            <input type="number" min="0" max="20" value={predH} onChange={(e) => setPredH(e.target.value)}
-              disabled={isGuest}
-              className="w-16 px-2 py-1 bg-white/5 border border-white/10 rounded text-center font-bold disabled:opacity-50" />
-            <span className="text-white/40">-</span>
-            <input type="number" min="0" max="20" value={predA} onChange={(e) => setPredA(e.target.value)}
-              disabled={isGuest}
-              className="w-16 px-2 py-1 bg-white/5 border border-white/10 rounded text-center font-bold disabled:opacity-50" />
-            <button onClick={save}
-              disabled={!isGuest && (predH === '' || predA === '')}
-              className="ml-2 px-4 py-1 bg-cta-500 hover:bg-cta-600 disabled:opacity-30 rounded font-semibold text-sm transition flex items-center gap-1">
-              {isGuest ? <><LogIn className="w-3 h-3" /> {t('auth.guestLogin')}</> : (saved ? <><Check className="w-3 h-3" /> OK</> : t('matches.pronostic'))}
-            </button>
-          </>
+          <div className={`relative rounded-xl border-2 transition-all ${
+            prediction
+              ? 'bg-cta-500/5 border-cta-500/30'  // déjà pronostiqué : vert discret
+              : 'bg-sport-500/10 border-sport-400/40 shadow-lg shadow-sport-500/5'  // à pronostiquer : bleu visible
+          } p-3`}>
+            {/* Label explicite */}
+            <div className="text-center text-xs font-bold uppercase tracking-wide mb-2 flex items-center justify-center gap-1.5">
+              {prediction ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-cta-400" />
+                  <span className="text-cta-300">{t('matches.predEditLabel')}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-sport-300">✏️ {t('matches.predEnterLabel')}</span>
+                </>
+              )}
+            </div>
+
+            {/* Inputs de score */}
+            <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-col items-center">
+                <input
+                  type="number"
+                  min="0" max="20"
+                  value={predH}
+                  onChange={(e) => setPredH(e.target.value)}
+                  disabled={isGuest}
+                  placeholder="0"
+                  inputMode="numeric"
+                  className="w-16 h-14 text-2xl font-black bg-white text-sport-900 border-2 border-sport-400/50 focus:border-cta-500 focus:outline-none focus:ring-2 focus:ring-cta-500/30 rounded-lg text-center disabled:opacity-50 transition"
+                />
+                <span className="text-[10px] text-white/50 mt-1 max-w-[64px] truncate" title={team(match.home_team).name}>
+                  {team(match.home_team).flag}
+                </span>
+              </div>
+              <span className="text-2xl text-white/60 font-bold">-</span>
+              <div className="flex flex-col items-center">
+                <input
+                  type="number"
+                  min="0" max="20"
+                  value={predA}
+                  onChange={(e) => setPredA(e.target.value)}
+                  disabled={isGuest}
+                  placeholder="0"
+                  inputMode="numeric"
+                  className="w-16 h-14 text-2xl font-black bg-white text-sport-900 border-2 border-sport-400/50 focus:border-cta-500 focus:outline-none focus:ring-2 focus:ring-cta-500/30 rounded-lg text-center disabled:opacity-50 transition"
+                />
+                <span className="text-[10px] text-white/50 mt-1 max-w-[64px] truncate" title={team(match.away_team).name}>
+                  {team(match.away_team).flag}
+                </span>
+              </div>
+              <button
+                onClick={save}
+                disabled={!isGuest && (predH === '' || predA === '')}
+                className={`ml-1 px-4 h-14 rounded-lg font-bold text-sm transition flex items-center gap-1.5 ${
+                  saved
+                    ? 'bg-cta-500 text-white'
+                    : 'bg-cta-gradient hover:from-cta-600 hover:to-cta-700 text-white shadow-md shadow-cta-500/20 disabled:opacity-30 disabled:shadow-none'
+                }`}
+              >
+                {isGuest ? <><LogIn className="w-4 h-4" /> {t('auth.guestLogin')}</> : (saved ? <><Check className="w-4 h-4" /> OK</> : t('matches.pronostic'))}
+              </button>
+            </div>
+
+            {/* Hint si pas encore pronostiqué */}
+            {!prediction && !isGuest && (
+              <div className="text-center text-[10px] text-white/40 mt-2">
+                {t('matches.predHint')}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

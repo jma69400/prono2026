@@ -24,6 +24,15 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     let errMsg = `Erreur ${res.status}`
+    // Cas spéciaux qui ne renvoient pas du JSON (gérés par nginx/Caddy avant FastAPI)
+    if (res.status === 413) {
+      errMsg = "Fichier trop volumineux. Limite : 1,5 MB par image."
+    } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+      errMsg = "Le serveur est temporairement indisponible. Réessaie dans quelques secondes."
+    } else if (res.status >= 500) {
+      // 500 par défaut, sera surchargé si le body contient un detail JSON
+      errMsg = "Erreur serveur (500). L'équipe a été notifiée."
+    }
     try {
       const err = await res.json()
       // Cas 1 : FastAPI HTTPException → { detail: "string" }
@@ -42,7 +51,7 @@ async function request(path, options = {}) {
         }).join(' · ')
       }
     } catch {
-      // pas de JSON dans la réponse
+      // pas de JSON dans la réponse (typiquement nginx/Caddy 413/502)
     }
     throw new Error(errMsg)
   }

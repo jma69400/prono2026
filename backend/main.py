@@ -3233,20 +3233,35 @@ def _validate_attachments(attachments) -> list:
         raise HTTPException(400, "Format de pièces jointes invalide")
     if len(attachments) > 5:
         raise HTTPException(400, "Maximum 5 pièces jointes par message")
-    MAX_SIZE = 3_000_000  # ~2.2 MB binaire
+    # Taille max du data URL base64 (donc ~25% supérieure à la taille du fichier brut).
+    # 4 MB base64 = ~3 MB de fichier réel, suffisant pour des captures d'écran HD.
+    MAX_SIZE_BASE64 = 4_000_000
     ALLOWED_MIMES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
     cleaned = []
     for att in attachments:
         if not isinstance(att, dict):
             raise HTTPException(400, "Format de pièce jointe invalide")
-        if att.get("mime") not in ALLOWED_MIMES:
-            raise HTTPException(400, f"Type non autorisé : {att.get('mime')}. Autorisés : PNG/JPG/WebP/GIF")
-        if len(att.get("data", "")) > MAX_SIZE:
-            raise HTTPException(400, f"Pièce jointe trop lourde (max 2 MB) : {att.get('filename', '?')}")
+        mime = att.get("mime", "")
+        data = att.get("data", "")
+        filename = att.get("filename", "image.png")
+        if mime not in ALLOWED_MIMES:
+            raise HTTPException(400, f"Type non autorisé : {mime}. Autorisés : PNG/JPG/WebP/GIF")
+        if not isinstance(data, str) or not data:
+            raise HTTPException(400, f"Données de pièce jointe invalides : {filename}")
+        # Vérifie que le data URL commence bien par "data:image/..."
+        if not data.startswith("data:image/"):
+            raise HTTPException(400, f"Format data URL invalide : {filename}")
+        if len(data) > MAX_SIZE_BASE64:
+            size_mb = len(data) / 1_000_000
+            raise HTTPException(
+                400,
+                f"Pièce jointe trop lourde ({size_mb:.1f} MB > 4 MB) : {filename}. "
+                "Compresse l'image avant de l'envoyer."
+            )
         cleaned.append({
-            "filename": att.get("filename", "image.png"),
-            "data": att.get("data", ""),
-            "mime": att.get("mime", "image/png"),
+            "filename": filename[:255],  # tronque les noms trop longs
+            "data": data,
+            "mime": mime,
         })
     return cleaned
 

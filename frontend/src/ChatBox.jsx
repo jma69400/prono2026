@@ -12,7 +12,10 @@ import { EmojiPicker } from './EmojiPicker.jsx'
 
 const POLL_INTERVAL_MS = 30_000  // 30 secondes (polling discret)
 const ALLOWED_MIMES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']
-const MAX_ATTACHMENT_SIZE = 2_200_000  // 2.2 MB
+// Note : le fichier sera transmis en data URL base64, qui pèse ~33% plus lourd.
+// Le backend accepte jusqu'à 3 MB de payload base64.
+// On limite donc le fichier brut à 1.5 MB pour rester sous 2 MB en base64.
+const MAX_ATTACHMENT_SIZE = 1_500_000  // 1.5 MB (devient ~2 MB en base64)
 
 // Son de notification (base64 court "ding" intégré au code, pas de fichier externe à charger)
 // Bruit discret de notification ~0.3s

@@ -24,6 +24,12 @@ www.unitedpronos.com {
 unitedpronos.com {
     encode gzip
 
+    # Autoriser les uploads de pièces jointes du chat (images base64) :
+    # une image de 3 MB devient ~4 MB en base64. On laisse une marge confortable.
+    request_body {
+        max_size 10MB
+    }
+
     reverse_proxy frontend:80
 
     # Headers de sécurité
