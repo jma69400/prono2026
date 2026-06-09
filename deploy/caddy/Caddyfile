@@ -24,11 +24,9 @@ www.unitedpronos.com {
 unitedpronos.com {
     encode gzip
 
-    # Autoriser les uploads de pièces jointes du chat (images base64) :
-    # une image de 3 MB devient ~4 MB en base64. On laisse une marge confortable.
-    request_body {
-        max_size 10MB
-    }
+    # Note : la limite de taille des uploads est gérée par nginx
+    # (client_max_body_size 10M dans frontend/nginx.conf).
+    # Caddy par défaut transmet les requêtes sans limite de taille.
 
     reverse_proxy frontend:80
 

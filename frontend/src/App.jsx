@@ -519,9 +519,9 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                   inputMode="numeric"
                   className="w-16 h-14 text-2xl font-black bg-white text-sport-900 border-2 border-sport-400/50 focus:border-cta-500 focus:outline-none focus:ring-2 focus:ring-cta-500/30 rounded-lg text-center disabled:opacity-50 transition"
                 />
-                <span className="text-[10px] text-white/50 mt-1 max-w-[64px] truncate" title={team(match.home_team).name}>
-                  {team(match.home_team).flag}
-                </span>
+                <div className="mt-1">
+                  {homeTBD ? <span className="text-[10px] text-white/40">TBD</span> : <Flag code={match.home_team} size={20} />}
+                </div>
               </div>
               <span className="text-2xl text-white/60 font-bold">-</span>
               <div className="flex flex-col items-center">
@@ -535,9 +535,9 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                   inputMode="numeric"
                   className="w-16 h-14 text-2xl font-black bg-white text-sport-900 border-2 border-sport-400/50 focus:border-cta-500 focus:outline-none focus:ring-2 focus:ring-cta-500/30 rounded-lg text-center disabled:opacity-50 transition"
                 />
-                <span className="text-[10px] text-white/50 mt-1 max-w-[64px] truncate" title={team(match.away_team).name}>
-                  {team(match.away_team).flag}
-                </span>
+                <div className="mt-1">
+                  {awayTBD ? <span className="text-[10px] text-white/40">TBD</span> : <Flag code={match.away_team} size={20} />}
+                </div>
               </div>
               <button
                 onClick={save}
