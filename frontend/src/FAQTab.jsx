@@ -68,6 +68,23 @@ const FAQ_DATA = {
           a: 'Inscris-toi en tant que "Leader" pour créer ton groupe. Tu pourras personnaliser le nom, ajouter un logo, et inviter tes amis/collègues avec un code d\'invitation unique ou un lien direct.',
         },
         {
+          q: 'Comment inviter mes amis ou collègues à rejoindre mon groupe ?',
+          a: `Tu as 3 façons d'inviter des personnes dans ton groupe :
+
+1. **Partage le lien direct** (le plus simple) : Va dans l'onglet "Mon Groupe", tu y trouveras ton lien d'invitation au format "unitedpronos.com/join/TONCODE". Clique sur "Copier le lien" et partage-le par WhatsApp, SMS, Slack, Teams, Discord ou email. La personne qui clique arrive directement sur la page d'inscription avec ton groupe déjà sélectionné.
+
+2. **Partage juste le code** : Si tu préfères, tu peux partager seulement le code (visible aussi dans "Mon Groupe", par exemple "ABC123"). Tes amis cliquent sur "S'inscrire" → "Rejoindre un groupe" → saisissent le code → ils sont dans ton groupe.
+
+3. **À l'oral** : tu peux dicter le code à quelqu'un par téléphone, il suffit qu'il le tape lors de son inscription.
+
+💡 Astuce : copie-colle ce message type pour inviter rapidement :
+"Salut ! Je lance un concours de pronostics gratuit pour la Coupe du Monde 2026, rejoins-moi : https://unitedpronos.com/join/TONCODE — Inscription gratuite, 30 secondes, sans pub !"`,
+        },
+        {
+          q: 'Où trouver mon code et mon lien d\'invitation ?',
+          a: 'Si tu es leader d\'un groupe : connecte-toi puis va dans l\'onglet "Mon Groupe" (en haut). Tu verras un bloc "Lien d\'invitation" avec le lien complet à copier et le code d\'invitation en dessous. Le code ne change jamais, tu peux le partager autant de fois que tu veux.',
+        },
+        {
           q: 'Comment rejoindre un groupe existant ?',
           a: 'Demande le code d\'invitation ou le lien à ton ami(e) leader. Inscris-toi en tant que "Membre" en utilisant ce code. Tu seras automatiquement ajouté au groupe.',
         },
@@ -248,6 +265,23 @@ const FAQ_DATA = {
           a: 'Sign up as "Leader" to create your group. You can customize the name, add a logo, and invite friends/colleagues with a unique invite code or direct link.',
         },
         {
+          q: 'How do I invite friends or colleagues to join my group?',
+          a: `You have 3 ways to invite people to your group:
+
+1. **Share the direct link** (easiest) : Go to the "My Group" tab where you'll find your invitation link in the format "unitedpronos.com/join/YOURCODE". Click "Copy link" and share it via WhatsApp, SMS, Slack, Teams, Discord or email. The person who clicks lands directly on the signup page with your group pre-selected.
+
+2. **Share just the code** : If you prefer, you can share only the code (also visible in "My Group", for example "ABC123"). Your friends click "Sign up" → "Join a group" → enter the code → they're in your group.
+
+3. **Verbally** : you can dictate the code to someone over the phone, they just need to type it during signup.
+
+💡 Tip: copy-paste this template message for quick invites:
+"Hey! I'm running a free predictions contest for the 2026 World Cup, join me: https://unitedpronos.com/join/YOURCODE — Free signup, 30 seconds, no ads!"`,
+        },
+        {
+          q: 'Where can I find my invitation code and link?',
+          a: 'If you are a group leader: log in and go to the "My Group" tab (at the top). You\'ll see an "Invitation link" block with the full link to copy and the invitation code below. The code never changes, you can share it as many times as you want.',
+        },
+        {
           q: 'How do I join an existing group?',
           a: 'Ask your leader friend for the invite code or link. Sign up as "Member" using this code. You\'ll be automatically added to the group.',
         },
@@ -426,6 +460,23 @@ const FAQ_DATA = {
         {
           q: '¿Cómo creo un grupo?',
           a: 'Regístrate como "Líder" para crear tu grupo. Puedes personalizar el nombre, añadir logo, e invitar amigos/colegas con un código de invitación único o enlace directo.',
+        },
+        {
+          q: '¿Cómo invito a amigos o colegas para que se unan a mi grupo?',
+          a: `Tienes 3 formas de invitar personas a tu grupo:
+
+1. **Comparte el enlace directo** (lo más fácil) : Ve a la pestaña "Mi Grupo" donde encontrarás tu enlace de invitación con el formato "unitedpronos.com/join/TUCODIGO". Haz clic en "Copiar enlace" y compártelo por WhatsApp, SMS, Slack, Teams, Discord o email. La persona que haga clic llegará directamente a la página de registro con tu grupo ya seleccionado.
+
+2. **Comparte solo el código** : Si lo prefieres, puedes compartir solo el código (también visible en "Mi Grupo", por ejemplo "ABC123"). Tus amigos hacen clic en "Registrarse" → "Unirse a un grupo" → ingresan el código → están en tu grupo.
+
+3. **Verbalmente** : puedes dictar el código a alguien por teléfono, solo necesita escribirlo durante el registro.
+
+💡 Truco: copia-pega este mensaje tipo para invitar rápidamente:
+"¡Hola! Estoy organizando un concurso gratis de pronósticos para el Mundial 2026, únete: https://unitedpronos.com/join/TUCODIGO — Registro gratis, 30 segundos, ¡sin publicidad!"`,
+        },
+        {
+          q: '¿Dónde encuentro mi código y enlace de invitación?',
+          a: 'Si eres líder de un grupo: inicia sesión y ve a la pestaña "Mi Grupo" (arriba). Verás un bloque "Enlace de invitación" con el enlace completo para copiar y el código de invitación debajo. El código nunca cambia, puedes compartirlo todas las veces que quieras.',
         },
         {
           q: '¿Cómo me uno a un grupo existente?',
@@ -700,8 +751,25 @@ export function FAQTab() {
                     </button>
                     {isOpen && (
                       <div className="px-4 pb-4 pt-0 text-sm text-white/70 leading-relaxed border-t border-white/5">
-                        <div className="pt-3">
-                          {item.a}
+                        <div className="pt-3 space-y-2">
+                          {/* Rendu enrichi : supporte sauts de ligne et **gras** Markdown.
+                              Sécurisé car on découpe d'abord par \n\n, puis on rend les **bold**
+                              en React (pas de dangerouslySetInnerHTML, donc pas de XSS). */}
+                          {item.a.split('\n\n').map((paragraph, pIdx) => {
+                            // Parse le markdown gras : **texte** → <strong>texte</strong>
+                            // Découpe en segments alternant texte normal / texte gras
+                            const parts = paragraph.split(/(\*\*[^*]+\*\*)/g)
+                            return (
+                              <p key={pIdx} className="whitespace-pre-line">
+                                {parts.map((part, idx) => {
+                                  if (part.startsWith('**') && part.endsWith('**')) {
+                                    return <strong key={idx} className="text-white/90 font-semibold">{part.slice(2, -2)}</strong>
+                                  }
+                                  return <span key={idx}>{part}</span>
+                                })}
+                              </p>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
