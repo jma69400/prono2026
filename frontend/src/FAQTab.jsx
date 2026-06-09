@@ -100,6 +100,20 @@ const FAQ_DATA = {
           q: 'Le leader peut-il modifier son groupe ?',
           a: 'Oui, dans l\'onglet "Mon Groupe", le leader peut modifier le nom, la description et le logo de son groupe à tout moment.',
         },
+        {
+          q: 'Je joue en solo, puis-je devenir leader et créer un groupe ?',
+          a: `Oui ! Si tu t'es inscrit en mode "Joueur Solo" mais que tu veux maintenant créer ton propre groupe pour inviter tes amis, c'est possible :
+
+1. Va dans l'onglet **Profil**
+2. Tu verras une section **"👑 Devenir leader d'un groupe"**
+3. Clique sur le bouton **"Devenir leader"** et confirme
+
+Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, logo, description). Tu pourras ensuite inviter tes amis avec ton code d'invitation.
+
+⚠️ **Condition** : tu ne dois PAS déjà être membre d'un autre groupe (les groupes sont verrouillés pendant la compétition pour garantir l'équité du classement). Cette option est donc réservée aux joueurs solo non-rattachés à un groupe.
+
+📌 Note : tes pronostics et points déjà saisis sont conservés. Tu garderas ton historique en passant leader.`,
+        },
       ],
     },
     {
@@ -297,6 +311,20 @@ const FAQ_DATA = {
           q: 'Can the leader modify their group?',
           a: 'Yes, in the "My Group" tab, the leader can modify the name, description and logo of their group at any time.',
         },
+        {
+          q: 'I play solo, can I become a leader and create a group?',
+          a: `Yes! If you signed up in "Solo Player" mode but now want to create your own group to invite friends, it's possible:
+
+1. Go to the **Profile** tab
+2. You'll see a section **"👑 Become a group leader"**
+3. Click the **"Become a leader"** button and confirm
+
+Once a leader, go to the **"My Group"** tab to create your group (name, logo, description). You'll then be able to invite friends with your invitation code.
+
+⚠️ **Condition**: you must NOT already be a member of another group (groups are locked during the competition to ensure fair rankings). This option is therefore reserved for solo players not attached to a group.
+
+📌 Note: your already saved predictions and points are preserved. You'll keep your history when switching to leader.`,
+        },
       ],
     },
     {
@@ -493,6 +521,20 @@ const FAQ_DATA = {
         {
           q: '¿El líder puede modificar su grupo?',
           a: 'Sí, en la pestaña "Mi Grupo", el líder puede modificar nombre, descripción y logo de su grupo en cualquier momento.',
+        },
+        {
+          q: 'Juego en solo, ¿puedo convertirme en líder y crear un grupo?',
+          a: `¡Sí! Si te registraste en modo "Jugador Solo" pero ahora quieres crear tu propio grupo para invitar a tus amigos, es posible:
+
+1. Ve a la pestaña **Perfil**
+2. Verás una sección **"👑 Convertirse en líder de un grupo"**
+3. Haz clic en el botón **"Convertirse en líder"** y confirma
+
+Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, logo, descripción). Luego podrás invitar a tus amigos con tu código de invitación.
+
+⚠️ **Condición**: NO debes ser ya miembro de otro grupo (los grupos están bloqueados durante la competición para garantizar la equidad del ranking). Esta opción está por tanto reservada a los jugadores solo no vinculados a un grupo.
+
+📌 Nota: tus pronósticos y puntos ya guardados se conservan. Mantendrás tu historial al cambiar a líder.`,
         },
       ],
     },

@@ -3123,6 +3123,28 @@ function ProfileTab({ currentUser, onUserUpdate }) {
   const [pwdLoading, setPwdLoading] = useState(false)
   const [pwdSuccess, setPwdSuccess] = useState(false)
 
+  // Upgrade rôle solo → leader
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState('')
+
+  const handleUpgradeToLeader = async () => {
+    if (!confirm(t('profile.upgradeConfirm'))) return
+    setUpgradeLoading(true); setUpgradeError('')
+    try {
+      await api.upgradeToLeader()
+      // Recharger le profil pour refléter le nouveau rôle
+      const me = await api.getProfile()
+      setProfile(me)
+      if (onUserUpdate) onUserUpdate({ ...currentUser, role: 'leader' })
+      setSavedFlash(t('profile.upgradeSuccess'))
+      setTimeout(() => setSavedFlash(''), 5000)
+    } catch (e) {
+      setUpgradeError(e.message || 'Erreur')
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
   useEffect(() => {
     api.getProfile().then(p => {
       setProfile(p)
@@ -3316,6 +3338,38 @@ function ProfileTab({ currentUser, onUserUpdate }) {
           {saving ? '...' : '💾 ' + t('profile.save')}
         </button>
       </div>
+
+      {/* SECTION DEVENIR LEADER (uniquement pour les utilisateurs solo sans groupe) */}
+      {profile && profile.role === 'solo' && !profile.group_id && (
+        <div className="bg-gradient-to-br from-sport-500/10 to-purple-500/5 border border-sport-400/30 rounded-2xl p-6">
+          <h2 className="text-xl font-black mb-3 flex items-center gap-2">👑 {t('profile.upgradeTitle')}</h2>
+          <p className="text-sm text-white/70 mb-4">{t('profile.upgradeText')}</p>
+          <ul className="text-sm text-white/60 space-y-1 mb-4 ml-4">
+            <li>• {t('profile.upgradeBenefit1')}</li>
+            <li>• {t('profile.upgradeBenefit2')}</li>
+            <li>• {t('profile.upgradeBenefit3')}</li>
+          </ul>
+          {upgradeError && (
+            <div className="flex items-start gap-2 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg mb-3">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> <span>{upgradeError}</span>
+            </div>
+          )}
+          <button
+            onClick={handleUpgradeToLeader}
+            disabled={upgradeLoading}
+            className="w-full py-3 bg-gradient-to-r from-sport-600 to-sport-500 hover:from-sport-700 hover:to-sport-600 disabled:opacity-50 rounded-lg font-bold transition flex items-center justify-center gap-2">
+            {upgradeLoading ? '...' : <>👑 {t('profile.upgradeButton')}</>}
+          </button>
+          <p className="text-xs text-white/40 mt-2 text-center italic">{t('profile.upgradeNote')}</p>
+        </div>
+      )}
+
+      {/* SECTION DÉJÀ LEADER (info, pas d'action) */}
+      {profile && profile.role === 'leader' && !profile.group_id && (
+        <div className="bg-sport-500/10 border border-sport-400/30 rounded-2xl p-4 text-sm text-sport-200">
+          👑 {t('profile.upgradeAlreadyLeader')}
+        </div>
+      )}
 
       {/* SECTION SÉCURITÉ */}
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6">

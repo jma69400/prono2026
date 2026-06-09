@@ -83,6 +83,8 @@ export const api = {
   donationsStats: () => request('/donations/stats'),
   declareDonation: () => request('/donations/declare', { method: 'POST' }),
   meIsSupporter: () => request('/me/is-supporter'),
+  // Upgrade rôle solo → leader (pour pouvoir créer un groupe)
+  upgradeToLeader: () => request('/me/upgrade-to-leader', { method: 'POST' }),
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

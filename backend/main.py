@@ -1752,6 +1752,38 @@ def serialize_group(row: sqlite3.Row, db) -> dict:
     return g
 
 
+@app.post("/api/me/upgrade-to-leader")
+def upgrade_to_leader(user=Depends(require_user)):
+    """Permet à un utilisateur 'solo' SANS groupe de devenir 'leader' pour créer son propre groupe.
+    Règles :
+      - Le rôle actuel doit être 'solo' (pas déjà leader, pas admin)
+      - L'utilisateur ne doit pas être membre d'un groupe existant
+        (sinon il faut quitter le groupe d'abord — non implémenté car les groupes
+        sont définitifs durant la compétition pour l'équité du classement)
+    Après upgrade, l'utilisateur pourra appeler POST /api/groups pour créer son groupe.
+    """
+    if user["role"] == "leader":
+        raise HTTPException(400, "Tu es déjà leader")
+    if user["role"] == "admin":
+        raise HTTPException(400, "Un admin ne peut pas être leader d'un groupe public")
+    if user.get("group_id"):
+        # Cas où le user est membre d'un autre groupe : on refuse car les groupes
+        # sont verrouillés pendant la compétition (cf. règle d'équité du classement).
+        raise HTTPException(
+            400,
+            "Tu fais déjà partie d'un groupe. Tu ne peux pas le quitter pendant la compétition. "
+            "Contacte l'admin si tu as une situation particulière."
+        )
+    if user["role"] != "solo":
+        raise HTTPException(400, "Seul un compte solo peut devenir leader")
+
+    with get_db() as db:
+        db.execute("UPDATE users SET role='leader' WHERE id=?", (user["id"],))
+        log_action(user["id"], "role_upgrade", "solo -> leader", db=db)
+
+    return {"ok": True, "new_role": "leader"}
+
+
 @app.post("/api/groups")
 def create_group(data: GroupCreate, user=Depends(require_user)):
     """Crée un groupe. L'utilisateur doit être 'leader' (pas solo, pas membre d'un autre groupe)."""
