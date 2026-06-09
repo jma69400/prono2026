@@ -278,7 +278,7 @@ const TRANSLATIONS = {
     'matches.odds': 'Cotes', 'matches.over25': 'Plus de 2,5 buts',
     'matches.btts': 'Les 2 marquent', 'matches.expectedGoals': 'Buts attendus',
     'matches.topScores': 'Scores les plus probables', 'matches.showDetail': 'Voir le détail', 'matches.hideDetail': 'Masquer', 'matches.aiAnalysis': 'Analyse IA détaillée', 'matches.aiMethodology': 'Modèle Dixon-Coles + 10 000 simulations Monte Carlo, basé sur les forces d\'attaque/défense, la forme récente et l\'avantage du terrain. Les prédictions sont indicatives.',
-    'matches.win': 'V', 'matches.draw': 'N', 'matches.loss': 'D',
+    'matches.win': 'V', 'matches.draw': 'N', 'matches.loss': 'D', 'matches.aiOutcome': 'Probabilités résultat',
 
     'leaderboard.title': 'Classement général',
     'support.headerButton': 'Soutenir',
@@ -624,7 +624,7 @@ const TRANSLATIONS = {
     'matches.odds': 'Odds', 'matches.over25': 'Over 2.5 goals',
     'matches.btts': 'Both teams score', 'matches.expectedGoals': 'Expected goals',
     'matches.topScores': 'Most likely scores', 'matches.showDetail': 'View details', 'matches.hideDetail': 'Hide', 'matches.aiAnalysis': 'Detailed AI analysis', 'matches.aiMethodology': 'Dixon-Coles model + 10,000 Monte Carlo simulations, based on attack/defense strength, recent form and home advantage. Predictions are indicative.',
-    'matches.win': 'W', 'matches.draw': 'D', 'matches.loss': 'L',
+    'matches.win': 'W', 'matches.draw': 'D', 'matches.loss': 'L', 'matches.aiOutcome': 'Outcome probabilities',
 
     'leaderboard.title': 'Standings',
     'support.headerButton': 'Support',
@@ -970,7 +970,7 @@ const TRANSLATIONS = {
     'matches.odds': 'Cuotas', 'matches.over25': 'Más de 2.5 goles',
     'matches.btts': 'Ambos equipos marcan', 'matches.expectedGoals': 'Goles esperados',
     'matches.topScores': 'Resultados más probables', 'matches.showDetail': 'Ver detalle', 'matches.hideDetail': 'Ocultar', 'matches.aiAnalysis': 'Análisis IA detallado', 'matches.aiMethodology': 'Modelo Dixon-Coles + 10.000 simulaciones Monte Carlo, basado en fuerza ataque/defensa, forma reciente y ventaja local. Las predicciones son indicativas.',
-    'matches.win': 'V', 'matches.draw': 'E', 'matches.loss': 'D',
+    'matches.win': 'V', 'matches.draw': 'E', 'matches.loss': 'D', 'matches.aiOutcome': 'Probabilidades resultado',
 
     'leaderboard.title': 'Clasificación general',
     'support.headerButton': 'Apoyar',

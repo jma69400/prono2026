@@ -390,7 +390,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
 
       {/* Bandeau IA principal */}
       {ai && !locked && (
-        <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+        <div className="mt-4 p-3 bg-gradient-to-br from-purple-500/10 to-indigo-500/5 border border-purple-500/30 rounded-lg">
           <button onClick={() => setShowAI(!showAI)} className="w-full flex items-center justify-between text-sm group hover:bg-purple-500/5 -m-1 p-1 rounded transition">
             <span className="flex items-center gap-2 text-purple-300">
               <Sparkles className="w-4 h-4" /> {t('matches.aiPredict')} : <strong className="text-white">{ai.home}-{ai.away}</strong>
@@ -400,9 +400,11 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
               <span className="text-white/40 text-xs hidden sm:inline">
                 {t('matches.confidence')} {t(`matches.confidence${ai.confidence === 'high' ? 'High' : ai.confidence === 'medium' ? 'Medium' : 'Low'}`)}
               </span>
-              {/* Bouton déplier explicite */}
-              <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition ${
-                showAI ? 'bg-purple-500/30 text-purple-200' : 'bg-purple-500/20 text-purple-300 group-hover:bg-purple-500/40'
+              {/* Bouton déplier explicite avec animation pulsation pour attirer l'œil */}
+              <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition ${
+                showAI
+                  ? 'bg-purple-500/40 text-purple-100 ring-1 ring-purple-300/30'
+                  : 'bg-purple-500/25 text-purple-100 group-hover:bg-purple-500/40 ring-1 ring-purple-400/40 ai-detail-pulse'
               }`}>
                 {showAI ? (
                   <>{t('matches.hideDetail')} <ChevronUp className="w-3.5 h-3.5" /></>
@@ -416,18 +418,68 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
           {/* Détail IA dépliable */}
           {showAI && (
             <div className="mt-3 pt-3 border-t border-purple-500/20 space-y-3">
-              {/* Probabilités 1X2 */}
+              {/* Probabilités 1X2 avec palette distinctive
+                  Convention foot universelle :
+                  - Bleu (sport-500) pour l'équipe domicile (HOME)
+                  - Gris pour le match nul (DRAW)
+                  - Orange (brand-orange / amber) pour l'équipe extérieur (AWAY) */}
               <div>
-                <div className="text-xs text-white/50 mb-2 flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> 1X2</div>
-                <div className="flex h-2 rounded-full overflow-hidden bg-white/5">
-                  <div style={{ width: `${ai.probHome}%` }} className="bg-cta-500" title={`${ai.probHome}%`}></div>
-                  <div style={{ width: `${ai.probDraw}%` }} className="bg-white/30" title={`${ai.probDraw}%`}></div>
-                  <div style={{ width: `${ai.probAway}%` }} className="bg-cta-500" title={`${ai.probAway}%`}></div>
+                <div className="text-xs text-white/50 mb-2 flex items-center gap-1.5">
+                  <TrendingUp className="w-3 h-3" /> {t('matches.aiOutcome')}
                 </div>
-                <div className="flex justify-between text-xs mt-1">
-                  <span className="text-sport-300">{teamName(match.home_team, lang)} {ai.probHome}%</span>
-                  <span className="text-white/50">{t('matches.draw')} {ai.probDraw}%</span>
-                  <span className="text-cta-300">{teamName(match.away_team, lang)} {ai.probAway}%</span>
+                {/* Barre de progression : home (bleu) | draw (gris) | away (orange) */}
+                <div className="flex h-3 rounded-full overflow-hidden bg-white/5 ring-1 ring-white/10">
+                  <div
+                    style={{ width: `${ai.probHome}%` }}
+                    className="bg-gradient-to-r from-sport-600 to-sport-400 transition-all"
+                    title={`${teamName(match.home_team, lang)} ${ai.probHome}%`}
+                  ></div>
+                  <div
+                    style={{ width: `${ai.probDraw}%` }}
+                    className="bg-gradient-to-r from-slate-500 to-slate-400 transition-all"
+                    title={`${t('matches.draw')} ${ai.probDraw}%`}
+                  ></div>
+                  <div
+                    style={{ width: `${ai.probAway}%` }}
+                    className="bg-gradient-to-r from-amber-500 to-orange-400 transition-all"
+                    title={`${teamName(match.away_team, lang)} ${ai.probAway}%`}
+                  ></div>
+                </div>
+
+                {/* Légendes sous la barre avec icônes colorées + identification gagnant */}
+                <div className="grid grid-cols-3 gap-2 text-xs mt-2">
+                  {(() => {
+                    const max = Math.max(ai.probHome, ai.probDraw, ai.probAway)
+                    return (
+                      <>
+                        <div className={`flex items-center gap-1.5 ${ai.probHome === max ? 'font-bold' : ''}`}>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-sport-600 to-sport-400 shrink-0"></span>
+                          <span className="text-sport-200 truncate" title={teamName(match.home_team, lang)}>
+                            {teamName(match.home_team, lang)}
+                          </span>
+                          <span className={`ml-auto font-mono ${ai.probHome === max ? 'text-sport-300' : 'text-white/60'}`}>
+                            {ai.probHome}%
+                          </span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 justify-center ${ai.probDraw === max ? 'font-bold' : ''}`}>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-slate-500 to-slate-400 shrink-0"></span>
+                          <span className="text-white/70">{t('matches.draw')}</span>
+                          <span className={`font-mono ${ai.probDraw === max ? 'text-white' : 'text-white/60'}`}>
+                            {ai.probDraw}%
+                          </span>
+                        </div>
+                        <div className={`flex items-center gap-1.5 justify-end ${ai.probAway === max ? 'font-bold' : ''}`}>
+                          <span className={`font-mono mr-auto ${ai.probAway === max ? 'text-amber-300' : 'text-white/60'}`}>
+                            {ai.probAway}%
+                          </span>
+                          <span className="text-amber-200 truncate" title={teamName(match.away_team, lang)}>
+                            {teamName(match.away_team, lang)}
+                          </span>
+                          <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-amber-500 to-orange-400 shrink-0"></span>
+                        </div>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
 
