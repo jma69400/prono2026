@@ -56,6 +56,16 @@ services:
       - prono_net
     expose:
       - "8000"
+    # === LIMITES RESSOURCES (optimisé pour CPX42 : 8 vCPU, 16 GB RAM) ===
+    # Le backend est le composant le plus critique : on lui donne large.
+    # 4 workers uvicorn × ~250 MB RAM chacun + buffer = 2 GB suffisant
+    deploy:
+      resources:
+        limits:
+          cpus: '6'           # Laisser 2 CPUs pour nginx/Caddy/OS
+          memory: 4G          # 4 GB max (4 workers + cache + marge)
+        reservations:
+          memory: 1G          # Garantit au moins 1 GB
 
   frontend:
     build:

@@ -4228,7 +4228,9 @@ export default function App() {
     let interval = null
     const startPolling = () => {
       if (interval) clearInterval(interval)
-      interval = setInterval(loadPublic, 45000)
+      // Polling 30s (au lieu de 45s) : plus réactif, possible grâce au cache RAM serveur
+      // et au passage à 4 workers uvicorn sur CPX42.
+      interval = setInterval(loadPublic, 30000)
     }
     const stopPolling = () => {
       if (interval) { clearInterval(interval); interval = null }

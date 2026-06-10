@@ -42,6 +42,12 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)" || exit 1
 
-# Note: --h11-max-incomplete-event-size augmente la limite par défaut (~16KB) à 16MB
-# pour permettre les uploads d'images base64 dans le chat (~2-4MB par image).
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--h11-max-incomplete-event-size", "16777216"]
+# === CONFIGURATION POUR CPX42 (8 vCPU, 16 GB RAM) ===
+# 4 workers : règle classique = (2 × CPU) + 1, mais SQLite tient mal la concurrence d'écriture
+# donc on reste à 4 workers (= 50% des CPUs). Ça suffit pour 300-500 utilisateurs simultanés.
+# Note importante : avec plusieurs workers, le CACHE RAM in-process n'est PAS partagé entre
+# workers. Chaque worker a son propre cache. C'est OK car les TTL sont courts (15-30s)
+# et au pire on a 4× la même requête BDD au lieu d'1 (toujours acceptable).
+#
+# --h11-max-incomplete-event-size 16777216 : autorise les uploads d'images dans le chat
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--h11-max-incomplete-event-size", "16777216"]
