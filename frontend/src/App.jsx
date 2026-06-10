@@ -658,7 +658,9 @@ function TBDBadge() {
 //   - Soit retirer le composant du rendu
 function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
   const { t } = useTranslation()
-  const BANNER_ID = 'server_upgrade_june10_2026'
+  // ID versionné : changer ce suffixe (v2, v3...) force la ré-apparition pour tous,
+  // même ceux qui ont fermé un bandeau précédent.
+  const BANNER_ID = 'server_upgrade_june10_2026_v2'
   // Date limite d'affichage : 7 jours après la publication.
   // Format : Date d'expiration en ms (UTC). Modifie cette valeur pour changer la durée.
   const EXPIRES_AT = new Date('2026-06-17T23:59:59Z').getTime()
