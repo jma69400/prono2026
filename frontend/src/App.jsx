@@ -4217,17 +4217,57 @@ export default function App() {
   }, [])
 
   // Charger les données publiques quand on n'est pas sur la HomePage
+  // OPTIMISATION HAUTE CHARGE :
+  //   - Polling à 45s (au lieu de 30s) : suffisant car les matchs ne changent que toutes les ~2h
+  //   - Stop le polling si l'onglet n'est pas visible (Page Visibility API)
+  //   - Refresh immédiat quand l'onglet redevient visible
+  // → divise par 3-5× les requêtes inutiles en pic de charge.
   useEffect(() => {
     if (loading || showHome) return
     loadPublic()
-    const interval = setInterval(loadPublic, 30000)
-    return () => clearInterval(interval)
+    let interval = null
+    const startPolling = () => {
+      if (interval) clearInterval(interval)
+      interval = setInterval(loadPublic, 45000)
+    }
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null }
+    }
+    // Démarre par défaut
+    startPolling()
+    // Gestion visibilité onglet
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        // Onglet redevient visible : refresh immédiat puis relance le polling
+        loadPublic()
+        startPolling()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [loading, user, lang, showHome])
 
   const loadPublic = async () => {
     try {
-      const [m, l, n] = await Promise.all([api.matches(), api.leaderboard(), api.news(null, lang)])
-      setMatches(m); setLeaderboard(l); setNews(n)
+      // OPTIMISATION : 1 seul appel /api/snapshot au lieu de 3 appels parallèles.
+      // Réduit le RPS du serveur de 67% avec 100+ utilisateurs en polling.
+      // Fallback : si l'endpoint snapshot échoue (vieille version backend),
+      // on retombe sur les 3 appels séparés pour compat.
+      try {
+        const snap = await api.snapshot(lang)
+        setMatches(snap.matches || [])
+        setLeaderboard(snap.leaderboard || [])
+        setNews(snap.news || [])
+      } catch (snapErr) {
+        // Fallback (cas où le backend n'est pas encore à jour ou snapshot KO)
+        const [m, l, n] = await Promise.all([api.matches(), api.leaderboard(), api.news(null, lang)])
+        setMatches(m); setLeaderboard(l); setNews(n)
+      }
       if (user) {
         const p = await api.myPredictions()
         setPredictions(p)

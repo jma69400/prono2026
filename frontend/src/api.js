@@ -85,6 +85,9 @@ export const api = {
   meIsSupporter: () => request('/me/is-supporter'),
   // Upgrade rôle solo → leader (pour pouvoir créer un groupe)
   upgradeToLeader: () => request('/me/upgrade-to-leader', { method: 'POST' }),
+  // Endpoint optimisé : retourne matches + leaderboard + news en 1 appel
+  // Utilisé par le polling principal pour réduire la charge serveur
+  snapshot: (lang) => request('/snapshot' + (lang ? `?lang=${lang}` : '')),
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

@@ -17,6 +17,27 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
   const [data, setData] = useState({ groups: [], groups_count: 0, excluded_count: 0, formula: {} })
   const [loading, setLoading] = useState(true)
   const [showExplain, setShowExplain] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Normalisation pour rechercher avec ou sans accents (Café = cafe)
+  const normalize = (s) => (s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  // Scroll vers le groupe de l'utilisateur
+  const scrollToMyGroup = () => {
+    if (!currentGroupId) return
+    setSearchQuery('')  // reset filtre pour s'assurer que mon groupe est visible
+    setTimeout(() => {
+      const el = document.getElementById(`group-row-${currentGroupId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-2', 'ring-cta-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-cta-400', 'ring-offset-2', 'ring-offset-[#0a0e27]')
+        }, 2000)
+      }
+    }, 50)
+  }
 
   const reload = async () => {
     setLoading(true)
@@ -59,6 +80,11 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
       rule2: 'Mise à jour automatique toutes les minutes',
       rule3: 'Les groupes "fantômes" (1 membre ou moins) sont exclus du classement',
       yourGroup: 'TON GROUPE',
+      searchPlaceholder: '🔍 Rechercher un groupe...',
+      findMyGroup: 'Mon groupe',
+      noMatch: 'Aucun groupe trouvé',
+      clearSearch: 'Effacer la recherche',
+      groupsShown: 'groupes affichés',
       members: 'membres',
       member: 'membre',
       activeMembers: 'actifs',
@@ -87,6 +113,11 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
       rule2: 'Auto-refreshed every minute',
       rule3: '"Ghost" groups (1 or fewer members) are excluded',
       yourGroup: 'YOUR GROUP',
+      searchPlaceholder: '🔍 Search a group...',
+      findMyGroup: 'My group',
+      noMatch: 'No group found',
+      clearSearch: 'Clear search',
+      groupsShown: 'groups shown',
       members: 'members',
       member: 'member',
       activeMembers: 'active',
@@ -115,6 +146,11 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
       rule2: 'Actualizado automáticamente cada minuto',
       rule3: 'Grupos "fantasma" (1 miembro o menos) están excluidos',
       yourGroup: 'TU GRUPO',
+      searchPlaceholder: '🔍 Buscar un grupo...',
+      findMyGroup: 'Mi grupo',
+      noMatch: 'Ningún grupo encontrado',
+      clearSearch: 'Borrar búsqueda',
+      groupsShown: 'grupos mostrados',
       members: 'miembros',
       member: 'miembro',
       activeMembers: 'activos',
@@ -213,21 +249,91 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
         </div>
       )}
 
-      {/* Classement */}
-      {data.groups.length === 0 ? (
-        <div className="text-center py-12 text-white/40">
-          <div className="text-5xl mb-3">🏆</div>
-          <p>{L.noGroups}</p>
+      {/* Recherche + bouton "Mon groupe" (à partir de 3 groupes pour aider à filtrer) */}
+      {data.groups.length > 3 && (
+        <div className="flex gap-2 mb-3 flex-wrap">
+          <div className="relative flex-1 min-w-[180px]">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={L.searchPlaceholder}
+              className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sport-400/50 transition placeholder-white/30"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">🔍</span>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 text-sm">
+                ✕
+              </button>
+            )}
+          </div>
+          {currentGroupId && (
+            <button
+              onClick={scrollToMyGroup}
+              className="px-3 py-2 bg-sport-500 hover:bg-sport-600 text-white rounded-lg text-sm font-bold transition flex items-center gap-1.5 shrink-0"
+              title={L.findMyGroup}>
+              🎯 <span className="hidden sm:inline">{L.findMyGroup}</span>
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="space-y-2">
-          {data.groups.map((g, idx) => {
-            const isMine = g.id === currentGroupId
-            const rank = idx + 1
-            const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
-            return (
-              <div key={g.id}
-                className={`flex items-center gap-3 p-4 rounded-xl border transition ${
+      )}
+
+      {/* Classement */}
+      {(() => {
+        // Filtrage : recherche dans nom, description, leader, slug
+        // Insensible aux accents (Café = cafe) pour faciliter la recherche
+        const filteredGroups = !searchQuery
+          ? data.groups
+          : data.groups.filter(g => {
+              const q = normalize(searchQuery.trim())
+              return normalize(g.name).includes(q) ||
+                     normalize(g.description).includes(q) ||
+                     normalize(g.leader_username).includes(q) ||
+                     normalize(g.slug).includes(q)
+            })
+        const isFiltering = !!searchQuery
+
+        if (data.groups.length === 0) {
+          return (
+            <div className="text-center py-12 text-white/40">
+              <div className="text-5xl mb-3">🏆</div>
+              <p>{L.noGroups}</p>
+            </div>
+          )
+        }
+        if (filteredGroups.length === 0 && isFiltering) {
+          return (
+            <div className="text-center py-12 text-white/40">
+              <div className="text-4xl mb-3">🔍</div>
+              <p className="font-semibold">{L.noMatch}</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-3 text-sm text-sport-300 hover:text-sport-200 underline">
+                {L.clearSearch}
+              </button>
+            </div>
+          )
+        }
+        return (
+          <>
+            {isFiltering && (
+              <div className="text-xs text-white/50 px-1 mb-2">
+                <strong className="text-sport-300">{filteredGroups.length}</strong> / {data.groups.length} {L.groupsShown}
+              </div>
+            )}
+            <div className="space-y-2">
+              {filteredGroups.map((g) => {
+                const isMine = g.id === currentGroupId
+                // Rang global préservé (même quand on filtre)
+                const rank = data.groups.indexOf(g) + 1
+                const idx = rank - 1
+                const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null
+                return (
+                  <div key={g.id}
+                    id={`group-row-${g.id}`}
+                    className={`flex items-center gap-3 p-4 rounded-xl border transition ${
                   isMine
                     ? 'bg-sport-500/15 border-sport-400/50 shadow-md shadow-orange-500/10'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
@@ -281,7 +387,9 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
             )
           })}
         </div>
-      )}
+          </>
+        )
+      })()}
     </div>
   )
 }
