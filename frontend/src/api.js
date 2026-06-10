@@ -88,6 +88,20 @@ export const api = {
   // Endpoint optimisé : retourne matches + leaderboard + news en 1 appel
   // Utilisé par le polling principal pour réduire la charge serveur
   snapshot: (lang) => request('/snapshot' + (lang ? `?lang=${lang}` : '')),
+
+  // === KOP UNITED — Chat communautaire ===
+  kopListMessages: (beforeId = null, limit = 50) => {
+    const params = new URLSearchParams()
+    if (beforeId) params.set('before_id', beforeId)
+    if (limit !== 50) params.set('limit', limit)
+    const q = params.toString()
+    return request('/kop/messages' + (q ? '?' + q : ''))
+  },
+  kopPostMessage: (content) => request('/kop/messages', {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  }),
+  kopDeleteMessage: (msgId) => request(`/kop/messages/${msgId}`, { method: 'DELETE' }),
   news: (team, lang) => {
     const params = new URLSearchParams()
     if (team) params.set('team', team)

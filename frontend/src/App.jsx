@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen, HelpCircle } from 'lucide-react'
+import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen, HelpCircle, MessageSquare } from 'lucide-react'
 import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
@@ -7,6 +7,7 @@ import { predictMatch, getMatchOdds } from './predictor.js'
 import { FloatingChatBox } from './ChatBox.jsx'
 import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
+import KopUnitedTab from './KopUnitedTab.jsx'
 import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
 import { GroupsLeaderboardTab } from './GroupsLeaderboardTab.jsx'
 import {
@@ -4505,6 +4506,7 @@ export default function App() {
     { id: 'matches', label: t('tabs.matches'), icon: Calendar },
     { id: 'leaderboard', label: t('tabs.leaderboard'), icon: Trophy },
     { id: 'groupsleaderboard', label: t('tabs.groupsLeaderboard'), icon: Trophy },
+    { id: 'kop', label: t('tabs.kop'), icon: MessageSquare, badge: 'NEW' },
     { id: 'groups', label: t('tabs.groups'), icon: Users },
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
     { id: 'news', label: t('tabs.news'), icon: Newspaper },
@@ -4603,10 +4605,15 @@ export default function App() {
             const Icon = tab.icon
             return (
               <button key={tab.id} onClick={() => { setActiveTab(tab.id); trackPageView(tab.label) }}
-                className={`px-4 py-3 flex items-center gap-2 text-sm font-semibold whitespace-nowrap border-b-2 transition ${
+                className={`px-4 py-3 flex items-center gap-2 text-sm font-semibold whitespace-nowrap border-b-2 transition relative ${
                   activeTab === tab.id ? 'border-sport-400 text-sport-400' : 'border-transparent text-white/60 hover:text-white'
                 }`}>
                 <Icon className="w-4 h-4" /> {tab.label}
+                {tab.badge === 'NEW' && (
+                  <span className="text-[9px] px-1.5 py-0.5 bg-cta-500/30 text-cta-200 border border-cta-400/40 rounded-full font-bold leading-none">
+                    NEW
+                  </span>
+                )}
               </button>
             )
           })}
@@ -4622,6 +4629,7 @@ export default function App() {
         )}
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} isAdmin={isAdmin} />}
         {activeTab === 'groupsleaderboard' && <GroupsLeaderboardTab user={user} currentGroupId={user?.group_id} />}
+        {activeTab === 'kop' && <KopUnitedTab user={user} isGuest={isGuest} onLoginPrompt={() => setShowAuth(true)} />}
         {activeTab === 'support' && <SupportPage user={user} onClose={(nextTab) => nextTab === 'credits' ? setActiveTab('credits') : setActiveTab('matches')} />}
         {activeTab === 'credits' && <SupportersWallPage />}
         {activeTab === 'groups' && <GroupsTab />}

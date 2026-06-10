@@ -339,6 +339,31 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_donations_verified ON donations(verified)")
 
+    # === Table KOP UNITED : chat communautaire global ===
+    # Tous les utilisateurs connectés peuvent y poster.
+    # Modération par filtre de mots interdits côté serveur avant insertion.
+    # Soft-delete via flag is_deleted pour audit/historique (au lieu de DELETE)
+    with get_db() as db:
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS kop_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                is_deleted INTEGER DEFAULT 0,
+                deleted_by INTEGER,
+                deleted_reason TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL
+            )
+        """)
+        # Index optimisés pour les requêtes principales :
+        # - Listing récent : ORDER BY created_at DESC LIMIT N
+        # - Anti-flood : count des messages d'un user dans la dernière minute
+        db.execute("CREATE INDEX IF NOT EXISTS idx_kop_created ON kop_messages(created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_kop_user_created ON kop_messages(user_id, created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_kop_deleted ON kop_messages(is_deleted)")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -3294,6 +3319,209 @@ Pour répondre, utilise le bouton "Répondre" de ton mail
     except Exception as e:
         print(f"[CONTACT] Erreur SMTP : {e}")
         return False
+
+
+# =====================================================
+# KOP UNITED — Chat communautaire global
+# =====================================================
+# Tous les inscrits peuvent y discuter. Modération automatique par filtre
+# de mots interdits avant insertion. Anti-flood par utilisateur.
+
+# Liste des mots interdits (insultes, racisme, sexisme, homophobie, etc.)
+# FR + EN + ES. Le filtre est insensible à la casse et gère les contournements
+# basiques (caractères spéciaux entre les lettres, leetspeak simple).
+#
+# Note : on inclut les variantes courantes mais on évite l'overfitting
+# (ex: "merde" est toléré comme expression de frustration, "putain" idem).
+# Le but est de bloquer les attaques verbales nominales et les discriminations.
+BANNED_WORDS = {
+    # === Discrimination raciale (FR/EN/ES) ===
+    "negre", "nègre", "negro", "nigger", "nigga", "nig", "bougnoul", "bougnoule",
+    "rebeu", "youpin", "chinetoque", "bridé", "chink",
+    # === Insultes graves (FR) ===
+    "enculé", "encule", "enculer", "encules", "enculés", "enculée",
+    "fdp", "filsdepute", "filsdepu", "filsdeputain",
+    "ntm", "nique ta mere", "niktamere", "niquetamere", "ta mère la pute",
+    "pd", "pédé", "pede", "pedé", "tapette", "tafiole", "gouine",
+    "salope", "salopes", "pute", "putes", "putain de salope",
+    "connard", "connards", "connasse", "connasses",
+    # === Insultes graves (EN) ===
+    "faggot", "fag", "dyke", "tranny",
+    "motherfucker", "cocksucker", "cunt", "twat",
+    "retard", "retarded", "spastic",
+    # === Insultes graves (ES) ===
+    "maricón", "maricon", "marica", "puto", "putos", "puta de mierda",
+    "cabrón", "cabron", "gilipollas", "hijoputa", "hijo de puta",
+    # === Pédophilie / contenu sexuel envers mineurs (catégorie zero tolérance) ===
+    "pedo", "pédo", "pédophile", "pedophile", "pedophilia",
+    # === Spam / arnaques courants ===
+    "telegram me", "send me btc", "free money", "click here win",
+}
+
+# Caractères de "bruit" utilisés pour contourner les filtres (à supprimer avant comparaison)
+LEET_REPLACEMENTS = {
+    "@": "a", "4": "a", "3": "e", "1": "i", "!": "i", "0": "o", "5": "s", "$": "s",
+    "7": "t", "+": "t", ".": "", "-": "", "_": "", " ": "",
+}
+
+def _normalize_for_filter(text: str) -> str:
+    """Normalise un texte pour comparaison avec la liste de mots interdits.
+    - lowercase
+    - retire accents (NFKD)
+    - remplace leetspeak simple (a@4, e3, etc.)
+    - retire ponctuation et espaces internes
+    """
+    import unicodedata
+    text = text.lower()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    for src, dst in LEET_REPLACEMENTS.items():
+        text = text.replace(src, dst)
+    return text
+
+
+def contains_banned_word(text: str) -> Optional[str]:
+    """Vérifie si le texte contient un mot interdit. Retourne le mot trouvé (pour logging)
+    ou None si OK."""
+    normalized = _normalize_for_filter(text)
+    for banned in BANNED_WORDS:
+        # On normalise AUSSI les mots interdits pour la comparaison
+        # (ex: "négre" et "negre" matchent tous les deux)
+        banned_norm = _normalize_for_filter(banned)
+        if banned_norm and banned_norm in normalized:
+            return banned
+    return None
+
+
+class KopMessageIn(BaseModel):
+    content: str
+
+
+@app.get("/api/kop/messages")
+def kop_list_messages(response: Response, before_id: Optional[int] = None, limit: int = 50):
+    """Liste paginée des messages du chat Kop United (du plus récent au plus ancien).
+    - before_id : pour pagination "charger plus ancien" (cursor-based)
+    - limit : 50 max par défaut, plafonné à 100
+    """
+    limit = min(max(1, limit), 100)
+    # Cache HTTP très court (3s) : les messages changent vite, mais on évite
+    # quand même de marteler la BDD si plusieurs utilisateurs polent en même temps.
+    response.headers["Cache-Control"] = "public, max-age=3"
+
+    with get_db() as db:
+        if before_id:
+            rows = db.execute("""
+                SELECT m.id, m.user_id, m.content, m.created_at, m.is_deleted,
+                       u.username, u.avatar_data, u.role,
+                       EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
+                FROM kop_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.id < ? AND m.is_deleted = 0
+                ORDER BY m.id DESC
+                LIMIT ?
+            """, (before_id, limit)).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT m.id, m.user_id, m.content, m.created_at, m.is_deleted,
+                       u.username, u.avatar_data, u.role,
+                       EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
+                FROM kop_messages m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.is_deleted = 0
+                ORDER BY m.id DESC
+                LIMIT ?
+            """, (limit,)).fetchall()
+
+    # Renvoie dans l'ordre chronologique (plus ancien en haut) pour le rendu côté front
+    messages = [dict(r) for r in rows]
+    messages.reverse()
+    return {"messages": messages, "has_more": len(rows) == limit}
+
+
+@app.post("/api/kop/messages")
+def kop_post_message(data: KopMessageIn, user=Depends(get_current_user)):
+    """Publie un message dans Kop United.
+    Vérifications :
+    - longueur (1 à 280 caractères)
+    - anti-flood : max 10 messages dans les dernières 60 secondes par utilisateur
+    - filtre de mots interdits
+    """
+    content = (data.content or "").strip()
+
+    # Validation de base
+    if not content:
+        raise HTTPException(400, "Le message ne peut pas être vide")
+    if len(content) > 280:
+        raise HTTPException(400, "Message trop long (max 280 caractères)")
+
+    # Filtre de mots interdits
+    banned = contains_banned_word(content)
+    if banned:
+        # On log la tentative pour le suivi admin, mais on ne révèle pas le mot
+        # dans le message d'erreur pour éviter le contournement par essai
+        log_action(user["id"], "kop_blocked", f"contained='{banned[:30]}'")
+        raise HTTPException(400, "Ton message contient des termes inappropriés. Merci de reformuler.")
+
+    # Anti-flood : compte les messages du user dans les 60 dernières secondes
+    with get_db() as db:
+        recent_count = db.execute("""
+            SELECT COUNT(*) AS n FROM kop_messages
+            WHERE user_id = ? AND created_at > datetime('now', '-60 seconds')
+        """, (user["id"],)).fetchone()["n"]
+        if recent_count >= 10:
+            raise HTTPException(429, "Tu envoies trop de messages. Attends quelques secondes avant de réessayer.")
+
+        # Insertion
+        cur = db.execute("""
+            INSERT INTO kop_messages (user_id, content) VALUES (?, ?)
+        """, (user["id"], content))
+        msg_id = cur.lastrowid
+
+        # Récupère le message complet pour réponse immédiate côté frontend
+        row = db.execute("""
+            SELECT m.id, m.user_id, m.content, m.created_at, m.is_deleted,
+                   u.username, u.avatar_data, u.role,
+                   EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
+            FROM kop_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.id = ?
+        """, (msg_id,)).fetchone()
+
+    return dict(row)
+
+
+@app.delete("/api/kop/messages/{msg_id}")
+def kop_delete_message(msg_id: int, user=Depends(get_current_user)):
+    """Suppression d'un message :
+    - L'auteur peut supprimer son propre message
+    - Un admin peut supprimer n'importe quel message
+    On utilise un soft-delete (is_deleted=1) pour conserver l'historique
+    en cas de besoin d'audit.
+    """
+    with get_db() as db:
+        msg = db.execute(
+            "SELECT user_id, is_deleted FROM kop_messages WHERE id = ?",
+            (msg_id,)
+        ).fetchone()
+        if not msg:
+            raise HTTPException(404, "Message introuvable")
+        if msg["is_deleted"]:
+            raise HTTPException(404, "Message déjà supprimé")
+
+        is_admin = user["role"] == "admin"
+        is_author = msg["user_id"] == user["id"]
+        if not (is_admin or is_author):
+            raise HTTPException(403, "Tu ne peux pas supprimer ce message")
+
+        reason = "admin_moderation" if is_admin and not is_author else "self_delete"
+        db.execute("""
+            UPDATE kop_messages
+            SET is_deleted = 1, deleted_by = ?, deleted_reason = ?
+            WHERE id = ?
+        """, (user["id"], reason, msg_id))
+        log_action(user["id"], "kop_delete", f"msg={msg_id} reason={reason}", db=db)
+
+    return {"ok": True}
 
 
 @app.post("/api/contact")
