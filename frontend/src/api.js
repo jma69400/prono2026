@@ -85,6 +85,8 @@ export const api = {
   meIsSupporter: () => request('/me/is-supporter'),
   // Upgrade rôle solo → leader (pour pouvoir créer un groupe)
   upgradeToLeader: () => request('/me/upgrade-to-leader', { method: 'POST' }),
+  // Leader retire un membre de son groupe (le membre redevient solo, ses pronos conservés)
+  removeMember: (groupId, userId) => request(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
   // Endpoint optimisé : retourne matches + leaderboard + news en 1 appel
   // Utilisé par le polling principal pour réduire la charge serveur
   snapshot: (lang) => request('/snapshot' + (lang ? `?lang=${lang}` : '')),

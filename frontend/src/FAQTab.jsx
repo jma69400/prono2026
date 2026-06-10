@@ -101,6 +101,27 @@ const FAQ_DATA = {
           a: 'Oui, dans l\'onglet "Mon Groupe", le leader peut modifier le nom, la description et le logo de son groupe à tout moment.',
         },
         {
+          q: 'Comment supprimer un membre de mon groupe (leader) ?',
+          a: `En tant que **leader**, tu peux retirer un membre de ton groupe :
+
+1. Va dans l'onglet **"Mon Groupe"**
+2. Dans la liste des membres, à droite de chaque personne (sauf toi), tu verras une icône **🗑️** rouge
+3. Clique dessus → une confirmation s'affiche
+4. Confirme : la personne est retirée immédiatement
+
+📌 **Ce qui se passe pour le membre retiré** :
+- Il passe automatiquement en mode "joueur solo" (plus dans aucun groupe)
+- **Tous ses pronostics et points sont conservés** (rien n'est supprimé)
+- Il continue de jouer normalement, juste sans ton groupe
+- Il peut rejoindre un autre groupe (ou ton groupe à nouveau via le code d'invitation)
+
+⚠️ **Limitations** :
+- Tu ne peux pas te retirer toi-même (il faut soit supprimer le groupe, soit contacter l'admin pour transférer le leadership)
+- Tu ne peux pas retirer un autre leader (cas rare où il y en aurait plusieurs)
+
+💡 **Bon à savoir** : la personne n'est pas notifiée automatiquement. Si tu retires quelqu'un par erreur, recontacte-la et partage-lui ton lien d'invitation pour qu'elle revienne.`,
+        },
+        {
           q: 'Je joue en solo, puis-je devenir leader et créer un groupe ?',
           a: `Oui ! Si tu t'es inscrit en mode "Joueur Solo" mais que tu veux maintenant créer ton propre groupe pour inviter tes amis, c'est possible :
 
@@ -312,6 +333,27 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
           a: 'Yes, in the "My Group" tab, the leader can modify the name, description and logo of their group at any time.',
         },
         {
+          q: 'How do I remove a member from my group (as leader)?',
+          a: `As **leader**, you can remove a member from your group:
+
+1. Go to the **"My Group"** tab
+2. In the members list, next to each person (except you), you'll see a red **🗑️** icon
+3. Click it → a confirmation pops up
+4. Confirm: the person is removed immediately
+
+📌 **What happens to the removed member**:
+- They automatically switch to "solo player" mode (no group)
+- **All their predictions and points are preserved** (nothing is deleted)
+- They continue playing normally, just without your group
+- They can join another group (or yours again via the invitation code)
+
+⚠️ **Limitations**:
+- You cannot remove yourself (you must either delete the group or contact admin to transfer leadership)
+- You cannot remove another leader (rare case where there'd be multiple)
+
+💡 **Good to know**: the person is not automatically notified. If you remove someone by mistake, reach out to them and share your invitation link so they can come back.`,
+        },
+        {
           q: 'I play solo, can I become a leader and create a group?',
           a: `Yes! If you signed up in "Solo Player" mode but now want to create your own group to invite friends, it's possible:
 
@@ -521,6 +563,27 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         {
           q: '¿El líder puede modificar su grupo?',
           a: 'Sí, en la pestaña "Mi Grupo", el líder puede modificar nombre, descripción y logo de su grupo en cualquier momento.',
+        },
+        {
+          q: '¿Cómo elimino a un miembro de mi grupo (como líder)?',
+          a: `Como **líder**, puedes quitar a un miembro de tu grupo:
+
+1. Ve a la pestaña **"Mi Grupo"**
+2. En la lista de miembros, junto a cada persona (excepto tú), verás un icono **🗑️** rojo
+3. Haz clic → aparece una confirmación
+4. Confirma: la persona es eliminada inmediatamente
+
+📌 **Qué pasa con el miembro eliminado**:
+- Pasa automáticamente a modo "jugador solo" (sin grupo)
+- **Todos sus pronósticos y puntos se conservan** (no se elimina nada)
+- Sigue jugando normalmente, solo sin tu grupo
+- Puede unirse a otro grupo (o al tuyo de nuevo con el código de invitación)
+
+⚠️ **Limitaciones**:
+- No puedes eliminarte a ti mismo (debes eliminar el grupo o contactar al admin para transferir el liderazgo)
+- No puedes eliminar a otro líder (caso raro donde haya varios)
+
+💡 **Bueno saber**: la persona no recibe notificación automática. Si quitas a alguien por error, contáctala y compártele tu enlace de invitación para que regrese.`,
         },
         {
           q: 'Juego en solo, ¿puedo convertirme en líder y crear un grupo?',

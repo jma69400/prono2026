@@ -2258,6 +2258,59 @@ def admin_remove_member(group_id: int, user_id: int, user=Depends(require_admin)
         return {"ok": True}
 
 
+@app.delete("/api/groups/{group_id}/members/{user_id}")
+def leader_remove_member(group_id: int, user_id: int, user=Depends(get_current_user)):
+    """Retire un membre d'un groupe par le LEADER du groupe.
+
+    Règles :
+    - Seul le leader du groupe peut retirer un membre (ou un admin via l'autre endpoint)
+    - Le leader ne peut pas se retirer lui-même (il doit supprimer le groupe à la place)
+    - Le membre retiré redevient solo (group_id = NULL) MAIS conserve ses pronos
+      et points (pas de suppression de données)
+    - Action loggée pour audit (le membre peut être averti par l'admin si besoin)
+    """
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+
+        # Vérification : l'utilisateur courant est-il le leader de ce groupe ?
+        # (un admin doit passer par /api/admin/groups/{group_id}/members/{user_id})
+        is_leader = (group["leader_id"] == user["id"])
+        if not is_leader:
+            raise HTTPException(403, "Seul le leader du groupe peut retirer un membre")
+
+        # Empêcher le leader de se retirer lui-même
+        if user_id == user["id"]:
+            raise HTTPException(
+                400,
+                "Tu ne peux pas te retirer de ton propre groupe. Pour quitter, "
+                "il faut soit transférer le leadership (via l'admin), soit supprimer le groupe."
+            )
+
+        # Vérifier que la personne est bien dans CE groupe
+        member = db.execute(
+            "SELECT id, username FROM users WHERE id=? AND group_id=?",
+            (user_id, group_id)
+        ).fetchone()
+        if not member:
+            raise HTTPException(404, "Cette personne n'est pas dans ton groupe")
+
+        # Retire le membre (passe en solo) : ses pronos et points sont conservés
+        db.execute("UPDATE users SET group_id=NULL WHERE id=?", (user_id,))
+        log_action(
+            user["id"],
+            "leader_remove_member",
+            f"removed_user={user_id} ({member['username']}) from group={group_id}",
+            db=db,
+        )
+
+        # Invalide le cache : le classement des groupes va changer
+        cache_invalidate("leaderboard:")
+
+        return {"ok": True, "removed_username": member["username"]}
+
+
 @app.post("/api/admin/groups/{group_id}/regenerate-code")
 def admin_regenerate_code(group_id: int, user=Depends(require_admin)):
     """Régénère le code d'invitation d'un groupe (admin only)."""

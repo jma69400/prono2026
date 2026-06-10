@@ -3721,6 +3721,22 @@ function GroupTab({ user }) {
 
   useEffect(() => { reload() }, [])
 
+  // Retire un membre du groupe (leader uniquement). Le membre devient solo
+  // et conserve ses pronos. Confirmation explicite + rafraîchissement immédiat.
+  const handleRemoveMember = async (memberId, memberName) => {
+    if (!group) return
+    const confirmMsg = t('group.removeConfirm').replace('{name}', memberName)
+    if (!confirm(confirmMsg)) return
+    try {
+      await api.removeMember(group.id, memberId)
+      // Recharge la liste pour refléter la suppression
+      const m = await api.groupMembers(group.id)
+      setMembers(m)
+    } catch (e) {
+      alert(e.message || 'Erreur')
+    }
+  }
+
   // Rafraîchissement auto toutes les 60s pour suivre le classement en temps réel
   // (les points évoluent après chaque match résolu)
   useEffect(() => {
@@ -3914,6 +3930,17 @@ function GroupTab({ user }) {
                     </div>
                     <div className="text-[10px] text-white/40 uppercase">{t('group.points')}</div>
                   </div>
+
+                  {/* Bouton "Retirer" pour le leader (sauf sur lui-même) */}
+                  {isLeader && !isMe && !m.is_leader && (
+                    <button
+                      onClick={() => handleRemoveMember(m.id, m.username)}
+                      className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/25 text-red-400 hover:text-red-300 transition shrink-0"
+                      title={t('group.removeMemberTooltip').replace('{name}', m.username)}
+                      aria-label={t('group.removeMemberTooltip').replace('{name}', m.username)}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               )
             })}
