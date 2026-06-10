@@ -19,6 +19,10 @@ const TRANSLATIONS = {
     'auth.guestPromptBtn': 'Se connecter / S\'inscrire',
     'auth.guestBanner': 'Mode visiteur — connecte-toi pour pronostiquer',
     'auth.backToHome': 'Accueil',
+    'banner.upgradeTitle': '🚀 Serveur upgradé ce mardi à 13h30',
+    'banner.upgradeText': "Plus de performances pour la Coupe du Monde 2026 ! Merci par avance à toutes les personnes qui contribuent au projet pour financer cette infrastructure ❤️",
+    'banner.upgradeCTA': 'Soutenir',
+    'banner.upgradeDismiss': 'Masquer ce message',
     'auth.guestLogin': 'Se connecter',
 
     // Homepage / Hero
@@ -391,6 +395,10 @@ const TRANSLATIONS = {
     'auth.guestPromptBtn': 'Sign in / Sign up',
     'auth.guestBanner': 'Guest mode — sign in to predict',
     'auth.backToHome': 'Home',
+    'banner.upgradeTitle': '🚀 Server upgraded today at 1:30 PM',
+    'banner.upgradeText': 'More performance for the 2026 World Cup! Thanks in advance to everyone contributing to fund this infrastructure ❤️',
+    'banner.upgradeCTA': 'Support',
+    'banner.upgradeDismiss': 'Dismiss this message',
     'auth.guestLogin': 'Sign in',
 
     'home.heroTitle': 'World Cup 2026 Predictions with Friends',
@@ -752,6 +760,10 @@ const TRANSLATIONS = {
     'auth.guestPromptBtn': 'Iniciar sesión / Registrarse',
     'auth.guestBanner': 'Modo visitante — conéctate para pronosticar',
     'auth.backToHome': 'Inicio',
+    'banner.upgradeTitle': '🚀 Servidor actualizado hoy a las 13:30',
+    'banner.upgradeText': '¡Más rendimiento para el Mundial 2026! Gracias de antemano a quienes contribuyen para financiar esta infraestructura ❤️',
+    'banner.upgradeCTA': 'Apoyar',
+    'banner.upgradeDismiss': 'Ocultar este mensaje',
     'auth.guestLogin': 'Iniciar sesión',
 
     'home.heroTitle': 'Pronósticos Mundial 2026 entre Amigos',

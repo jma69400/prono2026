@@ -644,6 +644,79 @@ function TBDBadge() {
 }
 
 // =====================================================
+// BANDEAU UPGRADE SERVEUR
+// =====================================================
+// Annonce la migration d'infrastructure faite pour la Coupe du Monde 2026.
+// - Visible en haut, juste sous le header
+// - Dismissable (bouton ✕) avec mémorisation localStorage
+// - Auto-expire 7 jours après publication (pour éviter les bandeaux fantômes)
+// - Ne s'affiche jamais pour les supporters (qui ont déjà contribué)
+// - Lien direct vers la page Soutenir
+//
+// Pour désactiver/modifier ce bandeau dans le futur :
+//   - Soit changer BANNER_ID (les utilisateurs le reverront 1 fois)
+//   - Soit retirer le composant du rendu
+function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
+  const { t } = useTranslation()
+  const BANNER_ID = 'server_upgrade_june10_2026'
+  // Date limite d'affichage : 7 jours après la publication.
+  // Format : Date d'expiration en ms (UTC). Modifie cette valeur pour changer la durée.
+  const EXPIRES_AT = new Date('2026-06-17T23:59:59Z').getTime()
+
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(`banner_dismissed_${BANNER_ID}`) === '1'
+    } catch { return false }
+  })
+
+  // Ne s'affiche pas si :
+  // 1. L'utilisateur l'a fermé
+  // 2. La date d'expiration est passée
+  // 3. L'utilisateur est déjà supporter (pas besoin de le solliciter à nouveau)
+  if (dismissed) return null
+  if (Date.now() > EXPIRES_AT) return null
+  if (isSupporter) return null
+
+  const handleDismiss = () => {
+    try { localStorage.setItem(`banner_dismissed_${BANNER_ID}`, '1') } catch {}
+    setDismissed(true)
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-sport-600/30 via-sport-500/20 to-cta-500/20 border-b border-sport-400/40">
+      <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+          <span className="text-xl shrink-0">🚀</span>
+          <div className="text-sm text-white/90 leading-snug min-w-0">
+            <strong className="text-sport-200">{t('banner.upgradeTitle')}</strong>
+            <span className="text-white/70 hidden sm:inline"> — {t('banner.upgradeText')}</span>
+            <div className="text-white/60 text-xs mt-0.5 sm:hidden">{t('banner.upgradeText')}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {onGoToSupport && (
+            <button
+              onClick={onGoToSupport}
+              className="px-3 py-1 bg-cta-500 hover:bg-cta-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-md shadow-cta-500/20"
+              title={t('banner.upgradeCTA')}>
+              ❤️ <span className="hidden sm:inline">{t('banner.upgradeCTA')}</span>
+            </button>
+          )}
+          <button
+            onClick={handleDismiss}
+            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 rounded transition text-xs"
+            title={t('banner.upgradeDismiss')}
+            aria-label={t('banner.upgradeDismiss')}>
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // MATCHES TAB
 // =====================================================
 function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, isGuest, onGuestPrompt }) {
@@ -4376,6 +4449,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
+      {/* Bandeau upgrade serveur (auto-expire 7j, dismissable, caché aux supporters) */}
+      <ServerUpgradeBanner
+        onGoToSupport={config.donations?.enabled ? () => setActiveTab('support') : null}
+        isSupporter={isSupporter}
+      />
+
       {/* Bandeau visiteur */}
       {isGuest && (
         <div className="bg-gradient-to-r from-sport-500/20 to-sport-600/20 border-b border-sport-400/30 backdrop-blur">
