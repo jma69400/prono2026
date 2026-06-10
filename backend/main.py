@@ -1292,16 +1292,24 @@ def me(user=Depends(get_current_user)):
 @app.get("/api/matches")
 def list_matches(response: Response):
     """Liste des matchs. Cachée 30s côté client/proxy + 15s côté serveur (RAM).
-    Avec 100+ users en polling, le cache RAM divise par 10-30 le RPS BDD."""
+    Avec 100+ users en polling, le cache RAM divise par 10-30 le RPS BDD.
+
+    PROTECTION : on ne cache JAMAIS une valeur vide. Si la query renvoie [] (ex: race
+    condition au démarrage, BDD lock momentané), on évite d'empoisonner le cache
+    qui afficherait "Aucun match" à tous les utilisateurs pendant 15s.
+    """
     response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
-    # Cache RAM côté serveur (partagé entre tous les clients)
+    # Cache RAM côté serveur (partagé entre clients du même worker)
     cached = cache_get("matches:all")
-    if cached is not None:
+    if cached:  # truthy uniquement = non vide
         return cached
     with get_db() as db:
         rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
         result = [dict(r) for r in rows]
-        cache_set("matches:all", result, ttl_seconds=15)
+        # IMPORTANT : on ne stocke en cache QUE si on a des résultats.
+        # Sinon, on accepte de re-query la BDD au prochain appel (mieux que cacher [])
+        if result:
+            cache_set("matches:all", result, ttl_seconds=15)
         return result
 
 
@@ -1321,47 +1329,59 @@ def app_snapshot(response: Response):
     """
     response.headers["Cache-Control"] = "public, max-age=20, stale-while-revalidate=40"
 
-    # Récupération de chaque dataset via son cache existant
+    # === MATCHES (donnée critique - on ne tolère JAMAIS d'envoyer une liste vide) ===
+    # Stratégie en 2 temps : cache d'abord, BDD direct si cache vide/manquant.
+    # IMPORTANT : on ne stocke en cache QUE si la query renvoie au moins 1 match
+    # (sinon on empoisonne le cache pour 15s)
     matches_data = cache_get("matches:all")
-    if matches_data is None:
-        with get_db() as db:
-            rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
-            matches_data = [dict(r) for r in rows]
-            cache_set("matches:all", matches_data, ttl_seconds=15)
+    if not matches_data:  # None OU liste vide
+        try:
+            with get_db() as db:
+                rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
+                matches_data = [dict(r) for r in rows]
+                if matches_data:  # ne cache QUE si non vide
+                    cache_set("matches:all", matches_data, ttl_seconds=15)
+        except Exception as e:
+            print(f"[ERROR snapshot/matches] {e}")
+            matches_data = []
 
+    # === LEADERBOARD (idem : on ne cache jamais un classement vide) ===
     leaderboard_data = cache_get("leaderboard:global")
-    if leaderboard_data is None:
-        # Délègue à la vraie fonction (qui populera le cache)
-        # On rappelle juste la requête simplifiée pour le 1er hit
-        with get_db() as db:
-            rows = db.execute("""
-                SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
-                       COALESCE(SUM(p.points), 0) AS total_points,
-                       COUNT(p.id) AS predictions_count,
-                       g.name AS group_name,
-                       g.logo_data AS group_logo,
-                       g.slug AS group_slug,
-                       EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
-                FROM users u
-                LEFT JOIN predictions p ON p.user_id = u.id
-                LEFT JOIN groups g ON g.id = u.group_id
-                WHERE u.role != 'admin' OR u.id IN (SELECT user_id FROM predictions)
-                GROUP BY u.id
-                ORDER BY total_points DESC, predictions_count DESC
-            """).fetchall()
-            excluded = db.execute("""
-                SELECT COUNT(*) AS n FROM users u
-                WHERE u.role = 'admin'
-                  AND u.id NOT IN (SELECT user_id FROM predictions WHERE user_id IS NOT NULL)
-            """).fetchone()["n"]
-            ranked = [dict(r) for r in rows]
-            leaderboard_data = {
-                "ranked": ranked,
-                "ranked_count": len(ranked),
-                "excluded_admins": excluded,
-                "total_users": len(ranked) + excluded,
-            }
-            cache_set("leaderboard:global", leaderboard_data, ttl_seconds=15)
+    if not leaderboard_data or not leaderboard_data.get("ranked"):
+        try:
+            with get_db() as db:
+                rows = db.execute("""
+                    SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
+                           COALESCE(SUM(p.points), 0) AS total_points,
+                           COUNT(p.id) AS predictions_count,
+                           g.name AS group_name,
+                           g.logo_data AS group_logo,
+                           g.slug AS group_slug,
+                           EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
+                    FROM users u
+                    LEFT JOIN predictions p ON p.user_id = u.id
+                    LEFT JOIN groups g ON g.id = u.group_id
+                    WHERE u.role != 'admin' OR u.id IN (SELECT user_id FROM predictions)
+                    GROUP BY u.id
+                    ORDER BY total_points DESC, predictions_count DESC
+                """).fetchall()
+                excluded = db.execute("""
+                    SELECT COUNT(*) AS n FROM users u
+                    WHERE u.role = 'admin'
+                      AND u.id NOT IN (SELECT user_id FROM predictions WHERE user_id IS NOT NULL)
+                """).fetchone()["n"]
+                ranked = [dict(r) for r in rows]
+                leaderboard_data = {
+                    "ranked": ranked,
+                    "ranked_count": len(ranked),
+                    "excluded_admins": excluded,
+                    "total_users": len(ranked) + excluded,
+                }
+                if ranked:  # ne cache QUE si on a des utilisateurs
+                    cache_set("leaderboard:global", leaderboard_data, ttl_seconds=15)
+        except Exception as e:
+            print(f"[ERROR snapshot/leaderboard] {e}")
+            leaderboard_data = {"ranked": [], "ranked_count": 0, "excluded_admins": 0, "total_users": 0}
 
     # News : utilise le cache existant (avec lang=fr par défaut)
     # Pas critique d'avoir les news en temps réel
@@ -1426,9 +1446,9 @@ def leaderboard(response: Response):
     Cache 20s HTTP + 15s RAM serveur. Le classement ne change qu'après un match terminé.
     """
     response.headers["Cache-Control"] = "public, max-age=20, stale-while-revalidate=40"
-    # Cache RAM serveur (partagé entre tous les clients pour gros gain CPU/IO)
+    # Cache RAM serveur — on vérifie que le cache contient un classement non vide.
     cached = cache_get("leaderboard:global")
-    if cached is not None:
+    if cached and cached.get("ranked"):
         return cached
     with get_db() as db:
         rows = db.execute("""
@@ -1461,7 +1481,9 @@ def leaderboard(response: Response):
             "excluded_admins": excluded_count,
             "total_users": len(ranked) + excluded_count,
         }
-        cache_set("leaderboard:global", result, ttl_seconds=15)
+        # Ne cache que si on a au moins 1 utilisateur classé (évite l'empoisonnement cache)
+        if ranked:
+            cache_set("leaderboard:global", result, ttl_seconds=15)
         return result
 
 

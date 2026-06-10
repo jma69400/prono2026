@@ -4258,21 +4258,44 @@ export default function App() {
     try {
       // OPTIMISATION : 1 seul appel /api/snapshot au lieu de 3 appels parallèles.
       // Réduit le RPS du serveur de 67% avec 100+ utilisateurs en polling.
-      // Fallback : si l'endpoint snapshot échoue (vieille version backend),
-      // on retombe sur les 3 appels séparés pour compat.
+      //
+      // PROTECTION CRITIQUE : on ne REMPLACE les matches existants que si on a
+      // VRAIMENT reçu une liste non vide. Sinon, on conserve l'ancien état pour
+      // éviter d'afficher "Aucun match" au moindre hoquet réseau ou cache vide.
       try {
         const snap = await api.snapshot(lang)
-        setMatches(snap.matches || [])
-        setLeaderboard(snap.leaderboard || [])
-        setNews(snap.news || [])
+        // setMatches uniquement si le serveur a renvoyé une liste valide ET non vide.
+        // Le polling toutes les 30s rattrapera si jamais c'était vraiment vide.
+        if (Array.isArray(snap.matches) && snap.matches.length > 0) {
+          setMatches(snap.matches)
+        }
+        // Idem pour leaderboard : on garde l'ancien si vide
+        if (snap.leaderboard && (snap.leaderboard.ranked?.length || Array.isArray(snap.leaderboard) && snap.leaderboard.length)) {
+          setLeaderboard(snap.leaderboard)
+        }
+        // News peut être vide légitimement (filtrage par lang)
+        if (Array.isArray(snap.news)) {
+          setNews(snap.news)
+        }
       } catch (snapErr) {
         // Fallback (cas où le backend n'est pas encore à jour ou snapshot KO)
-        const [m, l, n] = await Promise.all([api.matches(), api.leaderboard(), api.news(null, lang)])
-        setMatches(m); setLeaderboard(l); setNews(n)
+        try {
+          const [m, l, n] = await Promise.all([api.matches(), api.leaderboard(), api.news(null, lang)])
+          if (Array.isArray(m) && m.length > 0) setMatches(m)
+          if (l && (l.ranked?.length || Array.isArray(l) && l.length)) setLeaderboard(l)
+          if (Array.isArray(n)) setNews(n)
+        } catch (fbErr) {
+          console.error('Fallback aussi KO:', fbErr)
+          // On NE TOUCHE PAS aux états existants : l'utilisateur garde sa vue
+        }
       }
       if (user) {
-        const p = await api.myPredictions()
-        setPredictions(p)
+        try {
+          const p = await api.myPredictions()
+          if (Array.isArray(p)) setPredictions(p)
+        } catch (e) {
+          console.error('Erreur predictions:', e)
+        }
       } else {
         setPredictions([])
       }
