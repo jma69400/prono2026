@@ -324,7 +324,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
 
   const send = async () => {
     setError('')
-    if (!content.trim()) return
+    if (!content.trim() && attachments.length === 0) return
     setSending(true)
     try {
       await api.adminReplyConversation(conv.conversation.id, content.trim(), attachments)
@@ -445,7 +445,7 @@ function AdminConversationView({ conv, onClose, onMessageSent, onCloseConv, onDe
             📎
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
           </label>
-          <button onClick={send} disabled={sending || !content.trim()}
+          <button onClick={send} disabled={sending || (!content.trim() && attachments.length === 0)}
             className="p-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
             {sending ? '⏳' : '📤'}
           </button>
@@ -564,7 +564,10 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
 
   const send = async () => {
     if (!selectedUser) { onError('Sélectionne un utilisateur'); return }
-    if (!content.trim()) { onError('Le message ne peut pas être vide'); return }
+    if (!content.trim() && attachments.length === 0) {
+      onError("Ajoute du texte ou une image avant d'envoyer")
+      return
+    }
     setSending(true)
     try {
       const r = await api.adminNewConversationToUser(
@@ -740,7 +743,7 @@ function NewConversationToUserModal({ onClose, onCreated, onError }) {
 
         {/* Footer */}
         <div className="p-4 border-t border-white/10 flex items-center gap-2 flex-wrap">
-          <button onClick={send} disabled={sending || !selectedUser || !content.trim()}
+          <button onClick={send} disabled={sending || !selectedUser || (!content.trim() && attachments.length === 0)}
             className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
             {sending ? '⏳ Envoi...' : '📤 Envoyer le message'}
           </button>

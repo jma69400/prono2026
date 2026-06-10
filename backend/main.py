@@ -3383,8 +3383,8 @@ def create_my_conversation(payload: dict, user=Depends(get_current_user)):
     subject = (payload.get("subject") or "").strip()
     content = (payload.get("content") or "").strip()
     attachments = _validate_attachments(payload.get("attachments"))
-    if not content:
-        raise HTTPException(400, "Le message ne peut pas être vide")
+    if not content and not attachments:
+        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
     if len(content) > 5000:
         raise HTTPException(400, "Message trop long (max 5000 caractères)")
     if not subject:
@@ -3414,8 +3414,8 @@ def post_my_message(conv_id: int, payload: dict, user=Depends(get_current_user))
     """Ajoute un message dans une conversation existante (côté utilisateur)."""
     content = (payload.get("content") or "").strip()
     attachments = _validate_attachments(payload.get("attachments"))
-    if not content:
-        raise HTTPException(400, "Le message ne peut pas être vide")
+    if not content and not attachments:
+        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
     if len(content) > 5000:
         raise HTTPException(400, "Message trop long (max 5000 caractères)")
 
@@ -3551,8 +3551,8 @@ def admin_new_conversation_to_user(payload: dict, user=Depends(require_admin)):
     content = (payload.get("content") or "").strip()
     subject = (payload.get("subject") or "").strip()
     attachments = _validate_attachments(payload.get("attachments"))
-    if not content:
-        raise HTTPException(400, "Le message ne peut pas être vide")
+    if not content and not attachments:
+        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
     if len(content) > 10000:
         raise HTTPException(400, "Message trop long (max 10000 caractères)")
     if not subject:
@@ -3595,8 +3595,8 @@ def admin_reply_conversation(conv_id: int, payload: dict, user=Depends(require_a
     """L'admin répond dans une conversation. Pas d'email envoyé (chat-box interne)."""
     content = (payload.get("content") or "").strip()
     attachments = _validate_attachments(payload.get("attachments"))
-    if not content:
-        raise HTTPException(400, "Le message ne peut pas être vide")
+    if not content and not attachments:
+        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
     if len(content) > 10000:
         raise HTTPException(400, "Message trop long (max 10000 caractères)")
 

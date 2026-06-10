@@ -612,7 +612,11 @@ function NewConversationForm({ onCancel, onCreated }) {
 
   const submit = async () => {
     setError('')
-    if (!content.trim()) { setError('Le message ne peut pas être vide'); return }
+    // Permettre l'envoi si on a au moins du texte OU au moins une pièce jointe
+    if (!content.trim() && attachments.length === 0) {
+      setError("Ajoute du texte ou une image avant d'envoyer")
+      return
+    }
     setSending(true)
     try {
       const r = await api.createConversation(subject.trim(), content.trim(), attachments)
@@ -680,7 +684,7 @@ function NewConversationForm({ onCancel, onCreated }) {
       <div className="text-xs text-white/30 mt-2">{content.length} / 5000</div>
       {error && <div className="mt-2 text-xs text-red-300">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
-        <button onClick={submit} disabled={sending || !content.trim()}
+        <button onClick={submit} disabled={sending || (!content.trim() && attachments.length === 0)}
           className="flex-1 px-4 py-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-semibold text-sm transition">
           {sending ? 'Envoi...' : '📤 Envoyer'}
         </button>
@@ -756,7 +760,8 @@ function ConversationView({ conv, onMessageSent }) {
 
   const send = async () => {
     setError('')
-    if (!content.trim()) return
+    // Permettre l'envoi si on a au moins du texte OU au moins une pièce jointe
+    if (!content.trim() && attachments.length === 0) return
     setSending(true)
     try {
       await api.sendConversationMessage(conv.conversation.id, content.trim(), attachments)
@@ -857,7 +862,7 @@ function ConversationView({ conv, onMessageSent }) {
             📎
             <input type="file" accept="image/*" multiple onChange={handleFile} className="hidden" />
           </label>
-          <button onClick={send} disabled={sending || !content.trim()}
+          <button onClick={send} disabled={sending || (!content.trim() && attachments.length === 0)}
             className="p-2 bg-gradient-to-r from-cta-500 to-cta-600 disabled:opacity-40 text-white rounded-lg transition w-10 h-10 flex items-center justify-center text-sm">
             {sending ? '⏳' : '📤'}
           </button>
