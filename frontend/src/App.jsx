@@ -4049,14 +4049,20 @@ export default function App() {
   const [user, setUser] = useState(null)
   // mode visiteur, mais l'utilisateur doit explicitement cliquer "Continuer en visiteur"
   const [isGuest, setIsGuest] = useState(false)
-  // showHome=true → on affiche la HomePage vendeuse au démarrage
-  // ⚠️ Pour les visiteurs récurrents (qui ont déjà vu la HomePage), on skip directement
-  //    vers le mode visiteur pour les amener direct sur les matchs.
+  // showHome=true → on affiche la HomePage vendeuse aux non-connectés.
+  // Logique simple : par défaut, TOUS les non-connectés voient la HomePage.
+  // Ils peuvent passer en mode visiteur via le bouton "Continuer en visiteur"
+  // ou s'inscrire/se connecter. Le flag localStorage permet UNIQUEMENT de se souvenir
+  // qu'un visiteur a déjà choisi "mode visiteur" dans cette session.
   const [showHome, setShowHome] = useState(() => {
-    // Premier visit : HomePage. Visiteurs récurrents : direct app
+    // Nettoyage : supprime l'ancien flag localStorage (logique obsolète)
+    // qui empêchait les visiteurs récurrents de revoir la HomePage.
+    try { localStorage.removeItem('prono26_homepage_seen') } catch (e) {}
+    // Si l'utilisateur a explicitement choisi "Continuer en visiteur" dans cette session,
+    // on respecte son choix et on n'affiche pas la HomePage à chaque rafraîchissement.
     try {
-      const seen = localStorage.getItem('prono26_homepage_seen')
-      return seen !== '1'
+      const seenAsGuest = sessionStorage.getItem('prono26_continued_as_guest')
+      return seenAsGuest !== '1'
     } catch (e) {
       return true
     }
@@ -4239,13 +4245,21 @@ export default function App() {
     setNews(await api.news(null, lang))
   }
 
-  // Marquer la HomePage comme vue pour les prochaines visites
-  const markHomepageSeen = () => {
-    try { localStorage.setItem('prono26_homepage_seen', '1') } catch (e) {}
+  // Marquer le passage en mode visiteur pour la session courante.
+  // Évite que le visiteur revienne sur la HomePage à chaque rafraîchissement.
+  // Note : sessionStorage (pas localStorage) → la HomePage réapparait à la prochaine visite.
+  const markGuestSessionChosen = () => {
+    try { sessionStorage.setItem('prono26_continued_as_guest', '1') } catch (e) {}
   }
-  const handleSignup = () => { markHomepageSeen(); setAuthInitialMode('signup'); setShowAuth(true); setShowHome(false) }
-  const handleLogin = () => { markHomepageSeen(); setAuthInitialMode('login'); setShowAuth(true); setShowHome(false) }
-  const handleGuest = () => { markHomepageSeen(); setIsGuest(true); setShowHome(false) }
+  const handleSignup = () => { setAuthInitialMode('signup'); setShowAuth(true); setShowHome(false) }
+  const handleLogin = () => { setAuthInitialMode('login'); setShowAuth(true); setShowHome(false) }
+  const handleGuest = () => { markGuestSessionChosen(); setIsGuest(true); setShowHome(false) }
+
+  // Bouton "Retour à l'accueil" depuis l'app en mode visiteur
+  const handleBackToHome = () => {
+    try { sessionStorage.removeItem('prono26_continued_as_guest') } catch (e) {}
+    setIsGuest(false); setShowHome(true)
+  }
 
   const onLogin = (u) => {
     setUser(u); setIsGuest(false); setShowAuth(false); setShowHome(false)
@@ -4369,9 +4383,17 @@ export default function App() {
             <span className="text-sm text-sport-200 flex items-center gap-2">
               <Zap className="w-4 h-4" /> {t('auth.guestBanner')}
             </span>
-            <button onClick={() => setShowAuth(true)} className="px-3 py-1 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
-              <LogIn className="w-3.5 h-3.5" /> {t('auth.guestLogin')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBackToHome}
+                className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                title={t('auth.backToHome')}>
+                🏠 <span className="hidden sm:inline">{t('auth.backToHome')}</span>
+              </button>
+              <button onClick={() => setShowAuth(true)} className="px-3 py-1 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
+                <LogIn className="w-3.5 h-3.5" /> {t('auth.guestLogin')}
+              </button>
+            </div>
           </div>
         </div>
       )}

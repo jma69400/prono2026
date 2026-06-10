@@ -18,6 +18,7 @@ const TRANSLATIONS = {
     'auth.guestPromptText': 'Crée un compte ou connecte-toi pour pronostiquer ce match',
     'auth.guestPromptBtn': 'Se connecter / S\'inscrire',
     'auth.guestBanner': 'Mode visiteur — connecte-toi pour pronostiquer',
+    'auth.backToHome': 'Accueil',
     'auth.guestLogin': 'Se connecter',
 
     // Homepage / Hero
@@ -389,6 +390,7 @@ const TRANSLATIONS = {
     'auth.guestPromptText': 'Create an account or sign in to predict this match',
     'auth.guestPromptBtn': 'Sign in / Sign up',
     'auth.guestBanner': 'Guest mode — sign in to predict',
+    'auth.backToHome': 'Home',
     'auth.guestLogin': 'Sign in',
 
     'home.heroTitle': 'World Cup 2026 Predictions with Friends',
@@ -749,6 +751,7 @@ const TRANSLATIONS = {
     'auth.guestPromptText': 'Crea una cuenta o inicia sesión para pronosticar este partido',
     'auth.guestPromptBtn': 'Iniciar sesión / Registrarse',
     'auth.guestBanner': 'Modo visitante — conéctate para pronosticar',
+    'auth.backToHome': 'Inicio',
     'auth.guestLogin': 'Iniciar sesión',
 
     'home.heroTitle': 'Pronósticos Mundial 2026 entre Amigos',
