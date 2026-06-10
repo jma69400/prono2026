@@ -42,4 +42,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)" || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Note: --h11-max-incomplete-event-size augmente la limite par défaut (~16KB) à 16MB
+# pour permettre les uploads d'images base64 dans le chat (~2-4MB par image).
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--h11-max-incomplete-event-size", "16777216"]

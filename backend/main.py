@@ -3380,71 +3380,98 @@ def get_my_conversation(conv_id: int, user=Depends(get_current_user)):
 @app.post("/api/me/conversations")
 def create_my_conversation(payload: dict, user=Depends(get_current_user)):
     """Crée une nouvelle conversation avec un premier message."""
-    subject = (payload.get("subject") or "").strip()
-    content = (payload.get("content") or "").strip()
-    attachments = _validate_attachments(payload.get("attachments"))
-    if not content and not attachments:
-        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
-    if len(content) > 5000:
-        raise HTTPException(400, "Message trop long (max 5000 caractères)")
-    if not subject:
-        subject = content[:50] + ("..." if len(content) > 50 else "")
+    try:
+        subject = (payload.get("subject") or "").strip()
+        content = (payload.get("content") or "").strip()
+        attachments = _validate_attachments(payload.get("attachments"))
+        if not content and not attachments:
+            raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
+        if len(content) > 5000:
+            raise HTTPException(400, "Message trop long (max 5000 caractères)")
+        # Si pas de sujet : on en génère un à partir du contenu OU depuis les attachments
+        if not subject:
+            if content:
+                subject = content[:50] + ("..." if len(content) > 50 else "")
+            elif attachments:
+                # Sujet par défaut pour les messages avec uniquement des images
+                n = len(attachments)
+                subject = f"📎 {n} image{'s' if n > 1 else ''}"
+            else:
+                subject = "Nouvelle conversation"
 
-    now = datetime.now(timezone.utc).isoformat()
-    with get_db() as db:
-        # Crée la conversation
-        cur = db.execute("""
-            INSERT INTO conversations (user_id, subject, status, unread_admin, unread_user,
-                                       created_at, updated_at, last_message_at)
-            VALUES (?, ?, 'open', 1, 0, ?, ?, ?)
-        """, (user["id"], subject, now, now, now))
-        conv_id = cur.lastrowid
-        # Premier message
-        attachments_json = json.dumps(attachments) if attachments else ""
-        db.execute("""
-            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
-            VALUES (?, 'user', ?, ?, ?)
-        """, (conv_id, content, attachments_json, now))
-        log_action(user["id"], "conversation_create", f"conv={conv_id} subject={subject[:50]}", db=db)
-    return {"id": conv_id, "subject": subject}
+        now = datetime.now(timezone.utc).isoformat()
+        with get_db() as db:
+            # Crée la conversation
+            cur = db.execute("""
+                INSERT INTO conversations (user_id, subject, status, unread_admin, unread_user,
+                                           created_at, updated_at, last_message_at)
+                VALUES (?, ?, 'open', 1, 0, ?, ?, ?)
+            """, (user["id"], subject, now, now, now))
+            conv_id = cur.lastrowid
+            # Premier message
+            attachments_json = json.dumps(attachments) if attachments else ""
+            db.execute("""
+                INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+                VALUES (?, 'user', ?, ?, ?)
+            """, (conv_id, content, attachments_json, now))
+            log_action(user["id"], "conversation_create",
+                       f"conv={conv_id} subject={subject[:50]} attachments={len(attachments)}", db=db)
+        return {"id": conv_id, "subject": subject}
+    except HTTPException:
+        raise  # propage les 400/etc.
+    except Exception as e:
+        # Log l'erreur précise et renvoie un 500 avec contexte
+        import traceback
+        print(f"[ERROR create_conversation] user={user.get('id')} type={type(e).__name__}: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Erreur création conversation : {type(e).__name__}")
 
 
 @app.post("/api/me/conversations/{conv_id}/messages")
 def post_my_message(conv_id: int, payload: dict, user=Depends(get_current_user)):
     """Ajoute un message dans une conversation existante (côté utilisateur)."""
-    content = (payload.get("content") or "").strip()
-    attachments = _validate_attachments(payload.get("attachments"))
-    if not content and not attachments:
-        raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
-    if len(content) > 5000:
-        raise HTTPException(400, "Message trop long (max 5000 caractères)")
+    try:
+        content = (payload.get("content") or "").strip()
+        attachments = _validate_attachments(payload.get("attachments"))
+        if not content and not attachments:
+            raise HTTPException(400, "Le message ne peut pas être vide (ajoute du texte ou une image)")
+        if len(content) > 5000:
+            raise HTTPException(400, "Message trop long (max 5000 caractères)")
 
-    now = datetime.now(timezone.utc).isoformat()
-    with get_db() as db:
-        conv = db.execute(
-            "SELECT * FROM conversations WHERE id = ? AND user_id = ?",
-            (conv_id, user["id"])
-        ).fetchone()
-        if not conv:
-            raise HTTPException(404, "Conversation introuvable")
-        if conv["status"] == "closed":
-            # Rouvre la conversation si l'utilisateur répond
-            db.execute("UPDATE conversations SET status = 'open' WHERE id = ?", (conv_id,))
+        now = datetime.now(timezone.utc).isoformat()
+        with get_db() as db:
+            conv = db.execute(
+                "SELECT * FROM conversations WHERE id = ? AND user_id = ?",
+                (conv_id, user["id"])
+            ).fetchone()
+            if not conv:
+                raise HTTPException(404, "Conversation introuvable")
+            if conv["status"] == "closed":
+                # Rouvre la conversation si l'utilisateur répond
+                db.execute("UPDATE conversations SET status = 'open' WHERE id = ?", (conv_id,))
 
-        attachments_json = json.dumps(attachments) if attachments else ""
-        db.execute("""
-            INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
-            VALUES (?, 'user', ?, ?, ?)
-        """, (conv_id, content, attachments_json, now))
-        # Increment compteur admin
-        db.execute("""
-            UPDATE conversations
-            SET unread_admin = unread_admin + 1,
-                updated_at = ?, last_message_at = ?
-            WHERE id = ?
-        """, (now, now, conv_id))
-        log_action(user["id"], "conversation_message", f"conv={conv_id}", db=db)
-    return {"ok": True}
+            attachments_json = json.dumps(attachments) if attachments else ""
+            db.execute("""
+                INSERT INTO conversation_messages (conversation_id, sender, content, attachments, created_at)
+                VALUES (?, 'user', ?, ?, ?)
+            """, (conv_id, content, attachments_json, now))
+            # Increment compteur admin
+            db.execute("""
+                UPDATE conversations
+                SET unread_admin = unread_admin + 1,
+                    updated_at = ?, last_message_at = ?
+                WHERE id = ?
+            """, (now, now, conv_id))
+            log_action(user["id"], "conversation_message",
+                       f"conv={conv_id} attachments={len(attachments)}", db=db)
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"[ERROR post_my_message] user={user.get('id')} conv={conv_id} type={type(e).__name__}: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(500, f"Erreur envoi message : {type(e).__name__}")
 
 
 # ----------- ENDPOINTS ADMIN -----------
