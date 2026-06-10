@@ -3862,6 +3862,7 @@ function AdminGroupsPanel() {
   const [groups, setGroups] = useState([])
   const [expandedId, setExpandedId] = useState(null)
   const [members, setMembers] = useState({})
+  const [searchQuery, setSearchQuery] = useState('')
 
   const reload = async () => {
     const g = await api.adminListGroups()
@@ -3869,6 +3870,22 @@ function AdminGroupsPanel() {
   }
 
   useEffect(() => { reload() }, [])
+
+  // Filtrage par nom, leader ou code d'invitation (insensible à la casse + accents)
+  // On normalise via NFD pour gérer "Café" matchant "cafe"
+  const normalize = (s) => (s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  const filteredGroups = groups.filter(g => {
+    if (!searchQuery) return true
+    const q = normalize(searchQuery.trim())
+    return (
+      normalize(g.name).includes(q) ||
+      normalize(g.leader?.username).includes(q) ||
+      normalize(g.invite_code).includes(q) ||
+      normalize(g.slug).includes(q)
+    )
+  })
 
   const toggleExpand = async (id) => {
     if (expandedId === id) { setExpandedId(null); return }
@@ -3903,7 +3920,45 @@ function AdminGroupsPanel() {
 
   return (
     <div className="space-y-3">
-      {groups.map(g => (
+      {/* Barre de recherche : filtre par nom, leader, code d'invitation ou slug */}
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t('admin.groupsSearchPlaceholder')}
+          className="w-full pl-10 pr-10 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-sport-400/50 transition placeholder-white/30"
+        />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">🔍</span>
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition text-sm"
+            title={t('admin.clearSearch')}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Compteur : combien de groupes affichés vs total */}
+      {searchQuery && (
+        <div className="text-xs text-white/50 px-1">
+          <strong className="text-sport-300">{filteredGroups.length}</strong> / {groups.length} {t('admin.groupsShown')}
+        </div>
+      )}
+
+      {/* Liste filtrée */}
+      {filteredGroups.length === 0 ? (
+        <div className="text-center py-12 text-white/40">
+          <div className="text-4xl mb-3">🔍</div>
+          <div className="font-semibold">{t('admin.noGroupMatch')}</div>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="mt-3 text-sm text-sport-300 hover:text-sport-200 underline">
+            {t('admin.clearSearch')}
+          </button>
+        </div>
+      ) : filteredGroups.map(g => (
         <div key={g.id} className="bg-white/5 border border-white/10 rounded-xl">
           <div className="p-4 flex items-center gap-3">
             {g.logo_data ? <img src={g.logo_data} className="w-12 h-12 rounded-lg object-cover" alt={g.name} />
