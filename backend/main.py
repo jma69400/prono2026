@@ -346,6 +346,12 @@ def init_db():
     # Tous les utilisateurs connectés peuvent y poster.
     # Modération par filtre de mots interdits côté serveur avant insertion.
     # Soft-delete via flag is_deleted pour audit/historique (au lieu de DELETE)
+    #
+    # ⚠️ IMPORTANT - TIMEZONE :
+    # On NE compte PAS sur CURRENT_TIMESTAMP (qui retourne "YYYY-MM-DD HH:MM:SS" sans
+    # timezone, interprété comme heure LOCALE par JavaScript → décalage 2h en été).
+    # Tous les INSERT doivent passer datetime.now(timezone.utc).isoformat() explicite,
+    # qui produit "YYYY-MM-DDTHH:MM:SS.ffffff+00:00" correctement interprété par JS.
     with get_db() as db:
         db.execute("""
             CREATE TABLE IF NOT EXISTS kop_messages (
@@ -3598,10 +3604,14 @@ def kop_post_message(data: KopMessageIn, user=Depends(get_current_user)):
         if recent_count >= 10:
             raise HTTPException(429, "Tu envoies trop de messages. Attends quelques secondes avant de réessayer.")
 
-        # Insertion
+        # Insertion avec created_at en format ISO 8601 UTC explicite (suffixe Z)
+        # IMPORTANT : on évite CURRENT_TIMESTAMP qui retourne "2026-06-11 18:30:00"
+        # sans timezone, ce que JavaScript interprète comme HEURE LOCALE → décalage 2h.
+        # Format "2026-06-11T18:30:00+00:00" est interprété correctement comme UTC.
+        now_utc_iso = datetime.now(timezone.utc).isoformat()
         cur = db.execute("""
-            INSERT INTO kop_messages (user_id, content) VALUES (?, ?)
-        """, (user["id"], content))
+            INSERT INTO kop_messages (user_id, content, created_at) VALUES (?, ?, ?)
+        """, (user["id"], content, now_utc_iso))
         msg_id = cur.lastrowid
 
         # Récupère le message complet pour réponse immédiate côté frontend

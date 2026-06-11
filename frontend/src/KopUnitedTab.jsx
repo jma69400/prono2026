@@ -137,14 +137,35 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt }) {
     }
   }
 
+  // Parse robuste d'une date BDD :
+  // - Si format ISO 8601 avec timezone (ex: "2026-06-11T18:30:00+00:00") → JS le gère bien
+  // - Si format "YYYY-MM-DD HH:MM:SS" (ancien CURRENT_TIMESTAMP SQLite, sans timezone) →
+  //   JS l'interprète comme heure LOCALE par défaut, ce qui est faux (en réalité c'est UTC).
+  //   Donc on force l'interprétation UTC en ajoutant "Z" ou en remplaçant l'espace par "T".
+  const parseUtcDate = (iso) => {
+    if (!iso) return null
+    let s = String(iso).trim()
+    // Format SQLite "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SSZ" pour forcer UTC
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(s) && !/[Zz+]|[+-]\d{2}:?\d{2}$/.test(s)) {
+      s = s.replace(' ', 'T') + 'Z'
+    }
+    // Format ISO sans timezone (ex: "2026-06-11T18:30:00") → ajoute Z
+    else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+      s = s + 'Z'
+    }
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? null : d
+  }
+
   const formatTime = (iso) => {
     try {
-      const d = new Date(iso)
+      const d = parseUtcDate(iso)
+      if (!d) return ''
       const now = new Date()
       const diffMin = Math.floor((now - d) / 60000)
       if (diffMin < 1) return t('kop.justNow')
       if (diffMin < 60) return `${diffMin} min`
-      // Si < 24h : afficher juste l'heure
+      // Si < 24h : afficher juste l'heure (heure locale du visiteur)
       const sameDay = d.toDateString() === now.toDateString()
       if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) +
