@@ -4258,9 +4258,10 @@ export default function App() {
     let interval = null
     const startPolling = () => {
       if (interval) clearInterval(interval)
-      // Polling 30s (au lieu de 45s) : plus réactif, possible grâce au cache RAM serveur
-      // et au passage à 4 workers uvicorn sur CPX42.
-      interval = setInterval(loadPublic, 30000)
+      // Polling 60s en période de pic (1000+ users) : la fluidité reste correcte
+      // car le cache RAM serveur de 15s couvre déjà les mises à jour fréquentes.
+      // À 150 connexions simultanées, ça divise la charge backend par 2 vs 30s.
+      interval = setInterval(loadPublic, 60000)
     }
     const stopPolling = () => {
       if (interval) { clearInterval(interval); interval = null }

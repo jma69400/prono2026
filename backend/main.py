@@ -116,17 +116,21 @@ def get_db():
     # Le mode WAL est persistant (une fois set, reste actif pour le fichier).
     #
     # Tuning aggressif possible grâce aux 16 GB RAM du CPX42 :
-    # - cache_size: 100 MB (au lieu de 20 MB) → 99% des requêtes servies depuis RAM
-    # - mmap_size: 256 MB (au lieu de 30 MB) → toute la BDD chargée en mémoire mappée
-    # - wal_autocheckpoint: 1000 pages (au lieu de 1000 default) → checkpoint moins fréquent
+    # - cache_size: 100 MB → 99% des requêtes servies depuis RAM
+    # - mmap_size: 256 MB → toute la BDD chargée en mémoire mappée
+    # - busy_timeout: 15s (au lieu de 5s) → tolère mieux les pics de concurrence
+    #   à 150+ users (un INSERT prono peut attendre jusqu'à 15s qu'un checkpoint
+    #   WAL se termine au lieu d'erreur "database is locked")
+    # - wal_autocheckpoint: 5000 (au lieu de 1000) → checkpoint moins fréquent,
+    #   moins de pauses I/O pendant les pics
     try:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")     # plus rapide, toujours safe en WAL
         conn.execute("PRAGMA cache_size=-102400")     # 100 MB de cache RAM
         conn.execute("PRAGMA temp_store=MEMORY")      # tables temp en RAM
         conn.execute("PRAGMA mmap_size=268435456")    # 256 MB de mmap (toute la BDD en RAM)
-        conn.execute("PRAGMA busy_timeout=5000")      # attendre 5s si DB locked au lieu d'erreur immédiate
-        conn.execute("PRAGMA wal_autocheckpoint=1000") # checkpoint tous les 1000 pages writes
+        conn.execute("PRAGMA busy_timeout=15000")     # 15s d'attente si locked (au lieu d'erreur)
+        conn.execute("PRAGMA wal_autocheckpoint=5000") # checkpoint tous les 5000 pages
     except Exception:
         pass  # ne pas crasher si les PRAGMA ne s'appliquent pas (ex: en test)
     try:
@@ -1334,7 +1338,7 @@ def list_matches(response: Response):
         # IMPORTANT : on ne stocke en cache QUE si on a des résultats.
         # Sinon, on accepte de re-query la BDD au prochain appel (mieux que cacher [])
         if result:
-            cache_set("matches:all", result, ttl_seconds=15)
+            cache_set("matches:all", result, ttl_seconds=30)
         return result
 
 
@@ -1365,7 +1369,7 @@ def app_snapshot(response: Response):
                 rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
                 matches_data = [dict(r) for r in rows]
                 if matches_data:  # ne cache QUE si non vide
-                    cache_set("matches:all", matches_data, ttl_seconds=15)
+                    cache_set("matches:all", matches_data, ttl_seconds=30)
         except Exception as e:
             print(f"[ERROR snapshot/matches] {e}")
             matches_data = []
@@ -1437,27 +1441,48 @@ def my_predictions(user=Depends(get_current_user), response: Response = None):
 
 @app.post("/api/predictions")
 def save_prediction(data: PredictionIn, user=Depends(get_current_user)):
-    with get_db() as db:
-        m = db.execute("SELECT * FROM matches WHERE id=?", (data.match_id,)).fetchone()
-        if not m:
-            raise HTTPException(404, "Match introuvable")
-        if m["status"] == "finished":
-            raise HTTPException(400, "Match terminé, prono verrouillé")
-        existing = db.execute(
-            "SELECT id FROM predictions WHERE user_id=? AND match_id=?",
-            (user["id"], data.match_id),
-        ).fetchone()
-        if existing:
-            db.execute(
-                "UPDATE predictions SET home_score=?, away_score=?, updated_at=datetime('now') WHERE id=?",
-                (data.home_score, data.away_score, existing["id"]),
-            )
-        else:
-            db.execute(
-                "INSERT INTO predictions (user_id, match_id, home_score, away_score) VALUES (?,?,?,?)",
-                (user["id"], data.match_id, data.home_score, data.away_score),
-            )
-        return {"ok": True}
+    """Sauvegarde un pronostic. Avec 150+ users en simultané, on peut avoir des
+    locks SQLite passagers. On retry jusqu'à 3 fois avec backoff exponentiel
+    avant de renvoyer une erreur claire à l'utilisateur."""
+    import time as _t
+    last_err = None
+    for attempt in range(3):
+        try:
+            with get_db() as db:
+                m = db.execute("SELECT * FROM matches WHERE id=?", (data.match_id,)).fetchone()
+                if not m:
+                    raise HTTPException(404, "Match introuvable")
+                if m["status"] == "finished":
+                    raise HTTPException(400, "Match terminé, prono verrouillé")
+                existing = db.execute(
+                    "SELECT id FROM predictions WHERE user_id=? AND match_id=?",
+                    (user["id"], data.match_id),
+                ).fetchone()
+                if existing:
+                    db.execute(
+                        "UPDATE predictions SET home_score=?, away_score=?, updated_at=datetime('now') WHERE id=?",
+                        (data.home_score, data.away_score, existing["id"]),
+                    )
+                else:
+                    db.execute(
+                        "INSERT INTO predictions (user_id, match_id, home_score, away_score) VALUES (?,?,?,?)",
+                        (user["id"], data.match_id, data.home_score, data.away_score),
+                    )
+                # Invalide le cache leaderboard car les stats utilisateur changent
+                cache_invalidate("leaderboard:")
+                return {"ok": True}
+        except HTTPException:
+            raise  # erreur fonctionnelle, on propage
+        except sqlite3.OperationalError as e:
+            last_err = e
+            if "locked" in str(e).lower() or "busy" in str(e).lower():
+                # backoff exponentiel : 50ms, 200ms, 800ms
+                _t.sleep(0.05 * (4 ** attempt))
+                continue
+            raise HTTPException(500, f"Erreur BDD : {e}")
+    # Échec après 3 retry
+    print(f"[ERROR save_prediction] user={user['id']} match={data.match_id} : {last_err}")
+    raise HTTPException(503, "Serveur très sollicité, réessaie dans quelques secondes")
 
 
 # --- Leaderboard ---
@@ -1508,7 +1533,7 @@ def leaderboard(response: Response):
         }
         # Ne cache que si on a au moins 1 utilisateur classé (évite l'empoisonnement cache)
         if ranked:
-            cache_set("leaderboard:global", result, ttl_seconds=15)
+            cache_set("leaderboard:global", result, ttl_seconds=30)
         return result
 
 
@@ -1597,7 +1622,7 @@ def leaderboard_groups(response: Response):
                 "min_active_members": 2,
             },
         }
-        cache_set("leaderboard:groups", result, ttl_seconds=30)
+        cache_set("leaderboard:groups", result, ttl_seconds=60)
         return result
 
 
