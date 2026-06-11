@@ -1378,12 +1378,12 @@ def app_snapshot(response: Response):
     if not leaderboard_data or not leaderboard_data.get("ranked"):
         try:
             with get_db() as db:
+                # OPTIMISATION : pas d'avatar_data, email, logo_data (gonfle la réponse à 20+ MB)
                 rows = db.execute("""
-                    SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
+                    SELECT u.id, u.username, u.role, u.group_id,
                            COALESCE(SUM(p.points), 0) AS total_points,
                            COUNT(p.id) AS predictions_count,
                            g.name AS group_name,
-                           g.logo_data AS group_logo,
                            g.slug AS group_slug,
                            EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
                     FROM users u
@@ -1545,12 +1545,17 @@ def leaderboard(response: Response):
     if cached and cached.get("ranked"):
         return cached
     with get_db() as db:
+        # OPTIMISATION RÉPONSE : on a EXCLU avatar_data, email, logo_data du SELECT.
+        # Pour 1283 users, ces champs base64 pouvaient gonfler la réponse à 20+ MB et
+        # provoquer des troncatures côté nginx/Caddy → "aucun participant" affiché.
+        # La réponse passe maintenant de ~20 MB à ~300 KB pour 1283 users.
+        # Les avatars ne sont pas affichés dans le classement (juste le pseudo + points),
+        # donc aucune perte fonctionnelle.
         rows = db.execute("""
-            SELECT u.id, u.username, u.email, u.role, u.group_id, u.avatar_data,
+            SELECT u.id, u.username, u.role, u.group_id,
                    COALESCE(SUM(p.points), 0) AS total_points,
                    COUNT(p.id) AS predictions_count,
                    g.name AS group_name,
-                   g.logo_data AS group_logo,
                    g.slug AS group_slug,
                    EXISTS(SELECT 1 FROM donations d WHERE d.user_id = u.id AND d.verified = 1) AS is_supporter
             FROM users u
