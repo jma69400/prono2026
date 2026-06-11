@@ -87,6 +87,9 @@ export const api = {
   upgradeToLeader: () => request('/me/upgrade-to-leader', { method: 'POST' }),
   // Leader retire un membre de son groupe (le membre redevient solo, ses pronos conservés)
   removeMember: (groupId, userId) => request(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
+  // Récupère les pronos du groupe pour les matchs DÉJÀ COMMENCÉS (règle fair-play)
+  // Retourne { members, matches, predictions: {match_id: {user_id: {home_score, away_score, points}}} }
+  groupPredictions: (groupId) => request(`/groups/${groupId}/predictions`),
   // Endpoint optimisé : retourne matches + leaderboard + news en 1 appel
   // Utilisé par le polling principal pour réduire la charge serveur
   snapshot: (lang) => request('/snapshot' + (lang ? `?lang=${lang}` : '')),

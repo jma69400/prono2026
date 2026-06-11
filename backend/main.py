@@ -2364,6 +2364,118 @@ def list_group_members(group_id: int, user=Depends(require_user)):
         return result
 
 
+@app.get("/api/groups/{group_id}/predictions")
+def list_group_predictions(group_id: int, user=Depends(require_user)):
+    """Renvoie les pronostics des membres du groupe pour les matchs DÉJÀ COMMENCÉS.
+
+    RÈGLE DE FAIR-PLAY (cruciale) :
+    On ne renvoie JAMAIS les pronos d'un match qui n'a pas encore commencé.
+    Sinon, un membre pourrait copier les pronos d'un autre (typiquement celui qui
+    a le meilleur classement) au dernier moment juste avant le verrouillage.
+
+    Critère "match commencé" : datetime.now() >= match_date (UTC).
+    Cohérent avec la règle de verrouillage des pronos (5 min avant kickoff) :
+    une fois qu'un prono ne peut PLUS être modifié, il devient visible aux membres.
+
+    Accès : tout membre du groupe + leader du groupe + admin.
+
+    Format de réponse optimisé pour les 2 vues frontend :
+    {
+        "members": [{id, username, role, ...}, ...],     # liste des membres pour entête
+        "matches": [{id, home_team, away_team, match_date, status, home_score, away_score, ...}],
+        "predictions": {
+            "<match_id>": {                              # clé = match_id
+                "<user_id>": {home_score, away_score, points}
+            }
+        }
+    }
+    """
+    with get_db() as db:
+        group = db.execute("SELECT * FROM groups WHERE id=?", (group_id,)).fetchone()
+        if not group:
+            raise HTTPException(404, "Groupe introuvable")
+
+        # Vérifier les droits : membre du groupe, leader du groupe, ou admin
+        is_leader = user["role"] == "leader" and group["leader_id"] == user["id"]
+        is_admin = user["role"] == "admin"
+        is_member = user.get("group_id") == group_id
+        if not (is_leader or is_admin or is_member):
+            raise HTTPException(403, "Accès refusé : tu dois être membre du groupe")
+
+        leader_id = group["leader_id"]
+
+        # 1. Liste des membres (sans avatar pour alléger la réponse)
+        members_rows = db.execute(
+            """SELECT u.id, u.username, u.role,
+                      COALESCE((SELECT SUM(p.points) FROM predictions p WHERE p.user_id=u.id), 0) AS total_points,
+                      (SELECT COUNT(p.id) FROM predictions p WHERE p.user_id=u.id) AS predictions_count
+               FROM users u WHERE u.group_id=?
+               ORDER BY total_points DESC, u.username""",
+            (group_id,),
+        ).fetchall()
+
+        members = []
+        for r in members_rows:
+            d = dict(r)
+            d["is_leader"] = (d["id"] == leader_id)
+            members.append(d)
+
+        if not members:
+            return {"members": [], "matches": [], "predictions": {}}
+
+        member_ids = [m["id"] for m in members]
+        placeholders = ",".join("?" * len(member_ids))
+
+        # 2. Matchs DÉJÀ COMMENCÉS uniquement (règle fair-play)
+        # On compare en SQL en utilisant strftime pour normaliser à UTC.
+        # match_date est stocké en ISO 8601 UTC ("YYYY-MM-DDTHH:MM:SS+00:00" ou avec Z).
+        # On compare à datetime('now') qui est aussi en UTC SQLite.
+        now_utc_iso = datetime.now(timezone.utc).isoformat()
+        matches_rows = db.execute(
+            """SELECT id, home_team, away_team, match_date, stage, group_letter,
+                      home_score, away_score, status
+               FROM matches
+               WHERE match_date <= ?
+               ORDER BY match_date DESC""",
+            (now_utc_iso,),
+        ).fetchall()
+
+        matches = [dict(r) for r in matches_rows]
+        if not matches:
+            return {"members": members, "matches": [], "predictions": {}}
+
+        match_ids = [m["id"] for m in matches]
+        match_placeholders = ",".join("?" * len(match_ids))
+
+        # 3. Tous les pronos de ces membres pour ces matchs (en 1 seule requête)
+        preds_rows = db.execute(
+            f"""SELECT user_id, match_id, home_score, away_score, points
+                FROM predictions
+                WHERE user_id IN ({placeholders})
+                  AND match_id IN ({match_placeholders})""",
+            (*member_ids, *match_ids),
+        ).fetchall()
+
+        # 4. Construit le dict imbriqué : predictions[match_id][user_id] = {scores, points}
+        predictions = {}
+        for p in preds_rows:
+            mid = str(p["match_id"])
+            uid = str(p["user_id"])
+            if mid not in predictions:
+                predictions[mid] = {}
+            predictions[mid][uid] = {
+                "home_score": p["home_score"],
+                "away_score": p["away_score"],
+                "points": p["points"] or 0,
+            }
+
+        return {
+            "members": members,
+            "matches": matches,
+            "predictions": predictions,
+        }
+
+
 @app.put("/api/groups/{group_id}")
 def update_group(group_id: int, data: GroupUpdate, user=Depends(require_user)):
     """Met à jour un groupe (nom, description, logo). Leader du groupe ou admin."""

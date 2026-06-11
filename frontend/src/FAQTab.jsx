@@ -68,8 +68,25 @@ const FAQ_DATA = {
           a: 'C\'est notre algorithme qui calcule la probabilité de chaque résultat en se basant sur le classement FIFA, l\'historique des équipes et leur forme actuelle. Tu peux t\'en inspirer mais l\'IA ne fait pas toujours de bonnes prédictions !',
         },
         {
-          q: 'Puis-je voir les pronostics des autres ?',
-          a: 'Non, les pronostics restent privés jusqu\'au coup d\'envoi du match. Après le coup d\'envoi, les pronostics des autres membres de ton groupe deviennent visibles.',
+          q: 'Puis-je voir les pronostics des autres membres de mon groupe ?',
+          a: `Oui, **dès le coup d'envoi d'un match**, tu peux voir les pronostics de tous les membres de ton groupe pour ce match.
+
+📍 **Où voir ça ?** Onglet **"Mon Groupe"** → section **"Pronostics du groupe"** en bas de la page.
+
+📊 **2 vues disponibles** :
+- **Par match** : un tableau qui montre tous les membres en colonnes, chaque match en ligne, et les pronos dans les cellules. Pratique pour comparer rapidement.
+- **Par membre** : tu sélectionnes un membre, et tu vois TOUS ses pronos sur les matchs déjà commencés. Pratique pour analyser le style de quelqu'un.
+
+🎨 **Code couleur des pronos** :
+- 🟢 **Vert vif (5pt)** : score exact deviné
+- 🟢 **Vert clair (3pt)** : bon vainqueur + bonne différence de buts
+- 🟡 **Jaune (1pt)** : bon vainqueur seulement
+- ⚪ **Gris (0pt)** : prono raté
+- 🔵 **Bleu** : match en cours (pas encore de score officiel)
+- ❌ **Pointillés** : pas de pronostic posé
+
+🤝 **Règle fair-play stricte** :
+Les pronostics ne deviennent visibles **qu'au coup d'envoi du match**. Avant, ils restent **strictement privés**, même pour le leader du groupe. Pourquoi ? Pour éviter que quelqu'un puisse copier le pronostic du meilleur joueur juste avant le verrouillage.`,
         },
         {
           q: 'Que se passe-t-il en cas de prolongations ou tirs au but ?',
@@ -318,8 +335,25 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
           a: 'It\'s our algorithm that calculates the probability of each result based on FIFA ranking, team history and current form. You can use it for inspiration but AI doesn\'t always predict well!',
         },
         {
-          q: 'Can I see other people\'s predictions?',
-          a: 'No, predictions remain private until kickoff. After kickoff, your group members\' predictions become visible.',
+          q: 'Can I see other group members\' predictions?',
+          a: `Yes, **as soon as a match kicks off**, you can see the predictions of all members of your group for that match.
+
+📍 **Where?** Tab **"My Group"** → **"Group predictions"** section at the bottom of the page.
+
+📊 **2 views available**:
+- **By match**: a table with all members as columns, each match as a row, and predictions in the cells. Useful for quick comparison.
+- **By member**: select a member to see ALL their predictions on matches already started. Useful for analyzing someone's style.
+
+🎨 **Color code**:
+- 🟢 **Bright green (5pt)**: exact score
+- 🟢 **Light green (3pt)**: right winner + right goal difference
+- 🟡 **Yellow (1pt)**: right winner only
+- ⚪ **Grey (0pt)**: wrong prediction
+- 🔵 **Blue**: match in progress (no official score yet)
+- ❌ **Dashed**: no prediction submitted
+
+🤝 **Strict fair-play rule**:
+Predictions only become visible **at kickoff**. Before that, they remain **strictly private**, even for the group leader. Why? To prevent anyone from copying the top player's prediction just before lock-in.`,
         },
         {
           q: 'What happens with extra time or penalties?',
@@ -568,8 +602,25 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
           a: 'Es nuestro algoritmo que calcula la probabilidad de cada resultado basándose en el ranking FIFA, historial de equipos y forma actual. ¡Puedes usarlo como inspiración pero la IA no siempre predice bien!',
         },
         {
-          q: '¿Puedo ver los pronósticos de otros?',
-          a: 'No, los pronósticos permanecen privados hasta el inicio del partido. Después del inicio, los pronósticos de los miembros de tu grupo se vuelven visibles.',
+          q: '¿Puedo ver los pronósticos de los demás miembros de mi grupo?',
+          a: `Sí, **en cuanto comienza un partido**, puedes ver los pronósticos de todos los miembros de tu grupo para ese partido.
+
+📍 **¿Dónde?** Pestaña **"Mi Grupo"** → sección **"Pronósticos del grupo"** abajo de la página.
+
+📊 **2 vistas disponibles**:
+- **Por partido**: una tabla con todos los miembros en columnas, cada partido en una fila, y los pronósticos en las celdas. Útil para comparar rápidamente.
+- **Por miembro**: selecciona un miembro para ver TODOS sus pronósticos sobre los partidos ya iniciados. Útil para analizar el estilo de alguien.
+
+🎨 **Código de colores**:
+- 🟢 **Verde brillante (5pt)**: resultado exacto adivinado
+- 🟢 **Verde claro (3pt)**: ganador correcto + diferencia correcta
+- 🟡 **Amarillo (1pt)**: ganador correcto solamente
+- ⚪ **Gris (0pt)**: pronóstico fallado
+- 🔵 **Azul**: partido en curso (sin resultado oficial todavía)
+- ❌ **Punteado**: sin pronóstico
+
+🤝 **Regla de juego limpio estricta**:
+Los pronósticos solo se vuelven visibles **al inicio del partido**. Antes, permanecen **estrictamente privados**, incluso para el líder del grupo. ¿Por qué? Para evitar que alguien copie el pronóstico del mejor jugador justo antes del cierre.`,
         },
         {
           q: '¿Qué pasa con prórroga o penaltis?',

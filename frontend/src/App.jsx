@@ -8,6 +8,7 @@ import { FloatingChatBox } from './ChatBox.jsx'
 import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
 import KopUnitedTab from './KopUnitedTab.jsx'
+import GroupPredictionsTab from './GroupPredictionsTab.jsx'
 import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
 import { GroupsLeaderboardTab } from './GroupsLeaderboardTab.jsx'
 import {
@@ -4006,6 +4007,21 @@ function GroupTab({ user }) {
           <p className="text-[11px] text-white/30 mt-3 text-center">
             {t('group.rankingNote')}
           </p>
+        </div>
+      )}
+
+      {/* ============================================== */}
+      {/* SECTION : Pronostics du groupe                 */}
+      {/* Vue par match OU par membre, fair-play strict  */}
+      {/* (matchs commencés uniquement)                  */}
+      {/* ============================================== */}
+      {group && (
+        <div className="mt-6 bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="w-5 h-5 text-sport-300" />
+            <h3 className="text-lg font-bold">{t('groupPredictions.title')}</h3>
+          </div>
+          <GroupPredictionsTab groupId={group.id} currentUserId={user?.id} />
         </div>
       )}
     </div>
