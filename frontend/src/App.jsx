@@ -1207,9 +1207,20 @@ function NewsTab({ news, onRefresh, isAdmin }) {
   const [teamFilter, setTeamFilter] = useState('')
   const [translating, setTranslating] = useState(false)
   const [translateMsg, setTranslateMsg] = useState('')
+  const [autoRefreshed, setAutoRefreshed] = useState(false)
 
   const filtered = news.filter(n => !teamFilter || n.team === teamFilter)
   const availableTeams = [...new Set(news.map(n => n.team).filter(Boolean))].slice(0, 12)
+
+  // Auto-refresh si la liste est vide à l'arrivée sur l'onglet
+  // Le serveur a un rate-limit (1/min) donc pas de spam même si plusieurs clients
+  // entrent sur l'onglet en même temps.
+  useEffect(() => {
+    if (news.length === 0 && !autoRefreshed && onRefresh) {
+      setAutoRefreshed(true)
+      onRefresh().catch(e => console.error('auto-refresh news error', e))
+    }
+  }, [news.length, autoRefreshed, onRefresh])
 
   const handleTranslate = async () => {
     setTranslating(true); setTranslateMsg('')
@@ -1241,17 +1252,21 @@ function NewsTab({ news, onRefresh, isAdmin }) {
             </button>
           ))}
         </div>
-        {isAdmin && (
-          <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          {/* Bouton refresh accessible à TOUS (rate-limit serveur 1/min anti-abus) */}
+          <button onClick={onRefresh}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2 transition"
+            title={t('news.refresh')}>
+            <RefreshCw className="w-4 h-4" /> {t('news.refresh')}
+          </button>
+          {/* Traduction manuelle : réservée admin */}
+          {isAdmin && (
             <button onClick={handleTranslate} disabled={translating}
               className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50">
               🌍 {translating ? '...' : 'Traduire manquantes'}
             </button>
-            <button onClick={onRefresh} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" /> {t('news.refresh')}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {translateMsg && (
@@ -4450,9 +4465,29 @@ export default function App() {
     await loadPublic()
   }
 
+  const [refreshingNews, setRefreshingNews] = useState(false)
   const handleRefreshNews = async () => {
-    await api.refreshNews()
-    setNews(await api.news(null, lang))
+    if (refreshingNews) return
+    setRefreshingNews(true)
+    try {
+      // Utilise l'endpoint PUBLIC (rate-limité à 1/min côté serveur)
+      // Accessible par tous les utilisateurs connectés ET les visiteurs.
+      // Fallback admin si l'endpoint public n'existe pas encore (déploiement partiel)
+      try {
+        await api.refreshNewsPublic()
+      } catch (e) {
+        // Fallback : si l'endpoint public renvoie 404 (vieille version backend),
+        // on tente l'endpoint admin (qui marchera si l'user est admin)
+        try { await api.refreshNews() } catch { /* swallow */ }
+      }
+      // Recharge les news (le cache RAM serveur vient d'être invalidé)
+      const news = await api.news(null, lang)
+      if (Array.isArray(news)) setNews(news)
+    } catch (e) {
+      console.error('refresh news error', e)
+    } finally {
+      setRefreshingNews(false)
+    }
   }
 
   // Marquer le passage en mode visiteur pour la session courante.

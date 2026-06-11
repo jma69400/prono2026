@@ -111,7 +111,8 @@ export const api = {
     const qs = params.toString()
     return request(`/news${qs ? `?${qs}` : ''}`)
   },
-  refreshNews: () => request('/news/refresh', { method: 'POST' }),
+  refreshNews: () => request('/news/refresh', { method: 'POST' }),  // admin only
+  refreshNewsPublic: () => request('/news/refresh-public', { method: 'POST' }),  // tous users (rate-limit 1/min serveur)
   translateMissingNews: () => request('/news/translate-missing', { method: 'POST' }),
   fetchResults: () => request('/admin/results/fetch', { method: 'POST' }),
   // Profil

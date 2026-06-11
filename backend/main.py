@@ -1113,16 +1113,82 @@ app.add_middleware(
 def startup():
     init_db()
     seed_data()
-    # Lance l'agrégateur RSS en arrière-plan
-    thread = threading.Thread(target=news_worker, daemon=True)
-    thread.start()
-    # Lance le fetch des résultats Football-Data.org si la clé API est définie
-    results_thread = threading.Thread(target=results_worker, daemon=True)
-    results_thread.start()
+    # === Background workers ===
+    # IMPORTANT : avec plusieurs workers uvicorn (ex: --workers 2), startup() est appelé
+    # dans CHAQUE worker. On utilise un fichier-lock pour s'assurer que les threads
+    # de background ne tournent QUE dans un seul process à la fois.
+    #
+    # RÉSILIENCE : le lock est "stale-aware" - si le PID dans le lock n'existe plus
+    # (process crashé sans cleanup), on prend le lock pour soi. Sinon, on a un blocage
+    # permanent où aucun worker ne tourne après un crash.
+    import os
+    LOCK_FILE = "/tmp/prono2026_workers.lock"
+
+    def _process_exists(pid):
+        """Vérifie si un process existe (envoyer signal 0 ne tue pas, juste teste)."""
+        try:
+            os.kill(int(pid), 0)
+            return True
+        except (OSError, ValueError):
+            return False
+
+    should_start = False
+    if os.path.exists(LOCK_FILE):
+        try:
+            with open(LOCK_FILE) as f:
+                old_pid = f.read().strip()
+            if _process_exists(old_pid):
+                print(f"[STARTUP] Background workers déjà actifs dans pid={old_pid} (pid actuel={os.getpid()})")
+            else:
+                # Lock orphelin : on le supprime et on prend la main
+                print(f"[STARTUP] Lock orphelin trouvé (pid={old_pid} mort), reprise du lock")
+                os.remove(LOCK_FILE)
+                should_start = True
+        except Exception as e:
+            # En cas d'erreur de lecture, on supprime le lock et on continue
+            print(f"[STARTUP] Erreur lecture lock ({e}), suppression et reprise")
+            try: os.remove(LOCK_FILE)
+            except Exception: pass
+            should_start = True
+    else:
+        should_start = True
+
+    if should_start:
+        try:
+            with open(LOCK_FILE, 'w') as f:
+                f.write(str(os.getpid()))
+            print(f"[STARTUP] Background workers démarrent dans ce process (pid={os.getpid()})")
+            # Lance l'agrégateur RSS en arrière-plan
+            thread = threading.Thread(target=news_worker, daemon=True)
+            thread.start()
+            # Lance le fetch des résultats Football-Data.org si la clé API est définie
+            results_thread = threading.Thread(target=results_worker, daemon=True)
+            results_thread.start()
+        except Exception as e:
+            print(f"[STARTUP] Erreur démarrage workers : {e}")
+
     print("=" * 60)
     print("🏆 United Pronos backend démarré")
     print(f"📁 Base : {DB_PATH}")
     print("👤 Compte admin : admin@prono26.com (change le mot de passe !)")
+
+
+@app.on_event("shutdown")
+def shutdown_cleanup():
+    """Nettoyage à l'arrêt : retire le fichier-lock des background workers
+    si c'est ce process qui l'avait pris. Sinon prochain démarrage croira que les
+    workers tournent ailleurs."""
+    import os
+    LOCK_FILE = "/tmp/prono2026_workers.lock"
+    try:
+        if os.path.exists(LOCK_FILE):
+            with open(LOCK_FILE) as f:
+                lock_pid = f.read().strip()
+            if lock_pid == str(os.getpid()):
+                os.remove(LOCK_FILE)
+                print(f"[SHUTDOWN] Lock workers libéré (pid={os.getpid()})")
+    except Exception as e:
+        print(f"[SHUTDOWN] Erreur cleanup lock : {e}")
     if os.environ.get("FOOTBALL_DATA_API_KEY"):
         print("⚽ Fetch automatique des résultats : ACTIVÉ")
     else:
@@ -1689,23 +1755,34 @@ def list_news(response: Response, team: Optional[str] = None, lang: Optional[str
     Si une traduction manque en BDD, elle est calculée à la volée et mise en cache.
 
     Cache 60s : les news sont rafraîchies en async côté backend, et changent rarement.
+
+    PROTECTION : on ne renvoie JAMAIS 500. Si la BDD a un souci (colonne manquante,
+    corruption, etc.), on retourne une liste vide plutôt qu'une erreur qui casse la page.
+    Le frontend gère gracieusement les listes vides.
     """
     response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=120"
     if lang not in ('fr', 'en', 'es'):
         lang = 'fr'
 
-    with get_db() as db:
-        conditions = []
-        params = []
-        if team:
-            conditions.append("team=?")
-            params.append(team)
-        where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
-        params.append(limit)
-        rows = db.execute(
-            f"SELECT * FROM news{where} ORDER BY fetched_at DESC LIMIT ?",
-            params,
-        ).fetchall()
+    # Cache RAM serveur pour éviter de re-traduire à chaque requête
+    cache_key = f"news:all:{lang}:{team or 'all'}:{limit}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        with get_db() as db:
+            conditions = []
+            params = []
+            if team:
+                conditions.append("team=?")
+                params.append(team)
+            where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+            params.append(limit)
+            rows = db.execute(
+                f"SELECT * FROM news{where} ORDER BY fetched_at DESC LIMIT ?",
+                params,
+            ).fetchall()
 
         result = []
         # Limiter le nombre de traductions à la volée par requête (anti-rate-limit)
@@ -1775,13 +1852,88 @@ def list_news(response: Response, team: Optional[str] = None, lang: Optional[str
                 'displayed_lang': lang,       # langue affichée
                 'translated': source_lang != lang and bool(translated_title),
             })
+        # Cache en RAM 60s (réduit drastiquement la charge BDD/traduction)
+        if result:
+            cache_set(cache_key, result, ttl_seconds=60)
         return result
+    except Exception as e:
+        # Si BDD a un souci (colonne manquante, etc.), on log mais on ne casse pas la page.
+        # Retour d'un tableau vide → frontend affiche "Aucune actualité disponible" gracieusement.
+        print(f"[ERROR list_news] {type(e).__name__}: {e}")
+        return []
 
 
 @app.post("/api/news/refresh")
 def refresh_news(user=Depends(require_admin)):
+    """Refresh news ADMIN — déclenche un fetch immédiat sans limite."""
     fetch_news_once()
-    return {"ok": True}
+    # Invalide tous les caches news pour que la prochaine requête voie les nouvelles données
+    cache_invalidate("news:")
+    return {"ok": True, "scope": "admin"}
+
+
+# Variable globale partagée entre workers via le filesystem
+# pour rate-limiter le refresh public (sinon abus possible)
+_LAST_PUBLIC_REFRESH_FILE = "/tmp/prono2026_last_news_refresh"
+_PUBLIC_REFRESH_COOLDOWN_S = 60  # 1 minute entre 2 refresh publics
+
+
+def _get_last_public_refresh():
+    """Renvoie le timestamp UNIX du dernier refresh public, 0 si jamais."""
+    try:
+        with open(_LAST_PUBLIC_REFRESH_FILE) as f:
+            return float(f.read().strip())
+    except Exception:
+        return 0.0
+
+
+def _set_last_public_refresh(ts):
+    """Enregistre le timestamp du dernier refresh public."""
+    try:
+        with open(_LAST_PUBLIC_REFRESH_FILE, 'w') as f:
+            f.write(str(ts))
+    except Exception:
+        pass
+
+
+@app.post("/api/news/refresh-public")
+def refresh_news_public():
+    """Refresh news PUBLIC — rate-limité à 1 par minute (tous utilisateurs confondus).
+
+    Permet à n'importe quel utilisateur de déclencher un refresh des news.
+    Le rate-limit empêche les abus : si plusieurs personnes cliquent au même moment,
+    seul le premier déclenche réellement le fetch RSS, les autres reçoivent un OK
+    immédiat (le résultat est partagé via le cache).
+
+    Pourquoi public ?
+    - L'utilisateur lambda doit pouvoir rafraîchir manuellement si les news sont périmées
+    - Le worker en background ne fetch que toutes les 10 minutes, c'est parfois long
+    - Pas de risque de spam : 1/min global = trafic négligeable côté RSS sources
+    """
+    import time as _time
+    now = _time.time()
+    last = _get_last_public_refresh()
+    elapsed = now - last
+
+    if elapsed < _PUBLIC_REFRESH_COOLDOWN_S:
+        # Quelqu'un vient de refresh : on ne re-fetch pas, on retourne juste OK
+        # (les news viennent d'être rafraîchies)
+        return {
+            "ok": True,
+            "scope": "public",
+            "refreshed": False,
+            "next_refresh_in_seconds": int(_PUBLIC_REFRESH_COOLDOWN_S - elapsed),
+        }
+
+    # On a passé le cooldown : on lance le fetch
+    _set_last_public_refresh(now)
+    try:
+        fetch_news_once()
+        cache_invalidate("news:")
+        return {"ok": True, "scope": "public", "refreshed": True}
+    except Exception as e:
+        print(f"[ERROR refresh_news_public] {e}")
+        return {"ok": False, "error": "fetch failed"}
 
 
 @app.post("/api/news/translate-missing")
