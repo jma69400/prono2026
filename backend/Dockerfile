@@ -43,11 +43,13 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)" || exit 1
 
 # === CONFIGURATION POUR CPX42 (8 vCPU, 16 GB RAM) ===
-# 4 workers : règle classique = (2 × CPU) + 1, mais SQLite tient mal la concurrence d'écriture
-# donc on reste à 4 workers (= 50% des CPUs). Ça suffit pour 300-500 utilisateurs simultanés.
+# 2 workers : SQLite sérialise les écritures de toute façon, donc plus de workers
+# n'aide pas pour les écritures. 2 workers suffisent largement pour 200-300
+# connexions concurrentes avec WAL. Et ça divise par 2 la consommation RAM
+# (vs 4 workers) → évite l'OOM killer.
 # Note importante : avec plusieurs workers, le CACHE RAM in-process n'est PAS partagé entre
 # workers. Chaque worker a son propre cache. C'est OK car les TTL sont courts (15-30s)
-# et au pire on a 4× la même requête BDD au lieu d'1 (toujours acceptable).
+# et au pire on a 2× la même requête BDD au lieu d'1 (toujours acceptable).
 #
 # --h11-max-incomplete-event-size 16777216 : autorise les uploads d'images dans le chat
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--h11-max-incomplete-event-size", "16777216"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--h11-max-incomplete-event-size", "16777216"]

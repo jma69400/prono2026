@@ -56,16 +56,20 @@ services:
       - prono_net
     expose:
       - "8000"
-    # === LIMITES RESSOURCES (optimisé pour CPX42 : 8 vCPU, 16 GB RAM) ===
+    # === LIMITES RESSOURCES (CPX42 : 8 vCPU, 16 GB RAM) ===
     # Le backend est le composant le plus critique : on lui donne large.
-    # 4 workers uvicorn × ~250 MB RAM chacun + buffer = 2 GB suffisant
+    # Augmenté à 6 GB suite à OOM killer constaté sous 150 connexions simultanées.
+    # 2 workers uvicorn (au lieu de 4) : 2 workers × ~1.5 GB = 3 GB, marge confortable.
+    # Note : passer de 4 à 2 workers ne réduit pas le throughput car SQLite
+    # sérialise les écritures de toute façon. 2 workers suffisent pour 200-300
+    # connexions concurrentes avec WAL.
     deploy:
       resources:
         limits:
           cpus: '6'           # Laisser 2 CPUs pour nginx/Caddy/OS
-          memory: 4G          # 4 GB max (4 workers + cache + marge)
+          memory: 6G          # 6 GB max (large marge anti-OOM)
         reservations:
-          memory: 1G          # Garantit au moins 1 GB
+          memory: 2G          # Garantit au moins 2 GB
 
   frontend:
     build:

@@ -115,22 +115,21 @@ def get_db():
     # toute la BDD pendant qu'une écriture se fait → temps de réponse en cascade.
     # Le mode WAL est persistant (une fois set, reste actif pour le fichier).
     #
-    # Tuning aggressif possible grâce aux 16 GB RAM du CPX42 :
-    # - cache_size: 100 MB → 99% des requêtes servies depuis RAM
-    # - mmap_size: 256 MB → toute la BDD chargée en mémoire mappée
-    # - busy_timeout: 15s (au lieu de 5s) → tolère mieux les pics de concurrence
-    #   à 150+ users (un INSERT prono peut attendre jusqu'à 15s qu'un checkpoint
-    #   WAL se termine au lieu d'erreur "database is locked")
-    # - wal_autocheckpoint: 5000 (au lieu de 1000) → checkpoint moins fréquent,
-    #   moins de pauses I/O pendant les pics
+    # IMPORTANT MULTI-WORKER : ces réglages s'appliquent PAR CONNEXION et donc
+    # se MULTIPLIENT par le nombre de connexions ouvertes. Avec 4 workers uvicorn
+    # × ~10 connexions concurrentes, on peut atteindre 40 connexions. Donc on reste
+    # RAISONNABLE pour éviter l'OOM killer Docker :
+    # - cache_size: 20 MB par connexion (suffit largement pour ~35 MB de BDD)
+    # - mmap_size: 64 MB par connexion (couvre toute la BDD en mmap)
+    # - busy_timeout: 30s pour tolérer les pics
     try:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")     # plus rapide, toujours safe en WAL
-        conn.execute("PRAGMA cache_size=-102400")     # 100 MB de cache RAM
+        conn.execute("PRAGMA cache_size=-20000")      # 20 MB de cache RAM par connexion
         conn.execute("PRAGMA temp_store=MEMORY")      # tables temp en RAM
-        conn.execute("PRAGMA mmap_size=268435456")    # 256 MB de mmap (toute la BDD en RAM)
-        conn.execute("PRAGMA busy_timeout=15000")     # 15s d'attente si locked (au lieu d'erreur)
-        conn.execute("PRAGMA wal_autocheckpoint=5000") # checkpoint tous les 5000 pages
+        conn.execute("PRAGMA mmap_size=67108864")     # 64 MB de mmap par connexion
+        conn.execute("PRAGMA busy_timeout=30000")     # 30s d'attente si locked (au lieu d'erreur)
+        conn.execute("PRAGMA wal_autocheckpoint=2000") # checkpoint tous les 2000 pages
     except Exception:
         pass  # ne pas crasher si les PRAGMA ne s'appliquent pas (ex: en test)
     try:
