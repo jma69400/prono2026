@@ -661,7 +661,7 @@ function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
   const { t } = useTranslation()
   // ID versionné : changer ce suffixe (v2, v3...) force la ré-apparition pour tous,
   // même ceux qui ont fermé un bandeau précédent.
-  const BANNER_ID = 'server_upgrade_june10_2026_v2'
+  const BANNER_ID = 'server_upgrade_june10_2026_v3'
   // Date limite d'affichage : 7 jours après la publication.
   // Format : Date d'expiration en ms (UTC). Modifie cette valeur pour changer la durée.
   const EXPIRES_AT = new Date('2026-06-17T23:59:59Z').getTime()
@@ -686,12 +686,12 @@ function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
   }
 
   return (
-    <div className="bg-gradient-to-r from-sport-600/30 via-sport-500/20 to-cta-500/20 border-b border-sport-400/40">
+    <div className="bg-gradient-to-r from-cta-600/30 via-cta-500/20 to-cta-400/20 border-b border-cta-400/40">
       <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-start gap-2.5 flex-1 min-w-0">
-          <span className="text-xl shrink-0">🚀</span>
+          <span className="text-xl shrink-0">✅</span>
           <div className="text-sm text-white/90 leading-snug min-w-0">
-            <strong className="text-sport-200">{t('banner.upgradeTitle')}</strong>
+            <strong className="text-cta-200">{t('banner.upgradeTitle')}</strong>
             <span className="text-white/70 hidden sm:inline"> — {t('banner.upgradeText')}</span>
             <div className="text-white/60 text-xs mt-0.5 sm:hidden">{t('banner.upgradeText')}</div>
           </div>
