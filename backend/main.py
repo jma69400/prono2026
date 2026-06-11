@@ -3779,14 +3779,51 @@ def _normalize_for_filter(text: str) -> str:
 
 def contains_banned_word(text: str) -> Optional[str]:
     """Vérifie si le texte contient un mot interdit. Retourne le mot trouvé (pour logging)
-    ou None si OK."""
-    normalized = _normalize_for_filter(text)
+    ou None si OK.
+
+    Stratégie en 2 modes selon la longueur du mot interdit :
+    - Mots COURTS (≤ 4 caractères) : recherche STRICTE par mot entier (avec délimiteurs).
+      Évite les faux positifs comme "pd" matché dans "coup d'envoi" après normalisation
+      des espaces/apostrophes. Pour ces mots, le contournement par caractères spéciaux
+      est moins courant et le faux positif beaucoup plus probable.
+    - Mots LONGS (≥ 5 caractères) : recherche en SUBSTRING sur le texte normalisé,
+      ce qui attrape les contournements type "c0nn@rd", "co.n.n.a.r.d", etc.
+    """
+    import re
+    # Pour la recherche "mot entier", on normalise SANS supprimer les espaces
+    # pour conserver les frontières de mots.
+    def _normalize_keep_spaces(s):
+        import unicodedata
+        s = s.lower()
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(c for c in s if not unicodedata.combining(c))
+        # On remplace ponctuation par espaces pour avoir de vraies frontières
+        s = re.sub(r"[^\w\s]", " ", s)
+        # On collapse les espaces multiples
+        s = re.sub(r"\s+", " ", s)
+        return s
+
+    text_normalized_substring = _normalize_for_filter(text)        # tout collé
+    text_normalized_words = _normalize_keep_spaces(text)           # avec espaces
+
     for banned in BANNED_WORDS:
-        # On normalise AUSSI les mots interdits pour la comparaison
-        # (ex: "négre" et "negre" matchent tous les deux)
         banned_norm = _normalize_for_filter(banned)
-        if banned_norm and banned_norm in normalized:
-            return banned
+        if not banned_norm:
+            continue
+
+        # Mode 1 : mots courts → recherche par mot entier (avec word boundaries)
+        if len(banned_norm) <= 4:
+            # \b ne marche pas bien avec lettres accentuées en Python regex,
+            # mais on a déjà retiré les accents dans la normalisation.
+            # On utilise des délimiteurs explicites : début, fin, ou espace.
+            pattern = r'(^|\s)' + re.escape(banned_norm) + r'(\s|$)'
+            if re.search(pattern, text_normalized_words):
+                return banned
+        # Mode 2 : mots longs → recherche en substring (attrape contournements)
+        else:
+            if banned_norm in text_normalized_substring:
+                return banned
+
     return None
 
 
