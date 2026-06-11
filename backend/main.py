@@ -1445,14 +1445,59 @@ def save_prediction(data: PredictionIn, user=Depends(get_current_user)):
     avant de renvoyer une erreur claire à l'utilisateur."""
     import time as _t
     last_err = None
+
+    # === RÈGLE DE VERROUILLAGE DES PRONOSTICS ===
+    # Un pronostic est verrouillé dans 2 cas :
+    # 1. Le match a déjà été terminé (status='finished', mis par l'admin)
+    # 2. Le match commence dans MOINS DE 5 MINUTES (PREDICTION_LOCK_MINUTES)
+    #
+    # Pourquoi 5 minutes et pas pile au coup d'envoi :
+    # - Sécurité réseau : latence d'envoi de requête (1-3s parfois)
+    # - Décalages d'horloge clients : un navigateur peut avoir 30s d'avance
+    # - Convention sportive : la plupart des sites verrouillent 2-15 min avant
+    # - Évite que quelqu'un puisse pronostiquer pendant que les équipes entrent sur le terrain
+    PREDICTION_LOCK_MINUTES = 5
+
     for attempt in range(3):
         try:
             with get_db() as db:
                 m = db.execute("SELECT * FROM matches WHERE id=?", (data.match_id,)).fetchone()
                 if not m:
                     raise HTTPException(404, "Match introuvable")
+                # Verrou #1 : match déjà terminé (admin a saisi un score)
                 if m["status"] == "finished":
                     raise HTTPException(400, "Match terminé, prono verrouillé")
+                # Verrou #2 : kickoff trop proche ou passé
+                # match_date est stocké en UTC ISO 8601 par notre migration v2
+                try:
+                    match_dt = datetime.fromisoformat(m["match_date"].replace("Z", "+00:00"))
+                    if match_dt.tzinfo is None:
+                        # Si pas de timezone, on assume UTC (notre format standard)
+                        match_dt = match_dt.replace(tzinfo=timezone.utc)
+                    now_utc = datetime.now(timezone.utc)
+                    lock_at = match_dt - timedelta(minutes=PREDICTION_LOCK_MINUTES)
+                    if now_utc >= lock_at:
+                        # Match trop proche : on bloque
+                        # On formate l'heure locale du match pour le message d'erreur
+                        if now_utc >= match_dt:
+                            raise HTTPException(
+                                400,
+                                "Le match a commencé, les pronostics sont fermés."
+                            )
+                        else:
+                            mins_left = int((match_dt - now_utc).total_seconds() / 60)
+                            raise HTTPException(
+                                400,
+                                f"Pronostics fermés : le match commence dans moins de "
+                                f"{PREDICTION_LOCK_MINUTES} minutes ({mins_left} min restantes)."
+                            )
+                except HTTPException:
+                    raise
+                except (ValueError, AttributeError) as e:
+                    # Si la date est mal formatée, on log et on laisse passer pour ne pas
+                    # bloquer tous les pronos par sécurité défensive
+                    print(f"[WARN save_prediction] match_date mal formaté pour match {data.match_id}: {m['match_date']} - {e}")
+
                 existing = db.execute(
                     "SELECT id FROM predictions WHERE user_id=? AND match_id=?",
                     (user["id"], data.match_id),

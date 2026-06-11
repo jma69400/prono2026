@@ -307,7 +307,41 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
 
   const odds = useMemo(() => ai ? getMatchOdds(ai) : null, [ai])
 
-  const locked = match.status === 'finished'
+  // === RÈGLE DE VERROUILLAGE DES PRONOSTICS ===
+  // Aligné avec le backend : verrou 5 minutes avant kickoff ou match terminé.
+  // On utilise un useState + setInterval pour rafraîchir l'état toutes les 30s,
+  // pour qu'un match qui passe la barrière des 5min se verrouille en live
+  // sans devoir attendre que l'utilisateur rafraîchisse.
+  const PREDICTION_LOCK_MINUTES = 5
+
+  const computeLockState = () => {
+    if (match.status === 'finished') return { locked: true, soonLocked: false, minsUntilLock: null }
+    if (match.status === 'live') return { locked: true, soonLocked: false, minsUntilLock: null }
+    if (!match.match_date) return { locked: false, soonLocked: false, minsUntilLock: null }
+    const matchDate = new Date(match.match_date)
+    if (isNaN(matchDate.getTime())) return { locked: false, soonLocked: false, minsUntilLock: null }
+    const now = new Date()
+    const minsUntilMatch = (matchDate - now) / 60000
+    if (minsUntilMatch <= PREDICTION_LOCK_MINUTES) {
+      // Verrouillé (kickoff dans <5min ou déjà commencé)
+      return { locked: true, soonLocked: false, minsUntilLock: null }
+    }
+    if (minsUntilMatch <= 30) {
+      // Bientôt verrouillé : afficher un warning dès 30 min avant le verrou
+      return { locked: false, soonLocked: true, minsUntilLock: Math.floor(minsUntilMatch - PREDICTION_LOCK_MINUTES) }
+    }
+    return { locked: false, soonLocked: false, minsUntilLock: null }
+  }
+
+  const [lockState, setLockState] = useState(computeLockState())
+  useEffect(() => {
+    // Recalcule toutes les 30s pour que le verrou s'active en live
+    // (un match qui commence dans 6 min doit passer "locked" 1 min plus tard sans refresh)
+    const interval = setInterval(() => setLockState(computeLockState()), 30000)
+    return () => clearInterval(interval)
+  }, [match.status, match.match_date])
+
+  const locked = lockState.locked
   const isLive = match.status === 'live'
 
   const save = async () => {
@@ -558,6 +592,13 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                 </>
               )}
             </div>
+
+            {/* Warning si bientôt verrouillé (orange clignotant) */}
+            {lockState.soonLocked && (
+              <div className="text-center text-xs font-bold mb-2 px-2 py-1 bg-amber-500/15 text-amber-300 border border-amber-400/40 rounded-md flex items-center justify-center gap-1.5 animate-pulse">
+                ⏰ {t('matches.soonLocked').replace('{mins}', lockState.minsUntilLock)}
+              </div>
+            )}
 
             {/* Inputs de score */}
             <div className="flex items-center justify-center gap-3">

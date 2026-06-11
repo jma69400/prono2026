@@ -38,8 +38,26 @@ const FAQ_DATA = {
       icon: '📊',
       items: [
         {
+          q: 'Jusqu\'à quand puis-je saisir ou modifier mon pronostic ?',
+          a: `Tu peux saisir ou modifier ton pronostic **jusqu'à 5 minutes avant le coup d'envoi du match**.
+
+⏰ **Pourquoi 5 minutes et pas pile au coup d'envoi ?**
+- Sécurité : ça évite les pronos envoyés au dernier moment qui arrivent après le début du match
+- Décalages d'horloge : ton navigateur peut avoir quelques secondes de décalage avec le serveur
+
+⚠️ **Concrètement** :
+- À J-1 (la veille) : tu peux pronostiquer librement
+- À J-1h : c'est encore le bon moment
+- À J-30 min : un badge orange apparaît "⏰ Plus que XX min pour pronostiquer !"
+- À J-5 min : **les inputs sont grisés**, plus aucune modification possible
+- Pendant le match : verrouillé
+- Match terminé : tes points sont calculés automatiquement
+
+💡 **Conseil** : saisis tes pronos à l'avance pour ne pas oublier dans la précipitation !`,
+        },
+        {
           q: 'Comment fonctionnent les pronostics ?',
-          a: 'Pour chaque match, tu prédis le score exact (ex: 2-1). Tu peux modifier ton pronostic jusqu\'au coup d\'envoi du match. Une fois le match commencé, tes prédictions sont verrouillées.',
+          a: 'Pour chaque match, tu prédis le score exact (ex: 2-1). Tu peux modifier ton pronostic jusqu\'à 5 minutes avant le coup d\'envoi du match. Une fois ce délai passé, tes prédictions sont verrouillées.',
         },
         {
           q: 'Comment sont calculés les points ?',
@@ -270,8 +288,26 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       icon: '📊',
       items: [
         {
+          q: 'Until when can I submit or change my prediction?',
+          a: `You can submit or change your prediction **up to 5 minutes before kick-off**.
+
+⏰ **Why 5 minutes and not right at kick-off?**
+- Safety: avoids last-second predictions that arrive after the match starts
+- Clock drift: your browser may be a few seconds out of sync with the server
+
+⚠️ **Concretely**:
+- D-1 (day before): you can predict freely
+- 1h before: still a good time
+- 30 min before: an orange badge appears "⏰ Only XX min left to predict!"
+- 5 min before: **inputs are greyed out**, no more changes possible
+- During the match: locked
+- After the match: your points are calculated automatically
+
+💡 **Tip**: submit your predictions in advance to avoid forgetting in the rush!`,
+        },
+        {
           q: 'How do predictions work?',
-          a: 'For each match, you predict the exact score (e.g., 2-1). You can modify your prediction until kickoff. Once the match starts, your predictions are locked.',
+          a: 'For each match, you predict the exact score (e.g., 2-1). You can modify your prediction up to 5 minutes before kick-off. Once that deadline passes, your predictions are locked.',
         },
         {
           q: 'How are points calculated?',
@@ -502,8 +538,26 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
       icon: '📊',
       items: [
         {
+          q: '¿Hasta cuándo puedo enviar o modificar mi pronóstico?',
+          a: `Puedes enviar o modificar tu pronóstico **hasta 5 minutos antes del inicio del partido**.
+
+⏰ **¿Por qué 5 minutos y no justo al inicio?**
+- Seguridad: evita pronósticos enviados en el último segundo que llegan después del inicio
+- Desfase de reloj: tu navegador puede tener unos segundos de diferencia con el servidor
+
+⚠️ **En concreto**:
+- D-1 (día antes): puedes pronosticar libremente
+- 1h antes: aún es buen momento
+- 30 min antes: aparece una insignia naranja "⏰ ¡Solo XX min para pronosticar!"
+- 5 min antes: **los campos se bloquean**, ya no hay cambios posibles
+- Durante el partido: bloqueado
+- Después del partido: tus puntos se calculan automáticamente
+
+💡 **Consejo**: ¡envía tus pronósticos con antelación para no olvidar en el último momento!`,
+        },
+        {
           q: '¿Cómo funcionan los pronósticos?',
-          a: 'Para cada partido, predices el resultado exacto (ej: 2-1). Puedes modificar tu pronóstico hasta el inicio del partido. Una vez comenzado, tus predicciones se bloquean.',
+          a: 'Para cada partido, predices el resultado exacto (ej: 2-1). Puedes modificar tu pronóstico hasta 5 minutos antes del inicio del partido. Pasado ese plazo, tus predicciones se bloquean.',
         },
         {
           q: '¿Cómo se calculan los puntos?',
