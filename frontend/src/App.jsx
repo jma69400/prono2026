@@ -281,28 +281,74 @@ const stageLabel = (stage, t) => ({
 // =====================================================
 
 /**
- * Formate l'affichage du temps de match selon la période de l'API.
- * Retourne ex : "23'", "45+2'", "MT", "FIN", "PROL", "TAB"
+ * Formate l'affichage du temps de match.
+ * - Si match terminé : 'FIN'
+ * - Si mi-temps (period=HALF_TIME) : 'MT'
+ * - Si TAB/PROL : libellé approprié
+ * - Sinon : calcule la minute en cours à partir du kickoff (match_date UTC)
+ *
+ * Le calcul de la minute est local au navigateur :
+ * - 0-48 min réelles depuis kickoff → "Xè'" (1ère mi-temps)
+ * - 48-60 min réelles → "MT" (pause mi-temps)
+ * - 60-110 min réelles → "Xè'" (2ème mi-temps, on soustrait 15min de pause)
+ * - >110 min → "PROL" ou "FIN"
+ *
+ * Avantage : la minute s'incrémente en temps réel sans attendre les fetches backend.
  */
 function formatLiveTime(match) {
-  const { minute, period, status } = match
-  // Match terminé
+  const { period, status, match_date } = match
+
+  // Cas finaux explicites depuis le backend
   if (status === 'finished') return 'FIN'
-  // Mi-temps : prioriser sur la minute (47' peut s'afficher pendant la pause)
   if (period === 'HALF_TIME') return 'MT'
-  // Tirs au but
   if (period === 'PENALTY_SHOOTOUT') return 'TAB'
-  // Prolongations
-  if (period === 'EXTRA_TIME') return minute ? `PROL ${minute}'` : 'PROL'
-  // Sinon afficher la minute brute
-  if (minute) return `${minute}'`
-  // Fallback
-  return 'LIVE'
+  if (period === 'EXTRA_TIME_PAUSE') return 'PAUSE'
+  if (period === 'EXTRA_TIME') return 'PROL'
+
+  // Sinon : calcul de la minute depuis kickoff
+  if (!match_date) return 'LIVE'
+  try {
+    const kickoff = new Date(match_date).getTime()
+    const now = Date.now()
+    const elapsedMin = Math.floor((now - kickoff) / 60000)
+
+    if (elapsedMin < 1) return "1'"
+    if (elapsedMin <= 47) {
+      // 1ère mi-temps (45min + temps additionnel max ~5min)
+      // On affiche 45+X pour les arrêts de jeu
+      if (elapsedMin > 45) return `45+${elapsedMin - 45}'`
+      return `${elapsedMin}'`
+    }
+    if (elapsedMin < 60) {
+      // Pause mi-temps : 47-60 min réelles
+      return 'MT'
+    }
+    if (elapsedMin <= 110) {
+      // 2ème mi-temps : la minute affichée = temps_écoulé - 15min (pause)
+      const matchMin = elapsedMin - 15
+      if (matchMin > 90) return `90+${matchMin - 90}'`
+      return `${matchMin}'`
+    }
+    // Au-delà : probablement prolongations ou fin
+    return 'PROL'
+  } catch {
+    return 'LIVE'
+  }
 }
 
 function LiveScoreBanner({ matches }) {
   const { t, lang } = useTranslation()
   const liveMatches = matches.filter(m => m.status === 'live')
+
+  // Tick interne pour forcer un re-render toutes les 30s.
+  // Permet d'incrémenter la minute affichée sans attendre les fetches backend.
+  // Note : on évite 1s pour économiser CPU (pas besoin d'une précision <30s sur la minute).
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (liveMatches.length === 0) return
+    const interval = setInterval(() => setTick(t => t + 1), 30000)
+    return () => clearInterval(interval)
+  }, [liveMatches.length])
 
   // Pas de matchs LIVE = bandeau caché
   if (liveMatches.length === 0) return null
