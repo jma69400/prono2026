@@ -266,6 +266,17 @@ def init_db():
             # Index pour permettre tri rapide par dernière connexion
             db.execute("CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen_at)")
 
+    # === MIGRATION : ajouter colonnes 'minute' et 'period' à matches pour live ===
+    # minute  : minute de jeu en cours (ex: '23', '45+2', 'HT', 'FT')
+    # period  : 'FIRST_HALF', 'HALF_TIME', 'SECOND_HALF', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'
+    # Permet d'afficher la progression en temps réel sur les matchs LIVE.
+    with get_db() as db:
+        match_cols = {row[1] for row in db.execute("PRAGMA table_info(matches)").fetchall()}
+        if "minute" not in match_cols:
+            print("[MIGRATION] Ajout de minute et period à matches")
+            db.execute("ALTER TABLE matches ADD COLUMN minute TEXT")
+            db.execute("ALTER TABLE matches ADD COLUMN period TEXT")
+
     # === MIGRATION : ajouter colonne 'source' à predictions pour traçabilité ===
     # 'user' = saisi par l'utilisateur lui-même (cas normal)
     # 'admin_inject' = saisi par un admin (récupération après bug / preuve fournie)
@@ -1412,25 +1423,24 @@ def me(user=Depends(get_current_user)):
 # --- Matches ---
 @app.get("/api/matches")
 def list_matches(response: Response):
-    """Liste des matchs. Cachée 30s côté client/proxy + 15s côté serveur (RAM).
-    Avec 100+ users en polling, le cache RAM divise par 10-30 le RPS BDD.
+    """Liste des matchs. Cache adaptatif : 10s si match LIVE, 30s sinon.
+    Le cache court pendant les matchs live garantit que les minutes affichées sont à jour.
 
     PROTECTION : on ne cache JAMAIS une valeur vide. Si la query renvoie [] (ex: race
     condition au démarrage, BDD lock momentané), on évite d'empoisonner le cache
     qui afficherait "Aucun match" à tous les utilisateurs pendant 15s.
     """
-    response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=60"
-    # Cache RAM côté serveur (partagé entre clients du même worker)
-    cached = cache_get("matches:all")
-    if cached:  # truthy uniquement = non vide
-        return cached
     with get_db() as db:
         rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
         result = [dict(r) for r in rows]
-        # IMPORTANT : on ne stocke en cache QUE si on a des résultats.
-        # Sinon, on accepte de re-query la BDD au prochain appel (mieux que cacher [])
+        # Détecte si au moins un match est LIVE → cache plus court
+        has_live = any(m.get('status') == 'live' for m in result)
+        cache_ttl = 10 if has_live else 30
+        # Cache HTTP côté client/proxy
+        response.headers["Cache-Control"] = f"public, max-age={cache_ttl}, stale-while-revalidate=60"
+        # Cache RAM côté serveur — on ne stocke QUE si on a des résultats
         if result:
-            cache_set("matches:all", result, ttl_seconds=30)
+            cache_set("matches:all", result, ttl_seconds=cache_ttl)
         return result
 
 
@@ -3158,7 +3168,23 @@ def fetch_match_results() -> dict:
             home_score = full_time.get("home")
             away_score = full_time.get("away")
 
-            # Si pas encore de score, ignore
+            # Récupération de la minute en cours et de la période (pour affichage live)
+            # API renvoie : minute (ex: '23', '45+2') et period (FIRST_HALF, HALF_TIME, SECOND_HALF...)
+            minute = m.get("minute")  # peut être None pour les FINISHED
+            period_api = score.get("duration") or ""  # ou m.get('status') si HALF_TIME
+
+            # Normalisation du period :
+            # On utilise le status quand c'est plus parlant (HALF_TIME → "MT")
+            # Sinon on garde la period brute (FIRST_HALF, SECOND_HALF, EXTRA_TIME, PENALTY_SHOOTOUT)
+            if status == "PAUSED":
+                # API renvoie souvent status=PAUSED pour la mi-temps
+                period_norm = "HALF_TIME"
+            elif status == "FINISHED":
+                period_norm = "FULL_TIME"
+            else:
+                period_norm = period_api or "FIRST_HALF"
+
+            # Si pas encore de score, ignore (mais on update quand même minute si match LIVE en BDD)
             if home_score is None or away_score is None:
                 continue
 
@@ -3168,9 +3194,9 @@ def fetch_match_results() -> dict:
                 stats["details"].append(f"⚠ Match introuvable en BDD : {home_name} vs {away_name}")
                 continue
 
-            # Vérifier si on doit vraiment update (score différent ou pas encore terminé)
+            # Vérifier si on doit vraiment update (score différent, statut différent, ou minute mise à jour)
             current = db.execute(
-                "SELECT home_score, away_score, status FROM matches WHERE id=?",
+                "SELECT home_score, away_score, status, minute FROM matches WHERE id=?",
                 (db_match["id"],),
             ).fetchone()
 
@@ -3182,23 +3208,29 @@ def fetch_match_results() -> dict:
                 stats["skipped"] += 1
                 continue
 
+            # On update si : score change, statut change, OU minute change (utile pour live)
             need_update = (
                 current["home_score"] != home_score
                 or current["away_score"] != away_score
                 or current["status"] != new_status
+                or current["minute"] != (str(minute) if minute is not None else None)
             )
 
             if not need_update:
                 stats["skipped"] += 1
                 continue
 
+            # Pour les matchs FINISHED, on remet minute à None (pas pertinent)
+            store_minute = None if new_status == "finished" else (str(minute) if minute is not None else None)
+            store_period = None if new_status == "finished" else period_norm
+
             db.execute(
-                "UPDATE matches SET home_score=?, away_score=?, status=? WHERE id=?",
-                (home_score, away_score, new_status, db_match["id"]),
+                "UPDATE matches SET home_score=?, away_score=?, status=?, minute=?, period=? WHERE id=?",
+                (home_score, away_score, new_status, store_minute, store_period, db_match["id"]),
             )
             stats["updated"] += 1
             stats["details"].append(
-                f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status})"
+                f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status}{', '+store_minute+chr(39) if store_minute else ''})"
             )
 
             # === RECALCUL ATOMIQUE DES POINTS DANS LA MÊME CONNEXION ===

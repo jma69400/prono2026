@@ -277,7 +277,29 @@ const stageLabel = (stage, t) => ({
 // =====================================================
 // LIVE SCORE BANNER — bandeau qui affiche les matchs en cours
 // Sticky en haut, animation pulsante "🔴 LIVE", auto-hide si aucun match
+// Affiche aussi la minute de jeu et la période (mi-temps, etc.)
 // =====================================================
+
+/**
+ * Formate l'affichage du temps de match selon la période de l'API.
+ * Retourne ex : "23'", "45+2'", "MT", "FIN", "PROL", "TAB"
+ */
+function formatLiveTime(match) {
+  const { minute, period, status } = match
+  // Match terminé
+  if (status === 'finished') return 'FIN'
+  // Mi-temps : prioriser sur la minute (47' peut s'afficher pendant la pause)
+  if (period === 'HALF_TIME') return 'MT'
+  // Tirs au but
+  if (period === 'PENALTY_SHOOTOUT') return 'TAB'
+  // Prolongations
+  if (period === 'EXTRA_TIME') return minute ? `PROL ${minute}'` : 'PROL'
+  // Sinon afficher la minute brute
+  if (minute) return `${minute}'`
+  // Fallback
+  return 'LIVE'
+}
+
 function LiveScoreBanner({ matches }) {
   const { t, lang } = useTranslation()
   const liveMatches = matches.filter(m => m.status === 'live')
@@ -300,17 +322,24 @@ function LiveScoreBanner({ matches }) {
 
           {/* Score(s) en cours */}
           <div className="flex items-center gap-4 flex-wrap text-sm">
-            {liveMatches.map(m => (
-              <div key={m.id} className="flex items-center gap-2 font-semibold">
-                <Flag code={m.home_team} size={20} />
-                <span className="text-white">{teamName(m.home_team, lang)}</span>
-                <span className="font-mono font-black text-white bg-red-600/40 px-2 py-0.5 rounded">
-                  {m.home_score ?? 0} - {m.away_score ?? 0}
-                </span>
-                <span className="text-white">{teamName(m.away_team, lang)}</span>
-                <Flag code={m.away_team} size={20} />
-              </div>
-            ))}
+            {liveMatches.map(m => {
+              const liveTime = formatLiveTime(m)
+              return (
+                <div key={m.id} className="flex items-center gap-2 font-semibold">
+                  <Flag code={m.home_team} size={20} />
+                  <span className="text-white">{teamName(m.home_team, lang)}</span>
+                  <span className="font-mono font-black text-white bg-red-600/40 px-2 py-0.5 rounded">
+                    {m.home_score ?? 0} - {m.away_score ?? 0}
+                  </span>
+                  <span className="text-white">{teamName(m.away_team, lang)}</span>
+                  <Flag code={m.away_team} size={20} />
+                  {/* Minute / période */}
+                  <span className="text-xs font-mono font-bold text-red-100 bg-red-700/40 px-1.5 py-0.5 rounded border border-red-300/30 ml-1">
+                    {liveTime}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -419,6 +448,12 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
             <span className="flex items-center gap-1 px-2 py-0.5 bg-red-500/20 text-red-300 rounded font-bold animate-pulse">
               <span className="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
               {t('matches.live')}
+              {/* Affichage de la minute / mi-temps si dispo */}
+              {(match.minute || match.period === 'HALF_TIME') && (
+                <span className="font-mono ml-1 px-1 bg-red-600/40 rounded text-[10px] border border-red-400/40">
+                  {formatLiveTime(match)}
+                </span>
+              )}
             </span>
           )}
           {/* Badge "sans pronostic" : visible si match à venir, pas de prédiction, user connecté,
