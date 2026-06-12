@@ -2941,13 +2941,33 @@ def normalize_team_name(name: str) -> str:
 
 def find_match_in_db(home_team_api: str, away_team_api: str, db) -> Optional[dict]:
     """Trouve un match dans notre BDD à partir des noms renvoyés par l'API Football-Data.org.
-    Compare avec un mapping élargi + comparaison normalisée (sans accents/casse)."""
-    # Récupérer toutes les variantes possibles pour chaque équipe
-    home_variants = TEAM_NAME_MAPPING.get(home_team_api, [home_team_api])
-    away_variants = TEAM_NAME_MAPPING.get(away_team_api, [away_team_api])
+    Compare avec un mapping élargi + comparaison normalisée (sans accents/casse).
 
-    home_norms = [normalize_team_name(v) for v in home_variants] + [normalize_team_name(home_team_api)]
-    away_norms = [normalize_team_name(v) for v in away_variants] + [normalize_team_name(away_team_api)]
+    Stratégie en 2 temps :
+    1. Cherche le nom de l'API comme CLÉ du mapping → récupère les variantes
+    2. Si pas trouvé en clé, cherche dans toutes les VALEURS du mapping
+       (ex : l'API renvoie "Czechia" qui est une variante de "Czech Republic")
+    """
+    def get_all_variants(api_name: str) -> list:
+        """Retourne toutes les variantes possibles pour un nom donné par l'API."""
+        # 1. Direct comme clé
+        if api_name in TEAM_NAME_MAPPING:
+            return TEAM_NAME_MAPPING[api_name] + [api_name]
+        # 2. Recherche inversée : le nom de l'API est-il une des variantes ?
+        # On normalise pour matcher "Czechia" même si on a écrit "czechia" dans la liste
+        api_norm = normalize_team_name(api_name)
+        for key, variants in TEAM_NAME_MAPPING.items():
+            for v in variants:
+                if normalize_team_name(v) == api_norm:
+                    return variants + [key, api_name]
+        # 3. Pas trouvé : on retourne juste le nom brut
+        return [api_name]
+
+    home_variants = get_all_variants(home_team_api)
+    away_variants = get_all_variants(away_team_api)
+
+    home_norms = set(normalize_team_name(v) for v in home_variants)
+    away_norms = set(normalize_team_name(v) for v in away_variants)
 
     rows = db.execute("SELECT id, home_team, away_team FROM matches").fetchall()
     for r in rows:
