@@ -629,16 +629,25 @@ def log_action(user_id: Optional[int], action: str, details: str = "", db=None):
 # SCORING
 # =====================================================
 def compute_points(pred_h: int, pred_a: int, real_h: int, real_a: int) -> int:
+    """Barème de points officiel United Pronos (aligné avec la FAQ et la doc) :
+    - 5 points : score exact (ex: misé 2-1, réel 2-1)
+    - 3 points : bon vainqueur + bonne différence de buts (ex: misé 2-1, réel 3-2)
+    - 1 point  : bon vainqueur seulement (ex: misé 3-0, réel 1-0)
+    - 0 point  : pronostic raté
+
+    ⚠️ Si le barème change, lancer /api/admin/recalculate-all-points
+    pour recalculer tous les points historiques avec les nouvelles valeurs.
+    """
     if pred_h == real_h and pred_a == real_a:
-        return 15
+        return 5
     pred_diff = pred_h - pred_a
     real_diff = real_h - real_a
     pred_winner = 0 if pred_diff == 0 else (1 if pred_diff > 0 else -1)
     real_winner = 0 if real_diff == 0 else (1 if real_diff > 0 else -1)
     if pred_winner == real_winner and pred_diff == real_diff:
-        return 8
+        return 3
     if pred_winner == real_winner:
-        return 5
+        return 1
     return 0
 
 
@@ -2131,22 +2140,43 @@ def admin_set_prediction(data: AdminPredictionIn, user=Depends(require_admin)):
 
 @app.post("/api/admin/matches/{match_id}/score")
 def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
+    """Saisie manuelle du score par l'admin + recalcul atomique des points.
+
+    Tout est fait dans une seule transaction pour éviter les races conditions :
+    - UPDATE match (score + status=finished)
+    - SELECT predictions
+    - UPDATE points pour chaque prono
+    - log_action
+
+    Avant : recalc_match_points() ouvrait une NOUVELLE connexion BDD, ce qui pouvait
+    causer un écart entre l'écriture du score et la lecture pour le recalcul,
+    surtout avec plusieurs workers uvicorn.
+    """
     with get_db() as db:
         m = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         if not m:
             raise HTTPException(404, "Match introuvable")
+
+        # 1. Mise à jour du score + statut
         db.execute(
             "UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?",
             (data.home_score, data.away_score, match_id),
         )
         log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score}", db=db)
-    recalc_match_points(match_id)
+
+        # 2. Recalcul des points DANS LA MÊME TRANSACTION
+        preds = db.execute("SELECT id, home_score, away_score FROM predictions WHERE match_id=?", (match_id,)).fetchall()
+        pred_count = 0
+        for p in preds:
+            pts = compute_points(p["home_score"], p["away_score"], data.home_score, data.away_score)
+            db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+            pred_count += 1
+
+        print(f"[SET_SCORE] match={match_id} {data.home_score}-{data.away_score} → {pred_count} pronos recalculés")
+
     # Invalide tous les caches affectés : matches, classements (le score change le ranking)
     cache_invalidate("matches:")
     cache_invalidate("leaderboard:")
-    # Compter les pronostics impactés
-    with get_db() as db:
-        pred_count = db.execute("SELECT COUNT(*) as c FROM predictions WHERE match_id=?", (match_id,)).fetchone()["c"]
     return {"ok": True, "predictions_recalculated": pred_count}
 
 
@@ -2165,6 +2195,68 @@ def admin_reset_score(match_id: int, user=Depends(require_admin)):
     recalc_match_points(match_id)  # remet points=0
     cache_invalidate("matches:")
     cache_invalidate("leaderboard:")
+    return {"ok": True}
+
+
+@app.post("/api/admin/recalculate-all-points")
+def admin_recalculate_all_points(user=Depends(require_admin)):
+    """Recalcule TOUS les points de TOUS les pronostics pour TOUS les matchs terminés.
+
+    Utile en cas de :
+    - Bug de calcul détecté après-coup
+    - Changement de barème
+    - Incohérence détectée entre le score d'un match et les points distribués
+    - Tous les utilisateurs à 0 point (ex : recalc_match_points n'a pas tourné après set_score)
+
+    Atomique : tout est fait dans une seule transaction.
+    """
+    with get_db() as db:
+        # Récupère tous les matchs terminés avec score
+        matches = db.execute(
+            "SELECT id, home_score, away_score FROM matches "
+            "WHERE status='finished' AND home_score IS NOT NULL AND away_score IS NOT NULL"
+        ).fetchall()
+
+        total_matches = len(matches)
+        total_predictions = 0
+        total_points_distributed = 0
+
+        for match in matches:
+            preds = db.execute(
+                "SELECT id, home_score, away_score FROM predictions WHERE match_id=?",
+                (match["id"],),
+            ).fetchall()
+            for p in preds:
+                pts = compute_points(
+                    p["home_score"], p["away_score"],
+                    match["home_score"], match["away_score"],
+                )
+                db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+                total_predictions += 1
+                total_points_distributed += pts
+
+        # Pour les pronos sur des matchs NON finis, on force points=0 (sécurité)
+        db.execute("""
+            UPDATE predictions SET points=0
+            WHERE match_id IN (SELECT id FROM matches WHERE status != 'finished')
+            AND points > 0
+        """)
+        reset_count = db.total_changes
+
+        log_action(user["id"], "recalculate_all_points",
+                   f"matches={total_matches} preds={total_predictions} pts={total_points_distributed}",
+                   db=db)
+
+    cache_invalidate("leaderboard:")
+    cache_invalidate("matches:")
+
+    return {
+        "ok": True,
+        "matches_processed": total_matches,
+        "predictions_recalculated": total_predictions,
+        "total_points_distributed": total_points_distributed,
+        "predictions_reset_to_zero": reset_count,
+    }
     return {"ok": True}
 
 
@@ -2766,57 +2858,74 @@ def change_password(data: PasswordChange, user=Depends(require_user)):
 # Cette table est essentielle car les noms diffèrent entre l'API et notre BDD FR.
 TEAM_NAME_MAPPING = {
     # Hôtes
-    "Mexico": ["Mexique", "Mexico", "México"],
-    "Canada": ["Canada"],
-    "United States": ["États-Unis", "USA", "United States", "Estados Unidos"],
+    "Mexico": ["Mexique", "Mexico", "México", "MEX"],
+    "Canada": ["Canada", "CAN"],
+    "United States": ["États-Unis", "USA", "United States", "Estados Unidos", "Etats-Unis"],
     # Europe
-    "France": ["France", "Francia"],
-    "Germany": ["Allemagne", "Germany", "Alemania"],
-    "Spain": ["Espagne", "Spain", "España"],
-    "England": ["Angleterre", "England", "Inglaterra"],
-    "Italy": ["Italie", "Italy", "Italia"],
-    "Portugal": ["Portugal"],
-    "Netherlands": ["Pays-Bas", "Netherlands", "Países Bajos", "Holanda"],
-    "Belgium": ["Belgique", "Belgium", "Bélgica"],
-    "Croatia": ["Croatie", "Croatia", "Croacia"],
-    "Switzerland": ["Suisse", "Switzerland", "Suiza"],
-    "Czech Republic": ["Tchéquie", "Czech Republic", "Czechia", "Chequia", "République tchèque"],
-    "Slovenia": ["Slovénie", "Slovenia", "Eslovenia"],
-    "Scotland": ["Écosse", "Scotland", "Escocia"],
-    "Norway": ["Norvège", "Norway", "Noruega"],
+    "France": ["France", "Francia", "FRA"],
+    "Germany": ["Allemagne", "Germany", "Alemania", "GER"],
+    "Spain": ["Espagne", "Spain", "España", "ESP"],
+    "England": ["Angleterre", "England", "Inglaterra", "ENG"],
+    "Italy": ["Italie", "Italy", "Italia", "ITA"],
+    "Portugal": ["Portugal", "POR", "PRT"],
+    "Netherlands": ["Pays-Bas", "Netherlands", "Países Bajos", "Holanda", "NED", "NLD"],
+    "Belgium": ["Belgique", "Belgium", "Bélgica", "BEL"],
+    "Croatia": ["Croatie", "Croatia", "Croacia", "CRO", "HRV"],
+    "Switzerland": ["Suisse", "Switzerland", "Suiza", "SUI", "CHE"],
+    "Czech Republic": ["Tchéquie", "Czech Republic", "Czechia", "Chequia", "République tchèque", "CZE"],
+    "Slovenia": ["Slovénie", "Slovenia", "Eslovenia", "SVN", "SLO"],
+    "Scotland": ["Écosse", "Scotland", "Escocia", "SCO"],
+    "Norway": ["Norvège", "Norway", "Noruega", "NOR"],
+    "Sweden": ["Suède", "Sweden", "Suecia", "SWE"],
+    "Denmark": ["Danemark", "Denmark", "Dinamarca", "DEN", "DNK"],
+    "Austria": ["Autriche", "Austria", "AUT"],
+    "Poland": ["Pologne", "Poland", "Polonia", "POL"],
+    "Ukraine": ["Ukraine", "Ucrania", "UKR"],
+    "Türkiye": ["Turquie", "Turkey", "Türkiye", "Turquía", "TUR"],
+    "Greece": ["Grèce", "Greece", "Grecia", "GRE", "GRC"],
+    "Romania": ["Roumanie", "Romania", "Rumania", "ROU"],
+    "Serbia": ["Serbie", "Serbia", "SRB"],
+    "Hungary": ["Hongrie", "Hungary", "Hungría", "HUN"],
+    "Republic of Ireland": ["Irlande", "Ireland", "Irlanda", "IRL"],
+    "Wales": ["Pays de Galles", "Wales", "Gales", "WAL"],
     # Amérique du Sud
-    "Brazil": ["Brésil", "Brazil", "Brasil"],
-    "Argentina": ["Argentine", "Argentina"],
-    "Uruguay": ["Uruguay"],
-    "Colombia": ["Colombie", "Colombia"],
-    "Ecuador": ["Équateur", "Ecuador"],
-    "Paraguay": ["Paraguay"],
+    "Brazil": ["Brésil", "Brazil", "Brasil", "BRA"],
+    "Argentina": ["Argentine", "Argentina", "ARG"],
+    "Uruguay": ["Uruguay", "URU", "URY"],
+    "Colombia": ["Colombie", "Colombia", "COL"],
+    "Ecuador": ["Équateur", "Ecuador", "ECU"],
+    "Paraguay": ["Paraguay", "PAR", "PRY"],
     # Afrique
-    "Morocco": ["Maroc", "Morocco", "Marruecos"],
-    "Senegal": ["Sénégal", "Senegal"],
-    "Cote d'Ivoire": ["Côte d'Ivoire", "Ivory Coast", "Costa de Marfil", "Cote d'Ivoire"],
-    "Cameroon": ["Cameroun", "Cameroon", "Camerún"],
-    "South Africa": ["Afrique du Sud", "South Africa", "Sudáfrica"],
-    "Egypt": ["Égypte", "Egypt", "Egipto"],
-    "Algeria": ["Algérie", "Algeria", "Argelia"],
-    "Ghana": ["Ghana"],
-    "DR Congo": ["RD Congo", "DR Congo", "DRC"],
-    "Cape Verde": ["Cap-Vert", "Cape Verde", "Cabo Verde"],
+    "Morocco": ["Maroc", "Morocco", "Marruecos", "MAR"],
+    "Senegal": ["Sénégal", "Senegal", "SEN"],
+    "Cote d'Ivoire": ["Côte d'Ivoire", "Ivory Coast", "Costa de Marfil", "Cote d'Ivoire", "CIV"],
+    "Cameroon": ["Cameroun", "Cameroon", "Camerún", "CMR"],
+    "South Africa": ["Afrique du Sud", "South Africa", "Sudáfrica", "RSA", "ZAF"],
+    "Egypt": ["Égypte", "Egypt", "Egipto", "EGY"],
+    "Algeria": ["Algérie", "Algeria", "Argelia", "ALG", "DZA"],
+    "Ghana": ["Ghana", "GHA"],
+    "DR Congo": ["RD Congo", "DR Congo", "DRC", "COD"],
+    "Cape Verde": ["Cap-Vert", "Cape Verde", "Cabo Verde", "CPV", "CV"],
     # Asie
-    "Japan": ["Japon", "Japan", "Japón"],
-    "South Korea": ["Corée du Sud", "South Korea", "Korea Republic", "Corea del Sur"],
-    "Iran": ["Iran", "Irán", "IR Iran"],
-    "Saudi Arabia": ["Arabie saoudite", "Saudi Arabia", "Arabia Saudita", "Arabia Saudí"],
-    "Australia": ["Australie", "Australia"],
-    "Qatar": ["Qatar"],
-    "Uzbekistan": ["Ouzbékistan", "Uzbekistan"],
-    "Jordan": ["Jordanie", "Jordan", "Jordania"],
+    "Japan": ["Japon", "Japan", "Japón", "JPN"],
+    "South Korea": ["Corée du Sud", "South Korea", "Korea Republic", "Corea del Sur", "KOR"],
+    "Iran": ["Iran", "Irán", "IR Iran", "IRN"],
+    "Saudi Arabia": ["Arabie saoudite", "Saudi Arabia", "Arabia Saudita", "Arabia Saudí", "KSA", "SAU"],
+    "Australia": ["Australie", "Australia", "AUS"],
+    "Qatar": ["Qatar", "QAT"],
+    "Uzbekistan": ["Ouzbékistan", "Uzbekistan", "UZB"],
+    "Jordan": ["Jordanie", "Jordan", "Jordania", "JOR"],
     # CONCACAF
-    "Curaçao": ["Curaçao", "Curacao", "Curazao"],
-    "Haiti": ["Haïti", "Haiti"],
-    "Costa Rica": ["Costa Rica"],
+    "Curaçao": ["Curaçao", "Curacao", "Curazao", "CUW"],
+    "Haiti": ["Haïti", "Haiti", "HAI", "HTI"],
+    "Costa Rica": ["Costa Rica", "CRC", "CRI"],
+    "Panama": ["Panama", "Panamá", "PAN"],
+    # Autres
+    "Bosnia-Herzegovina": ["Bosnie", "Bosnia", "Bosnia and Herzegovina", "Bosnia-Herzegovina", "BIH"],
+    "Tunisia": ["Tunisie", "Tunisia", "Túnez", "TUN"],
+    "Iraq": ["Irak", "Iraq", "IRQ"],
     # Océanie
-    "New Zealand": ["Nouvelle-Zélande", "New Zealand", "Nueva Zelanda"],
+    "New Zealand": ["Nouvelle-Zélande", "New Zealand", "Nueva Zelanda", "NZL"],
 }
 
 
@@ -2937,21 +3046,31 @@ def fetch_match_results() -> dict:
                 f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status})"
             )
 
-        # Recalculer les points pour les matchs FINISHED qui ont été mis à jour
-        # (le recalc s'occupe de mettre points=0 si le match est en cours)
-        for m in api_matches:
-            if m.get("status") in ("FINISHED", "AWARDED"):
-                full_time = m.get("score", {}).get("fullTime", {})
-                if full_time.get("home") is None or full_time.get("away") is None:
-                    continue
-                home_name = m.get("homeTeam", {}).get("name") or ""
-                away_name = m.get("awayTeam", {}).get("name") or ""
-                db_match = find_match_in_db(home_name, away_name, db)
-                if db_match:
-                    try:
-                        recalc_match_points(db_match["id"])
-                    except Exception as e:
-                        print(f"[RESULTS] recalc erreur match {db_match['id']}: {e}")
+            # === RECALCUL ATOMIQUE DES POINTS DANS LA MÊME CONNEXION ===
+            # On recalcule directement les points ici plutôt que d'appeler
+            # recalc_match_points() qui ouvrait une AUTRE connexion (risque de race condition).
+            # Pour les matchs FINISHED : on calcule les points selon le score.
+            # Pour les matchs LIVE : on met points=0 (pas de score officiel encore).
+            if new_status == "finished":
+                preds = db.execute(
+                    "SELECT id, home_score, away_score FROM predictions WHERE match_id=?",
+                    (db_match["id"],),
+                ).fetchall()
+                for p in preds:
+                    pts = compute_points(p["home_score"], p["away_score"], home_score, away_score)
+                    db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+                stats["details"].append(f"  → {len(preds)} pronos recalculés")
+            else:
+                # Match passé en live : on remet à 0 au cas où il était finished avant
+                db.execute(
+                    "UPDATE predictions SET points=0 WHERE match_id=?",
+                    (db_match["id"],),
+                )
+
+    # Invalide les caches après fetch
+    if stats["updated"] > 0:
+        cache_invalidate("matches:")
+        cache_invalidate("leaderboard:")
 
     return {"ok": True, **stats}
 
