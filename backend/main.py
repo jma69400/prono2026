@@ -3217,9 +3217,9 @@ def fetch_match_results() -> dict:
                 stats["details"].append(f"⚠ Match introuvable en BDD : {home_name} vs {away_name}")
                 continue
 
-            # Vérifier si on doit vraiment update (score différent, statut différent, ou minute mise à jour)
+            # Vérifier si on doit vraiment update (score, statut, minute OU period change)
             current = db.execute(
-                "SELECT home_score, away_score, status, minute FROM matches WHERE id=?",
+                "SELECT home_score, away_score, status, minute, period FROM matches WHERE id=?",
                 (db_match["id"],),
             ).fetchone()
 
@@ -3231,21 +3231,24 @@ def fetch_match_results() -> dict:
                 stats["skipped"] += 1
                 continue
 
-            # On update si : score change, statut change, OU minute change (utile pour live)
+            # Calcul des valeurs cibles
+            store_minute = None if new_status == "finished" else (str(minute) if minute is not None else None)
+            store_period = None if new_status == "finished" else period_norm
+
+            # On update si une seule des valeurs cibles change (score, statut, minute, period)
+            # IMPORTANT : checker AUSSI period, sinon la mi-temps (status=PAUSED côté API
+            # mais déjà status=live côté BDD) ne sera jamais détectée comme "à mettre à jour".
             need_update = (
                 current["home_score"] != home_score
                 or current["away_score"] != away_score
                 or current["status"] != new_status
-                or current["minute"] != (str(minute) if minute is not None else None)
+                or current["minute"] != store_minute
+                or current["period"] != store_period
             )
 
             if not need_update:
                 stats["skipped"] += 1
                 continue
-
-            # Pour les matchs FINISHED, on remet minute à None (pas pertinent)
-            store_minute = None if new_status == "finished" else (str(minute) if minute is not None else None)
-            store_period = None if new_status == "finished" else period_norm
 
             db.execute(
                 "UPDATE matches SET home_score=?, away_score=?, status=?, minute=?, period=? WHERE id=?",
@@ -3253,7 +3256,7 @@ def fetch_match_results() -> dict:
             )
             stats["updated"] += 1
             stats["details"].append(
-                f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status}{', '+store_minute+chr(39) if store_minute else ''})"
+                f"✓ {home_name} {home_score}-{away_score} {away_name} ({new_status}{', '+store_period if store_period else ''})"
             )
 
             # === RECALCUL ATOMIQUE DES POINTS DANS LA MÊME CONNEXION ===
