@@ -2309,7 +2309,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       {/* Top nav */}
       <header className="border-b border-white/10 backdrop-blur bg-black/20 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <AnimatedLogo size="sm" />
+          <AnimatedLogo size="sm" replayKey={user?.id || 'guest'} />
           <div className="flex items-center gap-2">
             <LangSwitch />
             {onContact && (

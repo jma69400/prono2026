@@ -133,71 +133,80 @@ input[type=number] { -moz-appearance: textfield; }
 }
 
 /* ============================================================
-   ANIMATED LOGO — Ballon qui traverse le titre "United Pronos"
-   - Animation 1-shot (animation-fill-mode: forwards)
-   - 0 CPU après la fin de l'animation
-   - Respecte prefers-reduced-motion (accessibilité)
-   - Utilise uniquement transform/opacity (GPU-accelerated, pas de reflow)
+   ANIMATED LOGO — Ballon Twemoji qui traverse le titre
+   - Animation 2.5s avec effet "kick" et rebond final
+   - 1-shot (forwards), 0 CPU après la fin
+   - Respecte prefers-reduced-motion
    ============================================================ */
 
-/* Wrapper : pas d'overflow visible pour que le ballon "sorte" proprement à gauche */
 .animated-logo-wrap {
   position: relative;
 }
 
-/* Le ballon : commence hors écran à gauche, roule en traversant, finit à droite */
+/* Le ballon : grosse course de roulement depuis la gauche */
 .animated-ball {
-  display: inline-block;
-  /* On force l'élément à exister dans le flux normal pour préserver le layout */
-  width: var(--ball-size);
-  height: var(--ball-size);
   flex-shrink: 0;
-  /* Pour les performances : on indique au GPU de pré-allouer */
   will-change: transform, opacity;
-  /* État initial (avant animation) : hors écran à gauche + invisible */
   opacity: 0;
-  transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg);
-  /* Animation : démarre après un petit délai pour effet plus naturel */
-  animation: ball-roll-in 1.4s cubic-bezier(0.34, 1.2, 0.64, 1) 0.2s forwards;
+  transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg) scale(0.5);
+  /* Animation 2.5s pour bien voir le mouvement */
+  animation: ball-kick-in 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
+  /* L'image PNG peut être nette même rotationnée */
+  image-rendering: auto;
 }
 
-/* Le texte qui apparait en fondu progressif */
+/* Le texte qui apparait progressivement */
 .animated-text {
-  /* Léger fade-in pendant que le ballon traverse */
   opacity: 0;
-  animation: text-fade-in 0.8s ease-out 0.5s forwards;
+  transform: translateX(-30px);
+  animation: text-slide-in 1.2s ease-out 1.2s forwards;
 }
 
-@keyframes ball-roll-in {
-  /* Démarre hors écran à gauche, invisible */
+/* Keyframes du ballon : effet "kick" puissant */
+@keyframes ball-kick-in {
+  /* 0% : hors écran à gauche, très petit, invisible */
   0% {
     opacity: 0;
-    transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg);
+    transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg) scale(0.5);
   }
-  /* Apparait rapidement en arrivant */
+  /* 15% : apparait soudainement comme s'il était tiré */
   15% {
     opacity: 1;
+    transform: translateX(calc(-0.7 * var(--ball-trail))) rotate(200deg) scale(0.8);
   }
-  /* Continue de rouler vers la droite */
-  60% {
+  /* 50% : à mi-course, grosse taille (proche du spectateur) */
+  50% {
     opacity: 1;
+    transform: translateX(calc(-0.3 * var(--ball-trail))) rotate(720deg) scale(1.15);
   }
-  /* Finit à sa position naturelle (à droite du texte = ordre flex) */
-  /* Le ballon a tourné de 720° (2 tours complets) pour effet "roulement" */
+  /* 75% : dépasse sa position finale */
+  75% {
+    opacity: 1;
+    transform: translateX(12px) rotate(1080deg) scale(1.1);
+  }
+  /* 88% : rebond arrière */
+  88% {
+    transform: translateX(-4px) rotate(1140deg) scale(0.97);
+  }
+  /* 100% : position finale, taille normale, 1260° = 3,5 tours */
   100% {
     opacity: 1;
-    transform: translateX(0) rotate(720deg);
+    transform: translateX(0) rotate(1260deg) scale(1);
   }
 }
 
-@keyframes text-fade-in {
-  from { opacity: 0; transform: translateX(-10px); }
-  to   { opacity: 1; transform: translateX(0); }
+@keyframes text-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Accessibilité : respect du paramètre OS "réduire les animations".
-   Si l'utilisateur a coché cette option, on désactive l'animation
-   et on affiche directement le logo final. */
+/* Accessibilité : respect du paramètre OS "réduire les animations" */
 @media (prefers-reduced-motion: reduce) {
   .animated-ball,
   .animated-text {

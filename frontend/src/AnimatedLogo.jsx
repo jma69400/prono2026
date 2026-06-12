@@ -1,129 +1,94 @@
 /**
- * AnimatedLogo — Logo "United Pronos" avec animation de ballon qui traverse
+ * AnimatedLogo — Logo "United Pronos" avec ballon photo-réaliste animé
+ *
+ * APPROCHE :
+ * - On utilise l'emoji ⚽ via Twemoji SVG (Twitter Open Source)
+ * - Rendu identique sur tous les devices (iPhone, Android, Windows, Mac, Linux)
+ * - Image PNG haute résolution servie par jsDelivr CDN (ultra-rapide, cache)
+ * - Image ~5 KB, chargée 1 seule fois
  *
  * COMPORTEMENT :
- * - Au montage du composant : le ballon vient de la gauche en roulant, traverse
- *   le texte, et se positionne à droite en finale.
- * - Animation 1-shot (zero CPU après la fin).
- * - Respecte prefers-reduced-motion : si l'utilisateur préfère pas d'animation,
- *   le ballon apparait directement à sa position finale.
+ * - Au montage : le ballon arrive de la gauche en roulant, traverse le texte,
+ *   finit à droite avec un petit rebond.
+ * - Re-joue à chaque changement de `replayKey` (login/logout).
  *
- * PERFORMANCE :
- * - Uniquement des transformations CSS (transform + opacity) → composé par le
- *   GPU, pas de reflow du DOM, jamais de jank.
- * - Pas de JS pour piloter l'animation (juste CSS keyframes).
- * - SVG inline = pas de requête HTTP, pas de FOUC.
- * - Total : < 3 KB minifié, 0 dépendance.
- *
- * USAGE :
- *   <AnimatedLogo size="lg" />     // grand (homepage)
- *   <AnimatedLogo size="sm" />     // petit (header)
+ * POURQUOI PAS UN SVG MAISON :
+ * - Un ballon de foot dessiné à la main reste plat et "ridicule"
+ * - Twemoji ⚽ est un emoji photo-réaliste maintenu par Twitter (Mozilla)
+ * - Universellement reconnu, gratuit, libre de droits
  */
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
-// ============================================================
-// SVG du ballon de foot (pentagones noirs et blancs classiques)
-// ============================================================
-function SoccerBall({ size = 24 }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ display: 'block' }}
-      aria-hidden="true"
-    >
-      <defs>
-        {/* Gradient pour ajouter du relief/3D */}
-        <radialGradient id="ball-gradient" cx="35%" cy="35%" r="65%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="70%" stopColor="#f0f0f0" />
-          <stop offset="100%" stopColor="#cccccc" />
-        </radialGradient>
-      </defs>
+// URL de l'emoji ⚽ ballon de foot en SVG/PNG via Twemoji
+// Code Unicode U+26BD (BLACK SOCCER BALL) → unicode hex 26bd
+// jsDelivr CDN = ultra-rapide, cache global, gratuit
+const SOCCER_BALL_URL = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/26bd.png'
 
-      {/* Cercle de base */}
-      <circle cx="50" cy="50" r="48" fill="url(#ball-gradient)" stroke="#222" strokeWidth="1.5" />
+// Fallback emoji natif si l'image ne charge pas (sera rendu par le système)
+const FALLBACK_EMOJI = '\u26BD'  // ⚽
 
-      {/* Pentagone central */}
-      <polygon
-        points="50,30 62,38 58,52 42,52 38,38"
-        fill="#1a1a1a"
-        stroke="#000"
-        strokeWidth="0.8"
-        strokeLinejoin="round"
-      />
-
-      {/* Pentagones secondaires (hexagones blancs visibles entre les noirs) */}
-      <polygon
-        points="50,30 38,38 28,30 35,15 50,15"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <polygon
-        points="50,30 62,38 72,30 65,15 50,15"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <polygon
-        points="38,38 28,30 18,42 25,58 42,52"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <polygon
-        points="62,38 72,30 82,42 75,58 58,52"
-        fill="none"
-        stroke="#1a1a1a"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-
-      {/* Reflet lumineux pour un effet 3D plus réaliste */}
-      <ellipse cx="35" cy="32" rx="10" ry="6" fill="white" opacity="0.4" />
-    </svg>
-  )
-}
-
-// ============================================================
-// AnimatedLogo : composant principal exporté
-// ============================================================
-export default function AnimatedLogo({ size = 'lg', className = '' }) {
-  // Tailles selon le contexte d'utilisation
-  // - lg : homepage (gros effet wow)
-  // - md : milieu (footer, modals)
-  // - sm : header sticky (discret)
+export default function AnimatedLogo({ size = 'lg', className = '', replayKey }) {
+  // Tailles selon contexte
   const sizes = {
-    sm: { text: 'text-xl',  ball: 24, gap: 8,  trail: '50px' },
-    md: { text: 'text-3xl', ball: 32, gap: 10, trail: '80px' },
-    lg: { text: 'text-4xl sm:text-5xl', ball: 48, gap: 14, trail: '120px' },
+    sm: { text: 'text-xl',  ball: 32, gap: 10, trail: '80px' },
+    md: { text: 'text-3xl', ball: 44, gap: 12, trail: '110px' },
+    lg: { text: 'text-4xl sm:text-5xl', ball: 64, gap: 16, trail: '160px' },
   }
   const cfg = sizes[size] || sizes.lg
 
+  // Re-mount forcé quand replayKey change → relance l'animation
+  const [animKey, setAnimKey] = useState(0)
+  useEffect(() => {
+    setAnimKey(k => k + 1)
+  }, [replayKey])
+
+  // Si l'image Twemoji ne charge pas, on bascule sur l'emoji natif
+  const [useFallback, setUseFallback] = useState(false)
+
   return (
-    <div className={`animated-logo-wrap inline-flex items-center ${className}`} style={{ gap: `${cfg.gap}px` }}>
-      {/* Le ballon qui traverse */}
+    <div
+      key={animKey}
+      className={`animated-logo-wrap inline-flex items-center ${className}`}
+      style={{ gap: `${cfg.gap}px` }}
+    >
+      {/* Le ballon : image Twemoji ou emoji natif */}
       <span
         className="animated-ball"
         style={{
-          // CSS Custom Properties pour piloter la taille de mouvement
           '--ball-trail': cfg.trail,
           '--ball-size': `${cfg.ball}px`,
+          fontSize: `${cfg.ball}px`,
+          lineHeight: 1,
+          width: `${cfg.ball}px`,
+          height: `${cfg.ball}px`,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
+        aria-hidden="true"
       >
-        <SoccerBall size={cfg.ball} />
+        {useFallback ? (
+          // Emoji natif système (iPhone/Android/Windows/Mac rendent leur version)
+          <span style={{ fontSize: `${cfg.ball}px`, lineHeight: 1 }}>{FALLBACK_EMOJI}</span>
+        ) : (
+          // Twemoji SVG (rendu identique partout)
+          <img
+            src={SOCCER_BALL_URL}
+            alt="ballon"
+            width={cfg.ball}
+            height={cfg.ball}
+            onError={() => setUseFallback(true)}
+            style={{ width: '100%', height: '100%', display: 'block' }}
+            // Loading=eager : l'image est dans le viewport visible immédiatement
+            loading="eager"
+            // Pas de drag possible
+            draggable={false}
+          />
+        )}
       </span>
 
-      {/* Le texte "United Pronos" avec dégradé */}
-      <h1
-        className={`animated-text font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent ${cfg.text}`}
-      >
+      {/* Le texte "United Pronos" */}
+      <h1 className={`animated-text font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent leading-none ${cfg.text}`}>
         United Pronos
       </h1>
     </div>
