@@ -9,7 +9,6 @@ import { AdminConversationsPanel } from './AdminConversationsPanel.jsx'
 import { FAQTab } from './FAQTab.jsx'
 import KopUnitedTab from './KopUnitedTab.jsx'
 import GroupPredictionsTab from './GroupPredictionsTab.jsx'
-import AnimatedLogo from './AnimatedLogo.jsx'
 import { ForgotPasswordForm, ResetPasswordPage } from './ResetPassword.jsx'
 import { GroupsLeaderboardTab } from './GroupsLeaderboardTab.jsx'
 import {
@@ -126,8 +125,9 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
       <div className="absolute top-4 right-4"><LangSwitch /></div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-3">
-            <AnimatedLogo size="lg" replayKey="home" />
+          <div className="inline-flex items-center gap-3 mb-3">
+            <Trophy className="w-12 h-12 text-orange-400" />
+            <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</h1>
           </div>
           <p className="text-white/60">{t('auth.subtitle')}</p>
         </div>
@@ -2353,7 +2353,10 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
       {/* Top nav */}
       <header className="border-b border-white/10 backdrop-blur bg-black/20 sticky top-0 z-20">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <AnimatedLogo size="sm" replayKey={user?.id || 'guest'} />
+          <div className="flex items-center gap-3">
+            <Trophy className="w-7 h-7 text-orange-400" />
+            <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">United Pronos</div>
+          </div>
           <div className="flex items-center gap-2">
             <LangSwitch />
             {onContact && (
