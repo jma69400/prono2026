@@ -90,6 +90,21 @@ export const api = {
   // Récupère les pronos du groupe pour les matchs DÉJÀ COMMENCÉS (règle fair-play)
   // Retourne { members, matches, predictions: {match_id: {user_id: {home_score, away_score, points}}} }
   groupPredictions: (groupId) => request(`/groups/${groupId}/predictions`),
+
+  // === ADMIN : Injection de pronostic ===
+  // Permet à un admin de saisir un prono pour un user (cas de récupération après bug).
+  // Marche pour TOUS les matchs, recalcule les points si match terminé.
+  adminInjectPrediction: (userId, matchId, homeScore, awayScore, reason) => request('/admin/predictions/inject', {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: userId,
+      match_id: matchId,
+      home_score: homeScore,
+      away_score: awayScore,
+      reason: reason || null,
+    }),
+  }),
+  adminListInjectedPredictions: (limit = 50) => request(`/admin/predictions/injected?limit=${limit}`),
   // Endpoint optimisé : retourne matches + leaderboard + news en 1 appel
   // Utilisé par le polling principal pour réduire la charge serveur
   snapshot: (lang) => request('/snapshot' + (lang ? `?lang=${lang}` : '')),

@@ -266,6 +266,18 @@ def init_db():
             # Index pour permettre tri rapide par dernière connexion
             db.execute("CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen_at)")
 
+    # === MIGRATION : ajouter colonne 'source' à predictions pour traçabilité ===
+    # 'user' = saisi par l'utilisateur lui-même (cas normal)
+    # 'admin_inject' = saisi par un admin (récupération après bug / preuve fournie)
+    # Permet de tracer les pronos injectés manuellement pour audit et statistiques.
+    with get_db() as db:
+        pred_cols = {row[1] for row in db.execute("PRAGMA table_info(predictions)").fetchall()}
+        if "source" not in pred_cols:
+            print("[MIGRATION] Ajout de source à predictions")
+            db.execute("ALTER TABLE predictions ADD COLUMN source TEXT DEFAULT 'user'")
+            # Index pour filtrer rapidement les injections admin
+            db.execute("CREATE INDEX IF NOT EXISTS idx_predictions_source ON predictions(source)")
+
     # === MIGRATION : ajouter colonnes admin_reply, replied_at à contact_messages ===
     with get_db() as db:
         contact_cols = {row[1] for row in db.execute("PRAGMA table_info(contact_messages)").fetchall()}
@@ -2196,6 +2208,129 @@ def admin_reset_score(match_id: int, user=Depends(require_admin)):
     cache_invalidate("matches:")
     cache_invalidate("leaderboard:")
     return {"ok": True}
+
+
+# === Modèle Pydantic pour l'injection de prono admin ===
+class AdminPredictionInject(BaseModel):
+    """Schéma pour l'injection manuelle d'un pronostic par un admin.
+
+    Cas d'usage typique : un utilisateur a posté son score avant le kickoff
+    mais a perdu son prono à cause d'un bug serveur (BDD corrompue, etc.)
+    et fournit une preuve (capture d'écran). L'admin saisit alors le prono
+    en son nom.
+    """
+    user_id: int = Field(..., description="ID du user pour qui on saisit le prono")
+    match_id: int = Field(..., description="ID du match concerné")
+    home_score: int = Field(..., ge=0, le=20, description="Score équipe domicile prédit")
+    away_score: int = Field(..., ge=0, le=20, description="Score équipe extérieur prédit")
+    reason: Optional[str] = Field(None, max_length=200,
+        description="Raison de l'injection (audit) — ex: 'bug 18h30 + capture fournie'")
+
+
+@app.post("/api/admin/predictions/inject")
+def admin_inject_prediction(data: AdminPredictionInject, user=Depends(require_admin)):
+    """Permet à un admin de saisir/écraser un pronostic pour n'importe quel user.
+
+    Marche pour TOUS les matchs (passés ou futurs), contrairement à la saisie
+    utilisateur qui est bloquée 5 min avant kickoff.
+
+    Le prono est marqué `source='admin_inject'` pour traçabilité.
+    Si le match est déjà terminé, les points sont calculés immédiatement.
+
+    LOG D'AUDIT : chaque injection est tracée avec qui a fait l'action,
+    pour quel user, sur quel match, avec quel score, et pour quelle raison.
+    """
+    with get_db() as db:
+        # Validation : le user existe ?
+        target_user = db.execute(
+            "SELECT id, username FROM users WHERE id=?", (data.user_id,)
+        ).fetchone()
+        if not target_user:
+            raise HTTPException(404, "Utilisateur introuvable")
+
+        # Validation : le match existe ?
+        match = db.execute(
+            "SELECT id, home_team, away_team, status, home_score, away_score FROM matches WHERE id=?",
+            (data.match_id,)
+        ).fetchone()
+        if not match:
+            raise HTTPException(404, "Match introuvable")
+
+        # Existe-t-il déjà un prono pour ce user et ce match ?
+        existing = db.execute(
+            "SELECT id, home_score, away_score, source FROM predictions WHERE user_id=? AND match_id=?",
+            (data.user_id, data.match_id),
+        ).fetchone()
+
+        action = "updated" if existing else "created"
+        previous_score = f"{existing['home_score']}-{existing['away_score']}" if existing else None
+
+        # Calcul des points si le match est terminé
+        new_points = 0
+        if match["status"] == "finished" and match["home_score"] is not None and match["away_score"] is not None:
+            new_points = compute_points(
+                data.home_score, data.away_score,
+                match["home_score"], match["away_score"],
+            )
+
+        if existing:
+            db.execute("""
+                UPDATE predictions
+                SET home_score=?, away_score=?, points=?, source='admin_inject',
+                    updated_at=datetime('now')
+                WHERE id=?
+            """, (data.home_score, data.away_score, new_points, existing["id"]))
+        else:
+            db.execute("""
+                INSERT INTO predictions (user_id, match_id, home_score, away_score, points, source)
+                VALUES (?, ?, ?, ?, ?, 'admin_inject')
+            """, (data.user_id, data.match_id, data.home_score, data.away_score, new_points))
+
+        # Log d'audit explicite (tracé dans audit_log)
+        audit_detail = (
+            f"action={action} target_user={data.user_id}({target_user['username']}) "
+            f"match={data.match_id}({match['home_team']} vs {match['away_team']}) "
+            f"score={data.home_score}-{data.away_score} points={new_points}"
+        )
+        if previous_score:
+            audit_detail += f" previous={previous_score}"
+        if data.reason:
+            audit_detail += f" reason={data.reason}"
+        log_action(user["id"], "admin_inject_prediction", audit_detail, db=db)
+
+    # Invalide le cache leaderboard car le score de cet user a changé
+    cache_invalidate("leaderboard:")
+
+    return {
+        "ok": True,
+        "action": action,
+        "target_user": target_user["username"],
+        "match": f"{match['home_team']} vs {match['away_team']}",
+        "prediction": f"{data.home_score}-{data.away_score}",
+        "points_awarded": new_points,
+        "match_status": match["status"],
+        "previous_score": previous_score,
+    }
+
+
+@app.get("/api/admin/predictions/injected")
+def admin_list_injected_predictions(user=Depends(require_admin), limit: int = 50):
+    """Liste les pronostics injectés par admin (pour audit/contrôle)."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT p.id, p.user_id, p.match_id, p.home_score, p.away_score, p.points,
+                   p.updated_at,
+                   u.username,
+                   m.home_team, m.away_team, m.status,
+                   m.home_score AS match_home_score, m.away_score AS match_away_score
+            FROM predictions p
+            JOIN users u ON u.id = p.user_id
+            JOIN matches m ON m.id = p.match_id
+            WHERE p.source = 'admin_inject'
+            ORDER BY p.updated_at DESC NULLS LAST, p.id DESC
+            LIMIT ?
+        """, (min(limit, 200),)).fetchall()
+        return [dict(r) for r in rows]
 
 
 @app.post("/api/admin/recalculate-all-points")

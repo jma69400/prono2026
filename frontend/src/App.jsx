@@ -1321,6 +1321,254 @@ function NewsTab({ news, onRefresh, isAdmin }) {
 // =====================================================
 // ADMIN SCORES PANEL — Gestion rapide des scores des matchs
 // =====================================================
+// =====================================================
+// ADMIN INJECT PREDICTION PANEL
+// Permet à un admin de saisir/écraser un prono pour un user
+// (cas de récupération après bug avec preuve fournie)
+// =====================================================
+function AdminInjectPredictionPanel({ users }) {
+  const { lang } = useTranslation()
+  const [matches, setMatches] = useState([])
+  const [matchId, setMatchId] = useState('')
+  const [userSearch, setUserSearch] = useState('')
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [homeScore, setHomeScore] = useState('')
+  const [awayScore, setAwayScore] = useState('')
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [result, setResult] = useState(null)  // { ok, action, target_user, match, prediction, points_awarded, ...}
+  const [error, setError] = useState('')
+  const [injectedHistory, setInjectedHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  // Charge les matchs (pour le dropdown)
+  useEffect(() => {
+    api.matches().then(setMatches).catch(e => console.error(e))
+  }, [])
+
+  // Charge l'historique des injections (pour audit)
+  const reloadHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const list = await api.adminListInjectedPredictions(30)
+      setInjectedHistory(list || [])
+    } catch (e) {
+      console.error('list injected error:', e)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+  useEffect(() => { reloadHistory() }, [])
+
+  // Filtre les users par recherche (pseudo ou email)
+  const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const userMatches = userSearch.trim().length >= 2
+    ? users
+      .filter(u => {
+        const q = normalize(userSearch)
+        return normalize(u.username).includes(q) || normalize(u.email || '').includes(q)
+      })
+      .slice(0, 8)
+    : []
+
+  const selectedMatch = matches.find(m => m.id === parseInt(matchId))
+  const isFormValid = selectedUser && matchId && homeScore !== '' && awayScore !== ''
+
+  const handleSubmit = async () => {
+    if (!isFormValid || saving) return
+    setSaving(true)
+    setError('')
+    setResult(null)
+    try {
+      const res = await api.adminInjectPrediction(
+        selectedUser.id,
+        parseInt(matchId),
+        parseInt(homeScore),
+        parseInt(awayScore),
+        reason.trim() || null,
+      )
+      setResult(res)
+      // Reset le form pour saisie suivante (mais on garde le match si on saisit plusieurs pour le même)
+      setSelectedUser(null)
+      setUserSearch('')
+      setHomeScore('')
+      setAwayScore('')
+      // Recharge l'historique
+      reloadHistory()
+    } catch (e) {
+      setError(e.message || 'Erreur lors de l\'injection')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* === Formulaire === */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-xl">🔧</span>
+          <h3 className="text-lg font-bold">Injecter un pronostic</h3>
+        </div>
+
+        <div className="text-xs text-white/60 mb-4 p-3 bg-amber-500/10 border border-amber-400/30 rounded">
+          ⚠️ Utiliser <strong>uniquement</strong> en cas de bug avéré (BDD corrompue, preuve fournie par l'utilisateur).
+          Chaque injection est tracée dans le log d'audit avec l'admin, le user cible, le match et le score saisi.
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Sélection du match */}
+          <div>
+            <label className="block text-sm font-semibold text-white/80 mb-1">Match</label>
+            <select value={matchId} onChange={e => setMatchId(e.target.value)}
+              className="w-full px-3 py-2 bg-white text-base-deep rounded-lg border border-white/20 text-sm">
+              <option value="">— Choisir un match —</option>
+              {matches.map(m => (
+                <option key={m.id} value={m.id}>
+                  #{m.id} · {m.home_team} vs {m.away_team}
+                  {m.status === 'finished' ? ` · ${m.home_score}-${m.away_score} (terminé)` : ''}
+                </option>
+              ))}
+            </select>
+            {selectedMatch && selectedMatch.status === 'finished' && (
+              <div className="mt-1 text-[11px] text-cta-300">
+                ✓ Score réel : {selectedMatch.home_score}-{selectedMatch.away_score} → points calculés auto
+              </div>
+            )}
+          </div>
+
+          {/* Sélection du user */}
+          <div className="relative">
+            <label className="block text-sm font-semibold text-white/80 mb-1">Utilisateur cible</label>
+            {selectedUser ? (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-cta-500/20 border border-cta-400/40 rounded-lg">
+                <span className="text-sm font-semibold">{selectedUser.username}</span>
+                <button onClick={() => { setSelectedUser(null); setUserSearch('') }}
+                  className="text-xs text-white/60 hover:text-white">✕ Changer</button>
+              </div>
+            ) : (
+              <>
+                <input type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)}
+                  placeholder="Pseudo ou email (au moins 2 caractères)"
+                  className="w-full px-3 py-2 bg-white text-base-deep rounded-lg border border-white/20 text-sm" />
+                {userMatches.length > 0 && (
+                  <div className="absolute z-10 left-0 right-0 mt-1 bg-base-deep border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    {userMatches.map(u => (
+                      <button key={u.id} onClick={() => { setSelectedUser(u); setUserSearch('') }}
+                        className="w-full text-left px-3 py-2 hover:bg-white/10 border-b border-white/5 last:border-0">
+                        <div className="text-sm font-semibold">{u.username}</div>
+                        <div className="text-[10px] text-white/40">id={u.id} · {u.email || 'email caché'}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Score */}
+          <div>
+            <label className="block text-sm font-semibold text-white/80 mb-1">Pronostic à injecter</label>
+            <div className="flex items-center gap-2">
+              <input type="number" value={homeScore} onChange={e => setHomeScore(e.target.value)}
+                min="0" max="20" placeholder="0"
+                className="w-20 px-3 py-2 bg-white text-base-deep rounded-lg border border-white/20 text-center font-bold text-lg" />
+              <span className="text-white/60">-</span>
+              <input type="number" value={awayScore} onChange={e => setAwayScore(e.target.value)}
+                min="0" max="20" placeholder="0"
+                className="w-20 px-3 py-2 bg-white text-base-deep rounded-lg border border-white/20 text-center font-bold text-lg" />
+              {selectedMatch && (
+                <span className="text-xs text-white/40 ml-2">
+                  {selectedMatch.home_team} - {selectedMatch.away_team}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Raison */}
+          <div>
+            <label className="block text-sm font-semibold text-white/80 mb-1">
+              Raison <span className="text-white/40 font-normal">(audit)</span>
+            </label>
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)}
+              maxLength={200}
+              placeholder="ex: bug 18h30 + capture fournie"
+              className="w-full px-3 py-2 bg-white text-base-deep rounded-lg border border-white/20 text-sm" />
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center gap-3 flex-wrap">
+          <button onClick={handleSubmit} disabled={!isFormValid || saving}
+            className="px-5 py-2.5 bg-cta-500 hover:bg-cta-600 disabled:bg-white/10 disabled:cursor-not-allowed text-white rounded-lg font-bold text-sm transition">
+            {saving ? 'Injection en cours...' : '✅ Injecter le pronostic'}
+          </button>
+          {error && (
+            <span className="text-red-300 text-sm">❌ {error}</span>
+          )}
+          {result && (
+            <span className="text-cta-300 text-sm">
+              ✅ {result.action === 'created' ? 'Créé' : 'Modifié'} · {result.target_user} · {result.match} · {result.prediction}
+              {result.match_status === 'finished' && ` · ${result.points_awarded} pts`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* === Historique des injections === */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            📋 Historique des injections
+            <span className="text-xs text-white/40 font-normal">({injectedHistory.length})</span>
+          </h3>
+          <button onClick={reloadHistory}
+            className="text-sm px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg">
+            🔄 Actualiser
+          </button>
+        </div>
+
+        {loadingHistory ? (
+          <p className="text-white/40 text-sm">Chargement...</p>
+        ) : injectedHistory.length === 0 ? (
+          <p className="text-white/40 text-sm text-center py-4">Aucune injection à ce jour</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-white/50 border-b border-white/10">
+                <tr>
+                  <th className="text-left p-2">Quand</th>
+                  <th className="text-left p-2">User</th>
+                  <th className="text-left p-2">Match</th>
+                  <th className="text-center p-2">Prono</th>
+                  <th className="text-center p-2">Réel</th>
+                  <th className="text-right p-2">Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {injectedHistory.map(p => (
+                  <tr key={p.id} className="border-b border-white/5 hover:bg-white/5">
+                    <td className="p-2 text-xs text-white/50">{p.updated_at || '—'}</td>
+                    <td className="p-2 font-semibold">{p.username}</td>
+                    <td className="p-2 text-xs">{p.home_team} vs {p.away_team}</td>
+                    <td className="p-2 text-center font-mono font-bold text-cta-300">{p.home_score}-{p.away_score}</td>
+                    <td className="p-2 text-center font-mono text-xs text-white/60">
+                      {p.match_home_score != null ? `${p.match_home_score}-${p.match_away_score}` : '—'}
+                    </td>
+                    <td className="p-2 text-right font-bold">
+                      {p.status === 'finished' ? `${p.points || 0} pt` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
 function AdminScoresPanel() {
   const { t, lang } = useTranslation()
   const [matches, setMatches] = useState([])
@@ -1693,6 +1941,9 @@ function AdminTab({ user }) {
         <button onClick={() => setTab('scores')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'scores' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           ⚽ Scores
         </button>
+        <button onClick={() => setTab('inject')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'inject' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
+          🔧 Injecter prono
+        </button>
         <button onClick={() => setTab('users')} className={`px-4 py-2 rounded-lg text-sm font-semibold ${tab === 'users' ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60'}`}>
           {t('admin.users')} ({users.length})
         </button>
@@ -1716,6 +1967,8 @@ function AdminTab({ user }) {
       </div>
 
       {tab === 'scores' && <AdminScoresPanel />}
+
+      {tab === 'inject' && <AdminInjectPredictionPanel users={users} />}
 
       {tab === 'users' && <AdminUsersPanel users={users} currentUserId={user.id} onDelete={requestDeleteUser} />}
 
