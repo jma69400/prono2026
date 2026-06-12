@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen, HelpCircle, MessageSquare } from 'lucide-react'
+import { Trophy, Calendar, Users, Newspaper, Settings, LogOut, Sparkles, RefreshCw, Trash2, Lock, AlertCircle, Check, LogIn, ChevronDown, ChevronUp, TrendingUp, Target, Zap, User, BookOpen, HelpCircle, MessageSquare, MessageCircle } from 'lucide-react'
 import { api, getToken, setToken } from './api'
 import { TEAMS, GROUPS, HOST_COUNTRIES, teamName, Flag } from './teams.jsx'
 import { useTranslation } from './i18n.jsx'
@@ -699,6 +699,85 @@ function TBDBadge() {
 // Pour désactiver/modifier ce bandeau dans le futur :
 //   - Soit changer BANNER_ID (les utilisateurs le reverront 1 fois)
 //   - Soit retirer le composant du rendu
+// ============================================================
+// FLOATING KOP BUTTON — bouton flottant en bas à droite
+// Route vers Kop United (chat communautaire) avec rappel
+// que pour l'assistance, il faut passer par "Contact"
+// ============================================================
+function FloatingKopButton({ onGoToKop, onGoToContact }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      {/* Bouton flottant en bas à droite */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-cta-500 hover:bg-cta-600 text-white shadow-2xl shadow-cta-500/40 flex items-center justify-center transition-all hover:scale-110"
+        title={t('floatingKop.title')}
+        aria-label={t('floatingKop.title')}
+      >
+        <MessageCircle className="w-7 h-7" />
+      </button>
+
+      {/* Panneau qui s'ouvre au clic */}
+      {open && (
+        <>
+          {/* Backdrop pour fermer en cliquant à côté */}
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+
+          <div className="fixed bottom-24 right-5 z-40 w-[min(360px,calc(100vw-2rem))] bg-base-deep border border-white/15 rounded-2xl shadow-2xl overflow-hidden animate-fade-in">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-cta-500/30 to-cta-600/30 border-b border-white/10 px-4 py-3 flex items-center justify-between">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                💬 {t('floatingKop.title')}
+              </h3>
+              <button onClick={() => setOpen(false)}
+                className="text-white/60 hover:text-white text-xl leading-none"
+                aria-label="Fermer">×</button>
+            </div>
+
+            {/* Body : 2 options */}
+            <div className="p-4 space-y-3">
+              {/* Option 1 : Kop United */}
+              <button
+                onClick={() => { setOpen(false); onGoToKop?.() }}
+                className="w-full text-left p-3 bg-cta-500/15 hover:bg-cta-500/25 border border-cta-400/30 rounded-xl transition group">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl shrink-0">⚽</div>
+                  <div className="flex-1">
+                    <div className="font-bold text-cta-100 group-hover:text-white">{t('floatingKop.kopTitle')}</div>
+                    <div className="text-xs text-white/60 mt-0.5">{t('floatingKop.kopDesc')}</div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Option 2 : Contact (assistance) */}
+              <button
+                onClick={() => { setOpen(false); onGoToContact?.() }}
+                className="w-full text-left p-3 bg-sport-500/15 hover:bg-sport-500/25 border border-sport-400/30 rounded-xl transition group">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl shrink-0">📨</div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sport-100 group-hover:text-white">{t('floatingKop.contactTitle')}</div>
+                    <div className="text-xs text-white/60 mt-0.5">{t('floatingKop.contactDesc')}</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Footer : explication */}
+            <div className="px-4 py-3 bg-white/5 border-t border-white/10 text-[11px] text-white/50">
+              💡 {t('floatingKop.hint')}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+
 function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
   const { t } = useTranslation()
   // ID versionné : changer ce suffixe (v2, v3...) force la ré-apparition pour tous,
@@ -4891,12 +4970,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#1a1f3a] to-[#0a0e27]">
-      {/* Bandeau upgrade serveur (auto-expire 7j, dismissable, caché aux supporters) */}
-      <ServerUpgradeBanner
-        onGoToSupport={config.donations?.enabled ? () => setActiveTab('support') : null}
-        isSupporter={isSupporter}
-      />
-
       {/* Bandeau visiteur */}
       {isGuest && (
         <div className="bg-gradient-to-r from-sport-500/20 to-sport-600/20 border-b border-sport-400/30 backdrop-blur">
@@ -5065,8 +5138,13 @@ export default function App() {
         />
       )}
 
-      {/* Chat-box flottante pour les utilisateurs connectés (résout le problème délivrabilité Outlook) */}
-      <FloatingChatBox user={user} />
+      {/* Bouton flottant : route vers Kop United + invite à utiliser contact pour l'assistance */}
+      {user && !isGuest && (
+        <FloatingKopButton
+          onGoToKop={() => setActiveTab('kop')}
+          onGoToContact={() => setShowContact(true)}
+        />
+      )}
     </div>
   )
 }
