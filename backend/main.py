@@ -3173,16 +3173,39 @@ def fetch_match_results() -> dict:
             minute = m.get("minute")  # peut être None pour les FINISHED
             period_api = score.get("duration") or ""  # ou m.get('status') si HALF_TIME
 
-            # Normalisation du period :
-            # On utilise le status quand c'est plus parlant (HALF_TIME → "MT")
-            # Sinon on garde la period brute (FIRST_HALF, SECOND_HALF, EXTRA_TIME, PENALTY_SHOOTOUT)
-            if status == "PAUSED":
-                # API renvoie souvent status=PAUSED pour la mi-temps
-                period_norm = "HALF_TIME"
-            elif status == "FINISHED":
+            # === Détection robuste de la PÉRIODE de match ===
+            # L'API Football-Data peut renvoyer plusieurs formats :
+            # - status='PAUSED' (souvent = mi-temps OU pause prolongations)
+            # - score.duration='REGULAR' / 'EXTRA_TIME' / 'PENALTY_SHOOTOUT'
+            # - minute=None pendant la pause de mi-temps
+            # - homeScore == halfTime score → on est probablement à la mi-temps
+            half_time_score = score.get("halfTime", {})
+            is_likely_half_time = (
+                status == "PAUSED"  # explicite
+                or (
+                    # Heuristique : minute null/0 ET halfTime score correspond au score actuel
+                    # ET on n'est pas en début de match
+                    minute is None
+                    and home_score is not None
+                    and away_score is not None
+                    and half_time_score.get("home") == home_score
+                    and half_time_score.get("away") == away_score
+                    and (home_score > 0 or away_score > 0)  # éviter "match pas commencé"
+                )
+            )
+
+            if status == "FINISHED" or status == "AWARDED":
                 period_norm = "FULL_TIME"
+            elif is_likely_half_time:
+                period_norm = "HALF_TIME"
+            elif period_api == "PENALTY_SHOOTOUT":
+                period_norm = "PENALTY_SHOOTOUT"
+            elif period_api == "EXTRA_TIME":
+                period_norm = "EXTRA_TIME"
+            elif minute is not None and str(minute).isdigit() and int(str(minute).split('+')[0]) > 45:
+                period_norm = "SECOND_HALF"
             else:
-                period_norm = period_api or "FIRST_HALF"
+                period_norm = "FIRST_HALF"
 
             # Si pas encore de score, ignore (mais on update quand même minute si match LIVE en BDD)
             if home_score is None or away_score is None:
