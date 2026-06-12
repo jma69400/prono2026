@@ -133,72 +133,119 @@ input[type=number] { -moz-appearance: textfield; }
 }
 
 /* ============================================================
-   ANIMATED LOGO — Ballon Twemoji qui traverse le titre
-   - Animation 2.5s avec effet "kick" et rebond final
-   - 1-shot (forwards), 0 CPU après la fin
-   - Respecte prefers-reduced-motion
+   ANIMATED LOGO — Ballon en parabole "tir au but"
+   - Le ballon arrive depuis le bas-gauche, monte en parabole,
+     atteint son apex au-dessus du texte, redescend et atterrit
+     à droite avec un petit rebond.
+   - 1-shot (forwards), 0 CPU après animation finie.
+   - Respecte prefers-reduced-motion (accessibilité).
    ============================================================ */
 
 .animated-logo-wrap {
   position: relative;
 }
 
-/* Le ballon : grosse course de roulement depuis la gauche */
-.animated-ball {
-  flex-shrink: 0;
+/* Le ballon en parabole */
+.animated-ball-parabola {
   will-change: transform, opacity;
   opacity: 0;
-  transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg) scale(0.5);
-  /* Animation 2.5s pour bien voir le mouvement */
-  animation: ball-kick-in 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s forwards;
-  /* L'image PNG peut être nette même rotationnée */
-  image-rendering: auto;
+  transform-origin: center center;
+  /* État initial : sous-écran à gauche, invisible, petit */
+  transform:
+    translateX(calc(-1 * var(--parabola-x)))
+    translateY(var(--parabola-y))
+    rotate(0deg)
+    scale(0.4);
+  /* Animation 2.5s avec courbe naturelle */
+  animation: ball-parabola-kick 2.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.4s forwards;
 }
 
-/* Le texte qui apparait progressivement */
+/* Le texte qui apparait après le décollage du ballon */
 .animated-text {
   opacity: 0;
-  transform: translateX(-30px);
-  animation: text-slide-in 1.2s ease-out 1.2s forwards;
+  transform: translateX(-20px);
+  animation: text-slide-in 1s ease-out 1.5s forwards;
 }
 
-/* Keyframes du ballon : effet "kick" puissant */
-@keyframes ball-kick-in {
-  /* 0% : hors écran à gauche, très petit, invisible */
+/* Animation principale : parabole tir au but */
+@keyframes ball-parabola-kick {
+  /* 0% : départ depuis bas-gauche, hors champ */
   0% {
     opacity: 0;
-    transform: translateX(calc(-1 * var(--ball-trail))) rotate(0deg) scale(0.5);
+    transform:
+      translateX(calc(-1 * var(--parabola-x)))
+      translateY(var(--parabola-y))
+      rotate(0deg)
+      scale(0.4);
   }
-  /* 15% : apparait soudainement comme s'il était tiré */
-  15% {
+  /* 10% : le tir part, ballon apparait */
+  10% {
     opacity: 1;
-    transform: translateX(calc(-0.7 * var(--ball-trail))) rotate(200deg) scale(0.8);
+    transform:
+      translateX(calc(-0.8 * var(--parabola-x)))
+      translateY(calc(0.6 * var(--parabola-y)))
+      rotate(180deg)
+      scale(0.6);
   }
-  /* 50% : à mi-course, grosse taille (proche du spectateur) */
+  /* 30% : montée rapide */
+  30% {
+    opacity: 1;
+    transform:
+      translateX(calc(-0.4 * var(--parabola-x)))
+      translateY(calc(-0.5 * var(--parabola-y)))
+      rotate(450deg)
+      scale(0.9);
+  }
+  /* 50% : APEX (point culminant) - grossit, proche du spectateur */
   50% {
     opacity: 1;
-    transform: translateX(calc(-0.3 * var(--ball-trail))) rotate(720deg) scale(1.15);
+    transform:
+      translateX(0px)
+      translateY(calc(-1 * var(--parabola-y)))
+      rotate(720deg)
+      scale(1.25);
   }
-  /* 75% : dépasse sa position finale */
-  75% {
+  /* 70% : descente, retour vers position normale */
+  70% {
     opacity: 1;
-    transform: translateX(12px) rotate(1080deg) scale(1.1);
+    transform:
+      translateX(calc(0.5 * var(--parabola-x)))
+      translateY(calc(-0.3 * var(--parabola-y)))
+      rotate(990deg)
+      scale(1.1);
   }
-  /* 88% : rebond arrière */
-  88% {
-    transform: translateX(-4px) rotate(1140deg) scale(0.97);
+  /* 85% : touche au sol à droite, rebond */
+  85% {
+    opacity: 1;
+    transform:
+      translateX(15px)
+      translateY(5px)
+      rotate(1150deg)
+      scale(0.95);
   }
-  /* 100% : position finale, taille normale, 1260° = 3,5 tours */
+  /* 95% : petit re-rebond plus court */
+  95% {
+    transform:
+      translateX(5px)
+      translateY(-3px)
+      rotate(1230deg)
+      scale(1.02);
+  }
+  /* 100% : position finale stable */
   100% {
     opacity: 1;
-    transform: translateX(0) rotate(1260deg) scale(1);
+    transform:
+      translateX(0)
+      translateY(0)
+      rotate(1260deg)
+      scale(1);
   }
 }
 
 @keyframes text-slide-in {
   0% {
     opacity: 0;
-    transform: translateX(-30px);
+    transform: translateX(-20px);
   }
   100% {
     opacity: 1;
@@ -208,7 +255,7 @@ input[type=number] { -moz-appearance: textfield; }
 
 /* Accessibilité : respect du paramètre OS "réduire les animations" */
 @media (prefers-reduced-motion: reduce) {
-  .animated-ball,
+  .animated-ball-parabola,
   .animated-text {
     animation: none !important;
     opacity: 1 !important;

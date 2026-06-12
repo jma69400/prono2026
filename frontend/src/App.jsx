@@ -127,7 +127,7 @@ function AuthScreen({ onLogin, onGuest, initialMode = 'login', inviteCode = null
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-3">
-            <AnimatedLogo size="lg" />
+            <AnimatedLogo size="lg" replayKey="home" />
           </div>
           <p className="text-white/60">{t('auth.subtitle')}</p>
         </div>
@@ -273,6 +273,50 @@ const stageLabel = (stage, t) => ({
   qf: t('matches.stage.qf'), sf: t('matches.stage.sf'), '3rd': t('matches.stage.3rd'),
   final: t('matches.stage.final'),
 }[stage] || stage)
+
+// =====================================================
+// LIVE SCORE BANNER — bandeau qui affiche les matchs en cours
+// Sticky en haut, animation pulsante "🔴 LIVE", auto-hide si aucun match
+// =====================================================
+function LiveScoreBanner({ matches }) {
+  const { t, lang } = useTranslation()
+  const liveMatches = matches.filter(m => m.status === 'live')
+
+  // Pas de matchs LIVE = bandeau caché
+  if (liveMatches.length === 0) return null
+
+  return (
+    <div className="bg-gradient-to-r from-red-600/30 via-red-500/40 to-red-600/30 border-b border-red-400/40 backdrop-blur">
+      <div className="max-w-6xl mx-auto px-4 py-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Badge LIVE pulsant */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span className="font-black text-sm tracking-wider text-red-100">LIVE</span>
+          </div>
+
+          {/* Score(s) en cours */}
+          <div className="flex items-center gap-4 flex-wrap text-sm">
+            {liveMatches.map(m => (
+              <div key={m.id} className="flex items-center gap-2 font-semibold">
+                <Flag code={m.home_team} size={20} />
+                <span className="text-white">{teamName(m.home_team, lang)}</span>
+                <span className="font-mono font-black text-white bg-red-600/40 px-2 py-0.5 rounded">
+                  {m.home_score ?? 0} - {m.away_score ?? 0}
+                </span>
+                <span className="text-white">{teamName(m.away_team, lang)}</span>
+                <Flag code={m.away_team} size={20} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // =====================================================
 // MATCH CARD avec analyse IA détaillée
@@ -4652,29 +4696,36 @@ export default function App() {
   //   - Polling à 45s (au lieu de 30s) : suffisant car les matchs ne changent que toutes les ~2h
   //   - Stop le polling si l'onglet n'est pas visible (Page Visibility API)
   //   - Refresh immédiat quand l'onglet redevient visible
-  // → divise par 3-5× les requêtes inutiles en pic de charge.
+  // Polling AUTO-REFRESH du jeu de matchs + leaderboard.
+  // FRÉQUENCE ADAPTATIVE :
+  // - 20 secondes si un match est LIVE (mises à jour scores en temps réel)
+  // - 60 secondes en routine (économie de bande passante)
+  // - Stop quand l'onglet n'est pas visible (économie batterie mobile)
   useEffect(() => {
     if (loading || showHome) return
     loadPublic()
     let interval = null
+
+    const computeInterval = () => {
+      // Détecte si au moins un match a status='live' dans la liste actuelle
+      const hasLive = matches.some(m => m.status === 'live')
+      return hasLive ? 20000 : 60000  // 20s ou 60s
+    }
+
     const startPolling = () => {
       if (interval) clearInterval(interval)
-      // Polling 60s en période de pic (1000+ users) : la fluidité reste correcte
-      // car le cache RAM serveur de 15s couvre déjà les mises à jour fréquentes.
-      // À 150 connexions simultanées, ça divise la charge backend par 2 vs 30s.
-      interval = setInterval(loadPublic, 60000)
+      interval = setInterval(loadPublic, computeInterval())
     }
     const stopPolling = () => {
       if (interval) { clearInterval(interval); interval = null }
     }
-    // Démarre par défaut
+
     startPolling()
-    // Gestion visibilité onglet
+
     const handleVisibility = () => {
       if (document.hidden) {
         stopPolling()
       } else {
-        // Onglet redevient visible : refresh immédiat puis relance le polling
         loadPublic()
         startPolling()
       }
@@ -4684,7 +4735,7 @@ export default function App() {
       stopPolling()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [loading, user, lang, showHome])
+  }, [loading, user, lang, showHome, matches.some(m => m.status === 'live')])
 
   const loadPublic = async () => {
     try {
@@ -5041,6 +5092,9 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Bandeau LIVE : affiche le(s) match(s) en cours en temps réel */}
+      <LiveScoreBanner matches={matches} />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur sticky z-10" style={{ top: isGuest ? '93px' : '57px' }}>
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">

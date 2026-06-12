@@ -3230,13 +3230,43 @@ def fetch_match_results() -> dict:
     return {"ok": True, **stats}
 
 
-# Worker en arrière-plan : scan toutes les 5 minutes pendant les jours de match
+# Worker en arrière-plan : fréquence adaptative selon présence de matchs live
 def results_worker():
-    """Tourne en boucle : scanne les résultats toutes les 5 min si la clé API est définie."""
+    """Tourne en boucle : scanne les résultats à intervalle adaptatif.
+
+    STRATÉGIE ADAPTATIVE :
+    - Si match LIVE en BDD : refresh toutes les 30 secondes
+    - Sinon : refresh toutes les 5 minutes
+    - Couvre aussi la fenêtre +/- 15 min autour d'un match prévu pour ne rien rater
+
+    Économise l'API Football-Data (10 req/min en free) en ne sollicitant fort
+    que quand c'est nécessaire.
+    """
     if not os.environ.get("FOOTBALL_DATA_API_KEY"):
         print("[RESULTS] Worker désactivé (FOOTBALL_DATA_API_KEY non défini)")
         return
-    print("[RESULTS] Worker démarré — fetch toutes les 5 min")
+    print("[RESULTS] Worker démarré — fréquence adaptative (30s si live, 5min sinon)")
+
+    def is_live_or_imminent():
+        """True si au moins un match est en cours OU démarre dans <15 min OU vient de finir."""
+        try:
+            with get_db() as db:
+                # Match LIVE en BDD ?
+                live = db.execute("SELECT COUNT(*) FROM matches WHERE status='live'").fetchone()[0]
+                if live > 0:
+                    return True
+                # Match prévu dans les 15 prochaines minutes ou commencé il y a < 30 min
+                now = datetime.now(timezone.utc)
+                start = (now - timedelta(minutes=30)).isoformat()
+                end = (now + timedelta(minutes=15)).isoformat()
+                imminent = db.execute(
+                    "SELECT COUNT(*) FROM matches WHERE match_date BETWEEN ? AND ? AND status != 'finished'",
+                    (start, end)
+                ).fetchone()[0]
+                return imminent > 0
+        except Exception:
+            return False
+
     while True:
         try:
             r = fetch_match_results()
@@ -3247,7 +3277,12 @@ def results_worker():
                 print(f"[RESULTS] erreur: {r.get('error')}")
         except Exception as e:
             print(f"[RESULTS] worker erreur : {e}")
-        time.sleep(300)  # 5 minutes
+
+        # Fréquence adaptative
+        if is_live_or_imminent():
+            time.sleep(30)   # 30 secondes pendant les matchs
+        else:
+            time.sleep(300)  # 5 minutes en routine
 
 
 @app.post("/api/admin/results/fetch")
