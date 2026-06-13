@@ -4852,6 +4852,29 @@ export default function App() {
     } catch { return null }
   })
 
+  // === DEEP-LINK FAQ via hash URL ===
+  // Si l'URL contient #faq:tag (ex: #faq:pwa-install) → ouvre la FAQ sur ce tag.
+  // Utile pour les liens depuis l'email de bienvenue, les réseaux sociaux, etc.
+  useEffect(() => {
+    const checkHash = () => {
+      const hash = window.location.hash || ''
+      const m = hash.match(/^#faq:([a-z0-9-]+)$/i)
+      if (m) {
+        const tag = m[1].toLowerCase()
+        setFaqDeepLink(tag)
+        setActiveTab('faq')
+        // Nettoie le hash de l'URL pour éviter de re-trigger si l'user navigue
+        try {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search)
+        } catch {}
+      }
+    }
+    checkHash()
+    // Aussi écouter les changements de hash (si l'user clique un lien interne)
+    window.addEventListener('hashchange', checkHash)
+    return () => window.removeEventListener('hashchange', checkHash)
+  }, [])
+
   // Init : vérifier token + charger config publique + initialiser GA4
   useEffect(() => {
     fetch('/api/config').then(r => r.json()).then(cfg => {

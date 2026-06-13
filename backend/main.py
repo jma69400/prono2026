@@ -3805,6 +3805,17 @@ Ton compte a été créé avec succès. Voici tes infos de connexion :
 
 Pour te connecter, va sur : {site_url}
 
+📱 BONNE NOUVELLE : INSTALLE UNITED PRONOS COMME UNE VRAIE APP !
+United Pronos s'installe en 30 secondes sur ton smartphone, ta tablette ou ton PC.
+Tu auras une icône sur ton écran d'accueil, plus rapide d'accès, écran complet.
+C'est 100% gratuit et sans téléchargement depuis un store.
+
+   📱 iPhone : Ouvre {site_url} dans Safari → bouton Partager → "Sur l'écran d'accueil"
+   🤖 Android : Ouvre {site_url} dans Chrome → menu ⋮ → "Installer l'application"
+   💻 PC : Ouvre {site_url} dans Chrome/Edge → icône ⊕ dans la barre d'adresse → "Installer"
+
+👉 Guide complet et détaillé : {site_url}/#faq:pwa-install
+
 🎯 PREMIERS PAS
 - Découvre les 104 matchs de la Coupe du Monde 2026
 - Fais tes pronostics avant le coup d'envoi
@@ -3812,7 +3823,7 @@ Pour te connecter, va sur : {site_url}
 - Consulte les actualités foot en français
 
 🆘 BESOIN D'AIDE ?
-Une fois connecté, utilise la chat-box 💬 en bas à droite pour nous contacter directement.
+Une fois connecté, utilise le bouton 💬 en bas à droite pour nous contacter directement.
 
 🔐 MOT DE PASSE OUBLIÉ ?
 Pas de panique ! Tu peux le réinitialiser à tout moment depuis la page de connexion via le lien "Mot de passe oublié ?".
@@ -3847,6 +3858,36 @@ L'équipe United Pronos
       <a href="{site_url}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #f97316, #ec4899); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
         🚀 Se connecter au site
       </a>
+    </div>
+
+    <!-- Section PWA bien visible : encadré coloré avec instructions par appareil -->
+    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f97316; padding: 20px; margin: 24px 0; border-radius: 12px;">
+      <h2 style="color: #c2410c; font-size: 20px; margin: 0 0 12px 0;">📱 Bonne nouvelle ! United Pronos est aussi une appli</h2>
+      <p style="margin: 0 0 16px 0; color: #555; font-size: 14px;">
+        Installe United Pronos comme une <strong>vraie application</strong> sur ton smartphone, ta tablette ou ton PC. C'est <strong>gratuit</strong>, ça prend <strong>30 secondes</strong>, et tu auras une icône directement sur ton écran d'accueil. Plus rapide, écran complet, pas besoin de passer par un store.
+      </p>
+
+      <div style="background: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #333;">
+          <strong>📱 iPhone / iPad :</strong> Ouvre le site dans <strong>Safari</strong> → bouton Partager 🔗 → <strong>"Sur l'écran d'accueil"</strong>
+        </p>
+      </div>
+      <div style="background: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #333;">
+          <strong>🤖 Android :</strong> Ouvre le site dans <strong>Chrome</strong> → menu ⋮ → <strong>"Installer l'application"</strong>
+        </p>
+      </div>
+      <div style="background: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px;">
+        <p style="margin: 0; font-size: 14px; color: #333;">
+          <strong>💻 PC :</strong> Ouvre dans <strong>Chrome ou Edge</strong> → icône ⊕ dans la barre d'adresse → <strong>"Installer"</strong>
+        </p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="{site_url}/#faq:pwa-install" style="display: inline-block; padding: 10px 20px; background: #f97316; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">
+          👉 Guide complet illustré
+        </a>
+      </div>
     </div>
 
     <h2 style="color: #f97316; font-size: 18px; margin-top: 32px;">🎯 Premiers pas</h2>
