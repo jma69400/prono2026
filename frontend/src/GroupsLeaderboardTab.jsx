@@ -41,21 +41,37 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
 
   // CHARGEMENT OPTIMISÉ EN 2 ÉTAPES :
   // 1. Charge la liste rapidement (sans logos) → affichage immédiat
-  // 2. Charge les logos en parallèle (cache 5 min côté serveur) → injecte dans le state
-  // Permet un rendu fluide même avec 100+ groupes
+  // 2. Charge les logos en chunks pour éviter URL trop longue + priorise le top 20
   const [groupLogos, setGroupLogos] = useState({})  // {group_id: logo_data_url}
+
+  // Charge les logos d'une liste d'IDs en chunks de 30 (limite URL)
+  const loadLogosChunked = async (ids) => {
+    const CHUNK_SIZE = 30
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE)
+      try {
+        const logos = await api.leaderboardGroupsLogos(chunk)
+        // Merge progressif : chaque chunk apparait dès qu'il est prêt
+        setGroupLogos(prev => ({ ...prev, ...(logos || {}) }))
+      } catch (e) {
+        console.warn(`Chunk logos ${i} échoué :`, e)
+      }
+    }
+  }
 
   const reload = async () => {
     setLoading(true)
     try {
       const r = await api.leaderboardGroups()
       setData(r)
-      // Charge les logos en parallèle (n'attend PAS, l'affichage se fait sans)
+      // Charge les logos en parallèle : top 20 d'abord (priorité visible), puis le reste
       if (r.groups && r.groups.length > 0) {
         const ids = r.groups.map(g => g.id)
-        api.leaderboardGroupsLogos(ids)
-          .then(logos => setGroupLogos(logos || {}))
-          .catch(e => console.warn('Logos pas charges :', e))
+        const priority = ids.slice(0, 20)
+        const rest = ids.slice(20)
+        loadLogosChunked(priority).then(() => {
+          if (rest.length > 0) loadLogosChunked(rest)
+        })
       }
     } catch (e) {
       console.error(e)
@@ -366,7 +382,12 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
                 {/* Logo / Avatar groupe — chargé async pour ne pas bloquer la liste */}
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-base flex-shrink-0 overflow-hidden">
                   {groupLogos[g.id] ? (
-                    <img src={groupLogos[g.id]} alt={g.name} className="w-full h-full object-cover" loading="lazy" />
+                    <img
+                      src={groupLogos[g.id]}
+                      alt={g.name}
+                      className="w-full h-full object-cover animate-fade-in"
+                      loading="lazy"
+                    />
                   ) : (
                     g.name?.[0]?.toUpperCase() || '?'
                   )}
