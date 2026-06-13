@@ -6,6 +6,7 @@ Lancement : uvicorn main:app --reload --port 8000
 import os
 import sqlite3
 import secrets
+import hashlib
 import threading
 import time
 import json
@@ -1421,15 +1422,96 @@ def me(user=Depends(get_current_user)):
 
 
 # --- Matches ---
-@app.get("/api/matches")
-def list_matches(response: Response):
-    """Liste des matchs. Cache adaptatif : 10s si match LIVE, 30s sinon.
-    Le cache court pendant les matchs live garantit que les minutes affichées sont à jour.
+# =====================================================
+# TRACKER USERS ONLINE
+# Compte les utilisateurs actifs dans les 5 dernières minutes.
+# Implémentation : set en RAM {identifier: timestamp}, purgé périodiquement.
+#
+# IDENTIFIER :
+# - User connecté : "user:<id>" (priorité, le même user sur 2 onglets = 1)
+# - Visiteur anonyme : "ip:<hash_court>" (IP hashée pour préserver la vie privée)
+#
+# UPDATE :
+# - À chaque appel /api/matches ou /api/snapshot (= polling existant du frontend)
+# - Pas de heartbeat dédié → zéro coût supplémentaire
+#
+# CONFIDENTIALITÉ :
+# - Aucune donnée stockée en BDD
+# - IP hashée (hash court, non-réversible facilement)
+# - Set en RAM se vide automatiquement à chaque redémarrage du process
+# - Purge auto des entries > 5 min toutes les 60s
+# =====================================================
+_online_users = {}      # {identifier: last_seen_unix_ts}
+_online_lock = threading.Lock()
+ONLINE_WINDOW_SECONDS = 300   # 5 minutes : un user est considéré "online" si activité dans ce délai
+ONLINE_PURGE_INTERVAL = 60    # Purge tous les 60s pour éviter que le dict grossisse sans fin
 
-    PROTECTION : on ne cache JAMAIS une valeur vide. Si la query renvoie [] (ex: race
-    condition au démarrage, BDD lock momentané), on évite d'empoisonner le cache
-    qui afficherait "Aucun match" à tous les utilisateurs pendant 15s.
+def track_online(request: Request, user_id: Optional[int] = None):
+    """Marque un identifier (user_id ou hash d'IP) comme actif maintenant."""
+    if user_id:
+        ident = f"user:{user_id}"
+    else:
+        # IP hashée pour confidentialité (on stocke pas l'IP en clair)
+        ip = request.client.host if request.client else "unknown"
+        ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:12]
+        ident = f"ip:{ip_hash}"
+    now = time.time()
+    with _online_lock:
+        _online_users[ident] = now
+
+def get_online_count():
+    """Retourne le nombre de users actifs dans la fenêtre des 5 dernières minutes."""
+    cutoff = time.time() - ONLINE_WINDOW_SECONDS
+    with _online_lock:
+        # Compte les entries récentes
+        count = sum(1 for ts in _online_users.values() if ts > cutoff)
+    return count
+
+def _purge_online_worker():
+    """Worker en background : purge périodique des entries trop vieilles
+    pour éviter que le dict grossisse indéfiniment."""
+    while True:
+        time.sleep(ONLINE_PURGE_INTERVAL)
+        try:
+            cutoff = time.time() - ONLINE_WINDOW_SECONDS
+            with _online_lock:
+                to_remove = [k for k, ts in _online_users.items() if ts < cutoff]
+                for k in to_remove:
+                    del _online_users[k]
+        except Exception:
+            pass
+
+# Lance la purge en background (1 seule fois)
+_purge_thread = threading.Thread(target=_purge_online_worker, daemon=True)
+_purge_thread.start()
+
+
+@app.get("/api/stats/online")
+def stats_online(response: Response):
+    """Renvoie le nombre d'utilisateurs en ligne (actifs ces 5 dernières minutes).
+    Réponse cachée 20s côté client pour éviter de marteler le serveur."""
+    response.headers["Cache-Control"] = "public, max-age=20"
+    return {"online": get_online_count()}
+
+
+@app.get("/api/matches")
+def list_matches(request: Request, response: Response):
+    """Liste des matchs. Cache adaptatif : 10s si match LIVE, 30s sinon.
+    Trace aussi l'utilisateur comme "online" via son polling régulier.
     """
+    # Tracking online : on récupère l'user via le header Authorization si présent
+    # Sinon on utilise juste l'IP (visiteur anonyme)
+    user_id = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            token = auth_header[7:]
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+    track_online(request, user_id)
+
     with get_db() as db:
         rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
         result = [dict(r) for r in rows]
@@ -1445,7 +1527,7 @@ def list_matches(response: Response):
 
 
 @app.get("/api/snapshot")
-def app_snapshot(response: Response):
+def app_snapshot(request: Request, response: Response):
     """Endpoint OPTIMISÉ pour le polling : retourne en 1 seul appel
     les matches + leaderboard + news. Réduit drastiquement le nombre
     de requêtes HTTP avec 100+ utilisateurs en polling toutes les 45s.
@@ -1459,6 +1541,18 @@ def app_snapshot(response: Response):
     qui est divisé par 3.
     """
     response.headers["Cache-Control"] = "public, max-age=20, stale-while-revalidate=40"
+
+    # === Tracking utilisateurs en ligne (set en RAM, voir track_online) ===
+    user_id = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            token = auth_header[7:]
+            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+    track_online(request, user_id)
 
     # === MATCHES (donnée critique - on ne tolère JAMAIS d'envoyer une liste vide) ===
     # Stratégie en 2 temps : cache d'abord, BDD direct si cache vide/manquant.

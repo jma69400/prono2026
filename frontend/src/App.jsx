@@ -275,6 +275,48 @@ const stageLabel = (stage, t) => ({
 }[stage] || stage)
 
 // =====================================================
+// ONLINE STATS BAR — bandeau discret en dessous du LiveScore
+// Affiche le nombre d'utilisateurs en ligne en temps réel
+// =====================================================
+function OnlineStatsBar() {
+  const { t } = useTranslation()
+  const [online, setOnline] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchOnline = async () => {
+      try {
+        const r = await api.statsOnline()
+        if (!cancelled && typeof r?.online === 'number') {
+          setOnline(r.online)
+        }
+      } catch (e) {
+        // En cas d'erreur, on laisse l'ancienne valeur affichée (pas de flash)
+      }
+    }
+    fetchOnline()
+    const interval = setInterval(fetchOnline, 30000)  // refresh 30s
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+
+  // Pas d'affichage si pas encore chargé ou si valeur trop faible (effet "vide" gênant)
+  if (online === null || online < 2) return null
+
+  return (
+    <div className="bg-white/[0.025] border-b border-white/5">
+      <div className="max-w-6xl mx-auto px-4 py-1.5 flex items-center justify-center gap-2 text-xs text-white/60">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span className="font-mono font-bold text-emerald-300">{online.toLocaleString('fr-FR')}</span>
+        <span>{t('online.label')}</span>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================
 // LIVE SCORE BANNER — bandeau qui affiche les matchs en cours
 // Sticky en haut, animation pulsante "🔴 LIVE", auto-hide si aucun match
 // Affiche aussi la minute de jeu et la période (mi-temps, etc.)
@@ -5179,6 +5221,9 @@ export default function App() {
 
       {/* Bandeau LIVE : affiche le(s) match(s) en cours en temps réel */}
       <LiveScoreBanner matches={matches} />
+
+      {/* Bandeau discret : nombre de personnes en ligne */}
+      <OnlineStatsBar />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur sticky z-10" style={{ top: isGuest ? '93px' : '57px' }}>
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">

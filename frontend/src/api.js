@@ -91,6 +91,9 @@ export const api = {
   // Retourne { members, matches, predictions: {match_id: {user_id: {home_score, away_score, points}}} }
   groupPredictions: (groupId) => request(`/groups/${groupId}/predictions`),
 
+  // Statistiques temps réel : nombre d'utilisateurs en ligne (5 dernières minutes)
+  statsOnline: () => request('/stats/online'),
+
   // === ADMIN : Injection de pronostic ===
   // Permet à un admin de saisir un prono pour un user (cas de récupération après bug).
   // Marche pour TOUS les matchs, recalcule les points si match terminé.
