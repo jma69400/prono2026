@@ -92,6 +92,61 @@ Les pronostics ne deviennent visibles **qu'au coup d'envoi du match**. Avant, il
           q: 'Que se passe-t-il en cas de prolongations ou tirs au but ?',
           a: 'Le score retenu est celui à la fin du temps réglementaire (90 minutes + arrêts de jeu), pas après prolongations ou tirs au but. C\'est la règle standard FIFA.',
         },
+        {
+          q: '📱 Comment installer United Pronos comme une vraie application ?',
+          a: `Oui, United Pronos peut s'installer comme une vraie app sur ton smartphone, ta tablette ou ton PC ! C'est **100% gratuit**, ça ne prend que 30 secondes, et tu auras une icône directement sur ton écran d'accueil.
+
+**Pourquoi installer ?**
+- ✅ Accès en 1 clic depuis ton écran d'accueil
+- ✅ Plein écran (sans la barre du navigateur)
+- ✅ Marche même sans connexion pour voir tes données déjà chargées
+- ✅ Reçois des notifications de matchs (à venir)
+- ✅ Plus rapide qu'ouvrir le navigateur
+
+---
+
+**📱 Sur iPhone / iPad (Safari obligatoire)** :
+1. Ouvre **unitedpronos.com** dans **Safari** (important : pas dans Chrome iOS, ça ne marche pas)
+2. Touche le bouton **Partager** en bas de l'écran (l'icône carré avec une flèche vers le haut ↗️)
+3. Fais défiler vers le bas et touche **"Sur l'écran d'accueil"**
+4. Touche **"Ajouter"** en haut à droite
+5. ✅ L'icône United Pronos apparait sur ton écran d'accueil comme une app normale !
+
+---
+
+**🤖 Sur Android (Chrome, Firefox, Samsung Internet, etc.)** :
+1. Ouvre **unitedpronos.com** dans **Chrome** (ou ton navigateur préféré)
+2. Touche les **3 points** en haut à droite ⋮
+3. Choisis **"Installer l'application"** ou **"Ajouter à l'écran d'accueil"**
+4. Confirme en touchant **"Installer"**
+5. ✅ L'icône apparait sur ton écran d'accueil ou ton tiroir d'applications
+
+Astuce : Chrome propose parfois directement une bannière "Installer l'app" en bas de l'écran. Tu peux toucher dessus directement.
+
+---
+
+**💻 Sur PC (Windows, Mac, Linux)** :
+
+**Chrome / Edge / Brave** :
+1. Va sur **unitedpronos.com**
+2. Dans la barre d'adresse, à droite, tu vois une **icône d'écran avec une flèche ⊕** (ou un + dans un cercle)
+3. Clique dessus, puis sur **"Installer"**
+4. ✅ United Pronos s'ouvre dans sa propre fenêtre, et une icône est créée dans ton menu Démarrer / Applications
+
+**Firefox** : 
+Firefox ne propose pas l'installation directe pour le moment. Tu peux toujours ajouter le site en favori et l'épingler à la barre des tâches.
+
+---
+
+**❓ Tu n'as pas d'icône d'installation ?**
+
+Le navigateur ne propose l'installation que la 1ère fois ou si tu n'as jamais visité le site. Solution :
+1. Vide le cache de ton navigateur (Ctrl+Shift+Delete sur PC, ou paramètres → effacer données sur mobile)
+2. Re-visite **unitedpronos.com**
+3. L'option d'installation devrait réapparaitre
+
+Si ça ne marche toujours pas, écris-nous via le formulaire de contact, on t'aidera !`,
+        },
       ],
     },
     {
@@ -359,6 +414,60 @@ Predictions only become visible **at kickoff**. Before that, they remain **stric
           q: 'What happens with extra time or penalties?',
           a: 'The score considered is the one at the end of regular time (90 minutes + stoppage time), not after extra time or penalties. Standard FIFA rule.',
         },
+        {
+          q: '📱 How do I install United Pronos as a real app?',
+          a: `Yes, United Pronos can be installed as a real app on your smartphone, tablet or PC! It's **100% free**, takes only 30 seconds, and you'll have an icon directly on your home screen.
+
+**Why install?**
+- ✅ Access in 1 click from your home screen
+- ✅ Full screen (no browser bar)
+- ✅ Works offline to see your already-loaded data
+- ✅ Receive match notifications (coming soon)
+- ✅ Faster than opening the browser
+
+---
+
+**📱 On iPhone / iPad (Safari required)**:
+1. Open **unitedpronos.com** in **Safari** (important: not Chrome iOS, it won't work)
+2. Tap the **Share** button at the bottom of the screen (square icon with arrow ↗️)
+3. Scroll down and tap **"Add to Home Screen"**
+4. Tap **"Add"** in the top right
+5. ✅ The United Pronos icon appears on your home screen like a normal app!
+
+---
+
+**🤖 On Android (Chrome, Firefox, Samsung Internet, etc.)**:
+1. Open **unitedpronos.com** in **Chrome** (or your preferred browser)
+2. Tap the **3 dots** in the top right ⋮
+3. Choose **"Install app"** or **"Add to Home screen"**
+4. Confirm by tapping **"Install"**
+5. ✅ The icon appears on your home screen or app drawer
+
+Tip: Chrome sometimes offers a banner "Install app" at the bottom of the screen. You can tap it directly.
+
+---
+
+**💻 On PC (Windows, Mac, Linux)**:
+
+**Chrome / Edge / Brave**:
+1. Go to **unitedpronos.com**
+2. In the address bar, on the right, you'll see a **screen icon with arrow ⊕** (or a + in a circle)
+3. Click it, then click **"Install"**
+4. ✅ United Pronos opens in its own window, and an icon is created in your Start menu / Applications
+
+**Firefox**: Firefox doesn't offer direct installation at the moment. You can still bookmark the site and pin it to your taskbar.
+
+---
+
+**❓ Don't see an install icon?**
+
+The browser only offers installation the first time, or if you've never visited the site. Solution:
+1. Clear your browser cache (Ctrl+Shift+Delete on PC, or settings → clear data on mobile)
+2. Re-visit **unitedpronos.com**
+3. The install option should reappear
+
+If it still doesn't work, write to us via the contact form, we'll help you!`,
+        },
       ],
     },
     {
@@ -625,6 +734,60 @@ Los pronósticos solo se vuelven visibles **al inicio del partido**. Antes, perm
         {
           q: '¿Qué pasa con prórroga o penaltis?',
           a: 'El resultado considerado es al final del tiempo reglamentario (90 minutos + tiempo añadido), no después de prórroga o penaltis. Regla estándar FIFA.',
+        },
+        {
+          q: '📱 ¿Cómo instalo United Pronos como una app de verdad?',
+          a: `¡Sí, United Pronos se puede instalar como una app de verdad en tu móvil, tablet o PC! Es **100% gratis**, solo lleva 30 segundos, y tendrás un icono directamente en tu pantalla de inicio.
+
+**¿Por qué instalar?**
+- ✅ Acceso en 1 clic desde tu pantalla de inicio
+- ✅ Pantalla completa (sin la barra del navegador)
+- ✅ Funciona sin conexión para ver tus datos ya cargados
+- ✅ Recibe notificaciones de partidos (próximamente)
+- ✅ Más rápido que abrir el navegador
+
+---
+
+**📱 En iPhone / iPad (Safari obligatorio)**:
+1. Abre **unitedpronos.com** en **Safari** (importante: no en Chrome iOS, no funciona)
+2. Toca el botón **Compartir** abajo de la pantalla (icono cuadrado con flecha ↗️)
+3. Desplázate hacia abajo y toca **"Añadir a pantalla de inicio"**
+4. Toca **"Añadir"** arriba a la derecha
+5. ✅ ¡El icono de United Pronos aparece en tu pantalla de inicio como una app normal!
+
+---
+
+**🤖 En Android (Chrome, Firefox, Samsung Internet, etc.)**:
+1. Abre **unitedpronos.com** en **Chrome** (o tu navegador preferido)
+2. Toca los **3 puntos** arriba a la derecha ⋮
+3. Elige **"Instalar aplicación"** o **"Añadir a pantalla de inicio"**
+4. Confirma tocando **"Instalar"**
+5. ✅ El icono aparece en tu pantalla de inicio o cajón de apps
+
+Consejo: Chrome a veces ofrece un banner "Instalar app" en la parte inferior de la pantalla. Puedes tocarlo directamente.
+
+---
+
+**💻 En PC (Windows, Mac, Linux)**:
+
+**Chrome / Edge / Brave**:
+1. Ve a **unitedpronos.com**
+2. En la barra de direcciones, a la derecha, verás un **icono de pantalla con flecha ⊕** (o un + en un círculo)
+3. Haz clic ahí, luego en **"Instalar"**
+4. ✅ United Pronos se abre en su propia ventana, y se crea un icono en tu menú Inicio / Aplicaciones
+
+**Firefox**: Firefox no ofrece instalación directa por ahora. Puedes guardar el sitio en favoritos y anclarlo a la barra de tareas.
+
+---
+
+**❓ ¿No ves icono de instalación?**
+
+El navegador solo ofrece la instalación la primera vez, o si nunca has visitado el sitio. Solución:
+1. Limpia la caché del navegador (Ctrl+Shift+Delete en PC, o ajustes → borrar datos en móvil)
+2. Vuelve a visitar **unitedpronos.com**
+3. La opción de instalación debería volver a aparecer
+
+Si no funciona, escríbenos por el formulario de contacto, ¡te ayudaremos!`,
         },
       ],
     },

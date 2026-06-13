@@ -275,6 +275,74 @@ const stageLabel = (stage, t) => ({
 }[stage] || stage)
 
 // =====================================================
+// PWA INSTALL BANNER — invite à installer l'app
+// Discret, fermable, mémorisé via localStorage
+// Affiche un lien vers la FAQ pour les utilisateurs qui ne savent pas comment
+// =====================================================
+function PwaInstallBanner({ onGoToFAQ }) {
+  const { t } = useTranslation()
+  const BANNER_KEY = 'pwa_install_dismissed_v1'
+
+  // L'utilisateur a-t-il déjà fermé le bandeau ?
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(BANNER_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  // Détecte si l'app est déjà installée (mode standalone)
+  // Si oui, on ne montre pas le bandeau
+  const [isInstalled, setIsInstalled] = useState(false)
+  useEffect(() => {
+    const checkInstalled = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches
+                       || window.navigator.standalone  // iOS Safari
+      setIsInstalled(standalone)
+    }
+    checkInstalled()
+  }, [])
+
+  const handleDismiss = () => {
+    setDismissed(true)
+    try { localStorage.setItem(BANNER_KEY, '1') } catch {}
+  }
+
+  if (dismissed || isInstalled) return null
+
+  return (
+    <div className="bg-gradient-to-r from-cta-500/20 via-cta-400/15 to-cta-500/20 border-b border-cta-400/30">
+      <div className="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-sm text-white/90 flex-1 min-w-0">
+          <span className="text-lg shrink-0">📱</span>
+          <span className="font-semibold">{t('pwa.bannerTitle')}</span>
+          <span className="text-white/60 text-xs hidden sm:inline">— {t('pwa.bannerSubtitle')}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {onGoToFAQ && (
+            <button
+              onClick={onGoToFAQ}
+              className="px-3 py-1.5 bg-cta-500 hover:bg-cta-600 text-white rounded-lg text-xs font-bold transition"
+            >
+              {t('pwa.howTo')}
+            </button>
+          )}
+          <button
+            onClick={handleDismiss}
+            className="w-7 h-7 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 rounded transition"
+            aria-label={t('pwa.dismiss')}
+            title={t('pwa.dismiss')}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================
 // ONLINE STATS BAR — bandeau discret en dessous du LiveScore
 // Affiche le nombre d'utilisateurs en ligne en temps réel
 // =====================================================
@@ -5224,6 +5292,9 @@ export default function App() {
 
       {/* Bandeau discret : nombre de personnes en ligne */}
       <OnlineStatsBar />
+
+      {/* Bandeau Install PWA — fermable, mémorisé */}
+      <PwaInstallBanner onGoToFAQ={() => { setActiveTab('faq'); window.scrollTo(0, 0); }} />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur sticky z-10" style={{ top: isGuest ? '93px' : '57px' }}>
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
