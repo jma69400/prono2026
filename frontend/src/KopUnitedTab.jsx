@@ -20,7 +20,67 @@ import { useTranslation } from './i18n.jsx'
 const MAX_LENGTH = 280
 const POLL_INTERVAL_MS = 7000  // 7 secondes, équilibre fluidité/charge serveur
 
-export default function KopUnitedTab({ user, isGuest, onLoginPrompt }) {
+/**
+ * Parse le contenu d'un message Kop et génère du JSX avec liens cliquables.
+ *
+ * Syntaxe supportée :
+ *   [Texte du lien](#faq:tag)  →  ouvre la FAQ au tag indiqué
+ *
+ * Exemple :
+ *   "Salut ! Voir [comment installer l'app](#faq:pwa-install) en 30 secondes 🎉"
+ *
+ * Pour des raisons de sécurité, on n'autorise QUE le pattern interne #faq:tag.
+ * Pas d'URLs http arbitraires (éviterait que des messages malicieux insèrent
+ * des liens externes/phishing).
+ *
+ * Le tag doit matcher [a-z0-9-]+ (kebab-case seulement, pas de caractères spéciaux).
+ */
+function renderMessageContent(content, onFaqDeepLink) {
+  if (!content) return null
+
+  // Regex : capture [texte](#faq:tag)
+  // - texte : tout sauf ] ou [
+  // - tag : lettres minuscules, chiffres, tirets uniquement
+  const pattern = /\[([^\[\]]+)\]\(#faq:([a-z0-9-]+)\)/g
+
+  const parts = []
+  let lastIndex = 0
+  let match
+  let keyCounter = 0
+
+  while ((match = pattern.exec(content)) !== null) {
+    // Texte avant le lien
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index))
+    }
+    const linkText = match[1]
+    const tag = match[2]
+    parts.push(
+      <button
+        key={`link-${keyCounter++}`}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (onFaqDeepLink) onFaqDeepLink(tag)
+        }}
+        className="text-cta-300 hover:text-cta-200 underline decoration-cta-400/50 hover:decoration-cta-300 font-semibold inline transition"
+      >
+        {linkText}
+      </button>
+    )
+    lastIndex = match.index + match[0].length
+  }
+  // Texte restant après le dernier lien
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex))
+  }
+
+  // Si aucun lien trouvé, on retourne le texte tel quel
+  return parts.length === 0 ? content : parts
+}
+
+export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLink }) {
   const { t } = useTranslation()
   const [messages, setMessages] = useState([])
   const [content, setContent] = useState('')
@@ -242,7 +302,7 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt }) {
                       ? 'bg-cta-500/20 text-white border border-cta-400/30 rounded-tr-sm'
                       : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-sm'
                   }`}>
-                    {msg.content}
+                    {renderMessageContent(msg.content, onFaqDeepLink)}
                   </div>
                   {/* Bouton suppression : visible si message à soi OU admin */}
                   {(isMine || isAdmin) && (

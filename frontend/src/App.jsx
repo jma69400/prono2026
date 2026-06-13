@@ -5332,7 +5332,16 @@ export default function App() {
         )}
         {activeTab === 'leaderboard' && <LeaderboardTab leaderboard={leaderboard} currentUserId={user?.id} isAdmin={isAdmin} />}
         {activeTab === 'groupsleaderboard' && <GroupsLeaderboardTab user={user} currentGroupId={user?.group_id} />}
-        {activeTab === 'kop' && <KopUnitedTab user={user} isGuest={isGuest} onLoginPrompt={() => setShowAuth(true)} />}
+        {activeTab === 'kop' && <KopUnitedTab
+          user={user}
+          isGuest={isGuest}
+          onLoginPrompt={() => setShowAuth(true)}
+          onFaqDeepLink={(tag) => {
+            setFaqDeepLink(tag)
+            setActiveTab('faq')
+            window.scrollTo(0, 0)
+          }}
+        />}
         {activeTab === 'support' && <SupportPage user={user} onClose={(nextTab) => nextTab === 'credits' ? setActiveTab('credits') : setActiveTab('matches')} />}
         {activeTab === 'credits' && <SupportersWallPage />}
         {activeTab === 'groups' && <GroupsTab />}
