@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from './i18n'
 
 // =====================================================
@@ -94,6 +94,7 @@ Les pronostics ne deviennent visibles **qu'au coup d'envoi du match**. Avant, il
         },
         {
           q: '📱 Comment installer United Pronos comme une vraie application ?',
+          tag: 'pwa-install',
           a: `Oui, United Pronos peut s'installer comme une vraie app sur ton smartphone, ta tablette ou ton PC ! C'est **100% gratuit**, ça ne prend que 30 secondes, et tu auras une icône directement sur ton écran d'accueil.
 
 **Pourquoi installer ?**
@@ -416,6 +417,7 @@ Predictions only become visible **at kickoff**. Before that, they remain **stric
         },
         {
           q: '📱 How do I install United Pronos as a real app?',
+          tag: 'pwa-install',
           a: `Yes, United Pronos can be installed as a real app on your smartphone, tablet or PC! It's **100% free**, takes only 30 seconds, and you'll have an icon directly on your home screen.
 
 **Why install?**
@@ -737,6 +739,7 @@ Los pronósticos solo se vuelven visibles **al inicio del partido**. Antes, perm
         },
         {
           q: '📱 ¿Cómo instalo United Pronos como una app de verdad?',
+          tag: 'pwa-install',
           a: `¡Sí, United Pronos se puede instalar como una app de verdad en tu móvil, tablet o PC! Es **100% gratis**, solo lleva 30 segundos, y tendrás un icono directamente en tu pantalla de inicio.
 
 **¿Por qué instalar?**
@@ -977,12 +980,54 @@ Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, log
 }
 
 
-export function FAQTab() {
+export function FAQTab({ deepLink, onDeepLinkConsumed }) {
   const { lang } = useTranslation()
   const [search, setSearch] = useState('')
   const [openItems, setOpenItems] = useState(new Set())
+  // Item à mettre en surbrillance (highlight orange pendant 3s après scroll)
+  const [highlightedKey, setHighlightedKey] = useState(null)
 
   const faqData = FAQ_DATA[lang] || FAQ_DATA.fr
+
+  // Effet : si un deepLink est passé, trouve la question taggée correspondante,
+  // l'ouvre, scrolle dessus, et la met en surbrillance pendant 3 secondes.
+  useEffect(() => {
+    if (!deepLink) return
+    // Cherche dans toutes les catégories
+    let foundKey = null
+    faqData.forEach((cat, catIdx) => {
+      cat.items.forEach((item, itemIdx) => {
+        if (item.tag === deepLink && !foundKey) {
+          foundKey = `${catIdx}-${itemIdx}`
+        }
+      })
+    })
+    if (!foundKey) return
+
+    // Ouvre l'item
+    setOpenItems(prev => {
+      const next = new Set(prev)
+      next.add(foundKey)
+      return next
+    })
+    setHighlightedKey(foundKey)
+
+    // Scroll vers l'élément après un court délai (le temps que React render l'ouverture)
+    setTimeout(() => {
+      const el = document.getElementById(`faq-item-${foundKey}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 200)
+
+    // Retire la surbrillance après 3 secondes
+    const timer = setTimeout(() => {
+      setHighlightedKey(null)
+      // Notifie le parent que le deep-link a été consommé (pour qu'il puisse le reset)
+      if (onDeepLinkConsumed) onDeepLinkConsumed()
+    }, 3500)
+    return () => clearTimeout(timer)
+  }, [deepLink, faqData])
 
   // Filtre par recherche
   const filteredData = useMemo(() => {
@@ -1103,10 +1148,16 @@ export function FAQTab() {
               {category.items.map((item, itemIdx) => {
                 const key = `${catIdx}-${itemIdx}`
                 const isOpen = isItemOpen(key)
+                const isHighlighted = highlightedKey === key
                 return (
                   <div
                     key={key}
-                    className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-sport-400/30 transition"
+                    id={`faq-item-${key}`}
+                    className={`bg-white/5 border rounded-xl overflow-hidden transition-all duration-500 ${
+                      isHighlighted
+                        ? 'border-orange-400 ring-4 ring-orange-400/40 shadow-lg shadow-orange-500/30 scale-[1.01]'
+                        : 'border-white/10 hover:border-sport-400/30'
+                    }`}
                   >
                     <button
                       onClick={() => toggleItem(key)}

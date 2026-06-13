@@ -4826,6 +4826,8 @@ export default function App() {
   }, [user, isGuest])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('matches')
+  // Deep-link vers une question FAQ specifique (utilise par le bouton 'Comment installer ?')
+  const [faqDeepLink, setFaqDeepLink] = useState(null)
   const [matches, setMatches] = useState([])
   const [predictions, setPredictions] = useState([])
   const [leaderboard, setLeaderboard] = useState({ ranked: [], ranked_count: 0, excluded_admins: 0, total_users: 0 })
@@ -5294,7 +5296,11 @@ export default function App() {
       <OnlineStatsBar />
 
       {/* Bandeau Install PWA — fermable, mémorisé */}
-      <PwaInstallBanner onGoToFAQ={() => { setActiveTab('faq'); window.scrollTo(0, 0); }} />
+      <PwaInstallBanner onGoToFAQ={() => {
+        setFaqDeepLink('pwa-install')
+        setActiveTab('faq')
+        window.scrollTo(0, 0)
+      }} />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur sticky z-10" style={{ top: isGuest ? '93px' : '57px' }}>
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
@@ -5334,7 +5340,7 @@ export default function App() {
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
         {activeTab === 'info' && <InfoTab />}
-        {activeTab === 'faq' && <FAQTab />}
+        {activeTab === 'faq' && <FAQTab deepLink={faqDeepLink} onDeepLinkConsumed={() => setFaqDeepLink(null)} />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
 
