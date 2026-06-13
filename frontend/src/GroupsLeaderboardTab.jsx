@@ -39,11 +39,24 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
     }, 50)
   }
 
+  // CHARGEMENT OPTIMISÉ EN 2 ÉTAPES :
+  // 1. Charge la liste rapidement (sans logos) → affichage immédiat
+  // 2. Charge les logos en parallèle (cache 5 min côté serveur) → injecte dans le state
+  // Permet un rendu fluide même avec 100+ groupes
+  const [groupLogos, setGroupLogos] = useState({})  // {group_id: logo_data_url}
+
   const reload = async () => {
     setLoading(true)
     try {
       const r = await api.leaderboardGroups()
       setData(r)
+      // Charge les logos en parallèle (n'attend PAS, l'affichage se fait sans)
+      if (r.groups && r.groups.length > 0) {
+        const ids = r.groups.map(g => g.id)
+        api.leaderboardGroupsLogos(ids)
+          .then(logos => setGroupLogos(logos || {}))
+          .catch(e => console.warn('Logos pas charges :', e))
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -350,10 +363,10 @@ export function GroupsLeaderboardTab({ user, currentGroupId }) {
                   )}
                 </div>
 
-                {/* Logo / Avatar groupe */}
+                {/* Logo / Avatar groupe — chargé async pour ne pas bloquer la liste */}
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cta-500 to-cta-600 flex items-center justify-center font-black text-base flex-shrink-0 overflow-hidden">
-                  {g.logo_data ? (
-                    <img src={g.logo_data} alt={g.name} className="w-full h-full object-cover" />
+                  {groupLogos[g.id] ? (
+                    <img src={groupLogos[g.id]} alt={g.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     g.name?.[0]?.toUpperCase() || '?'
                   )}

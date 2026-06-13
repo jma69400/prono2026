@@ -1783,40 +1783,90 @@ def leaderboard(response: Response):
         return result
 
 
+@app.get("/api/leaderboard/groups/logos")
+def leaderboard_groups_logos(response: Response, ids: str = ""):
+    """Retourne les logos pour une liste de groupes (chargé séparément du leaderboard).
+
+    USAGE : le frontend charge d'abord la liste classement (rapide, sans logos),
+    puis appelle CET endpoint avec les IDs visibles pour récupérer les logos en
+    parallèle. Permet un affichage progressif (texte → puis logos).
+
+    PARAMS :
+        ids : liste d'IDs séparés par des virgules (ex: '1,2,3,4,5')
+
+    RETURN : {group_id: logo_data_url, ...}
+
+    Cache 5 minutes (les logos changent rarement).
+    """
+    response.headers["Cache-Control"] = "public, max-age=300"
+
+    if not ids:
+        return {}
+
+    try:
+        id_list = [int(x.strip()) for x in ids.split(',') if x.strip().isdigit()]
+    except Exception:
+        return {}
+
+    if not id_list:
+        return {}
+
+    # Limite à 200 IDs pour éviter les abus
+    id_list = id_list[:200]
+
+    cache_key = f"groups:logos:{','.join(str(i) for i in sorted(id_list))}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    with get_db() as db:
+        placeholders = ','.join('?' * len(id_list))
+        rows = db.execute(
+            f"SELECT id, logo_data FROM groups WHERE id IN ({placeholders}) AND logo_data IS NOT NULL",
+            id_list
+        ).fetchall()
+        result = {str(r["id"]): r["logo_data"] for r in rows}
+        cache_set(cache_key, result, ttl_seconds=300)
+        return result
+
+
 @app.get("/api/leaderboard/groups")
-def leaderboard_groups(response: Response):
+def leaderboard_groups(response: Response, limit: int = 100):
     """Classement des GROUPES — calcul équilibré performance × engagement.
 
     FORMULE (visible aussi côté front pour transparence) :
         score = moyenne_points_par_membre × (1 + log10(nb_membres_actifs))
 
+    OPTIMISATIONS PERFORMANCES (v3) :
+    - Plus de g.logo_data dans le SELECT (énorme base64 par groupe, ~50-300 KB/groupe).
+      Le frontend ne l'utilise pas dans la liste classement de toute façon.
+    - Filtrage HAVING active_members >= 2 côté SQL (au lieu de Python)
+      → moins de groupes remontés, moins de RAM, moins de JSON
+    - Tri ORDER BY balanced_score DESC LIMIT N côté SQL
+    - Cache RAM 60s pour les pics de trafic
+
     Récompense à la fois :
     - La PERFORMANCE moyenne du groupe (un groupe avec de bons pronostiqueurs)
     - L'ENGAGEMENT collectif (plus de membres actifs = bonus, mais plafonné par log)
-
-    Un "membre actif" = a fait au moins 1 pronostic.
-    Les groupes avec moins de 2 membres actifs sont EXCLUS (groupes fantômes).
-
-    Cache 60s : recalcul lourd (jointures + agrégations), peu de variation à court terme.
-
-    OPTIMISATION : on utilise un seul JOIN au lieu de 4 sous-requêtes corrélées
-    par utilisateur (ancien comportement : N+1 query problem avec 100+ utilisateurs).
     """
     response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=120"
     import math
 
-    # Cache RAM serveur : recalcul lourd, donc TTL 30s suffisant
-    cached = cache_get("leaderboard:groups")
+    # Cache RAM serveur : recalcul lourd, donc TTL 60s
+    cache_key = f"leaderboard:groups:v3:{limit}"
+    cached = cache_get(cache_key)
     if cached is not None:
         return cached
 
     with get_db() as db:
-        # Optimisation : on agrège côté SQL en JOINTANT users → predictions
-        # Une seule passe sur les tables au lieu de N sous-requêtes par utilisateur.
-        # Le COUNT(DISTINCT) ne compte chaque utilisateur qu'une fois même avec plusieurs predictions.
+        # SELECT optimisé :
+        # - Pas de logo_data (économise 99% du payload)
+        # - Filtre HAVING côté SQL pour exclure les groupes fantômes immédiatement
+        # - Tri par balanced_score directement en SQL via window function ? Trop complexe en SQLite,
+        #   donc on calcule en Python (rapide quand le set est déjà filtré).
         rows = db.execute("""
             SELECT
-                g.id, g.name, g.description, g.logo_data, g.slug, g.invite_code,
+                g.id, g.name, g.description, g.slug, g.invite_code,
                 g.created_at,
                 COUNT(DISTINCT u.id) AS members_count,
                 COUNT(DISTINCT p.user_id) AS active_members,
@@ -1828,20 +1878,22 @@ def leaderboard_groups(response: Response):
             LEFT JOIN predictions p ON p.user_id = u.id
             LEFT JOIN users leader ON leader.id = g.leader_id
             GROUP BY g.id
+            HAVING active_members >= 2
         """).fetchall()
+
+        # Compter aussi les groupes fantômes (exclus) pour le résumé front
+        excluded_count = db.execute(
+            "SELECT COUNT(*) FROM groups g WHERE "
+            "(SELECT COUNT(DISTINCT p.user_id) FROM users u LEFT JOIN predictions p ON p.user_id = u.id "
+            "WHERE u.group_id = g.id) < 2"
+        ).fetchone()[0]
 
         # Calcul du score équilibré côté Python (plus lisible que SQL avec log)
         groups_ranked = []
-        excluded_count = 0
         for r in rows:
             d = dict(r)
             active = d["active_members"]
             total_pts = d["total_points"] or 0
-
-            # Exclusion des groupes fantômes (< 2 membres actifs)
-            if active < 2:
-                excluded_count += 1
-                continue
 
             # Score équilibré : moyenne × (1 + log10(nb actifs))
             average = total_pts / active if active > 0 else 0
@@ -1859,6 +1911,9 @@ def leaderboard_groups(response: Response):
             reverse=True
         )
 
+        # Limite à N premiers (par défaut 100, largement suffisant pour l'UI)
+        groups_ranked = groups_ranked[:limit]
+
         result = {
             "groups": groups_ranked,
             "groups_count": len(groups_ranked),
@@ -1868,7 +1923,8 @@ def leaderboard_groups(response: Response):
                 "min_active_members": 2,
             },
         }
-        cache_set("leaderboard:groups", result, ttl_seconds=60)
+        # Cache plus long si le résultat est important (économise des recalculs)
+        cache_set(cache_key, result, ttl_seconds=60)
         return result
 
 

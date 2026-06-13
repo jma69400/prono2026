@@ -79,6 +79,8 @@ export const api = {
   },
   // Classement des GROUPES (score équilibré performance × engagement)
   leaderboardGroups: () => request('/leaderboard/groups'),
+  // Récupère les logos pour une liste d'IDs (chargé en parallèle après la liste)
+  leaderboardGroupsLogos: (ids) => request(`/leaderboard/groups/logos?ids=${ids.join(',')}`),
   // === Donations / Supporters ===
   donationsStats: () => request('/donations/stats'),
   declareDonation: () => request('/donations/declare', { method: 'POST' }),
