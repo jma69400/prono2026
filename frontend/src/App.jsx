@@ -3738,7 +3738,7 @@ function AdminContactPanel() {
 // =====================================================
 // INFO TAB — accès aux pages SEO depuis l'app
 // =====================================================
-function InfoTab() {
+function InfoTab({ onNavigate }) {
   const { t, lang } = useTranslation()
 
   // URLs SEO adaptées à la langue active
@@ -3773,28 +3773,83 @@ function InfoTab() {
   }
   const urls = seoUrls[lang] || seoUrls.fr
 
-  // 7 cards à afficher (favoris + pronos entre amis en premier, contenus phares)
-  const cards = [
+  // 2 widgets internes (Mes Groupes + Actualités) en haut + 7 cards SEO existantes
+  // Les widgets internes utilisent onClick au lieu de target=_blank pour ouvrir
+  // l'onglet correspondant dans l'app (sans quitter United Pronos)
+  const internalCards = [
+    {
+      onClick: () => onNavigate?.('groups'),
+      icon: '👥',
+      title: t('tabs.groups'),
+      subtitle: t('info.groupsCardSub'),
+      featured: true,
+      internal: true,
+    },
+    {
+      onClick: () => onNavigate?.('news'),
+      icon: '📰',
+      title: t('tabs.news'),
+      subtitle: t('info.newsCardSub'),
+      featured: true,
+      internal: true,
+    },
+  ]
+
+  const seoCards = [
     {
       url: urls.favorites,
       icon: '🥇',
       title: t('info.favorites'),
       subtitle: t('info.favoritesSub'),
-      featured: true,
     },
     {
       url: urls.friendsLeague,
       icon: '🍻',
       title: t('info.friendsLeague'),
       subtitle: t('info.friendsLeagueSub'),
-      featured: true,
     },
     { url: urls.schedule, icon: '📅', title: t('info.schedule'), subtitle: t('info.scheduleSub') },
-    { url: urls.groups, icon: '👥', title: t('info.groups'), subtitle: t('info.groupsSub') },
+    { url: urls.groups, icon: '🏆', title: t('info.groups'), subtitle: t('info.groupsSub') },
     { url: urls.teams, icon: '🌍', title: t('info.teams'), subtitle: t('info.teamsSub') },
     { url: urls.stadiums, icon: '🏟️', title: t('info.stadiums'), subtitle: t('info.stadiumsSub') },
     { url: urls.format, icon: '📋', title: t('info.format'), subtitle: t('info.formatSub') },
   ]
+
+  // Helper render pour éviter de dupliquer le markup card
+  const renderCard = (card, idx, isInternal = false) => {
+    const baseClasses = `group relative p-5 rounded-2xl border transition transform hover:scale-105 block ${
+      card.featured
+        ? 'bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border-yellow-400/40 hover:border-yellow-400/70'
+        : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-sport-400/50'
+    }`
+    const content = (
+      <>
+        {card.featured && (
+          <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+            ⭐ {t('info.new')}
+          </div>
+        )}
+        <div className="text-4xl mb-3">{card.icon}</div>
+        <div className="font-bold text-base mb-1">{card.title}</div>
+        <div className="text-sm text-white/50">{card.subtitle}</div>
+        <div className="mt-3 text-xs text-sport-300 group-hover:text-sport-200 font-semibold">
+          {isInternal ? t('info.openTab') : t('info.readMore')} →
+        </div>
+      </>
+    )
+    if (isInternal) {
+      return (
+        <button key={`int-${idx}`} type="button" onClick={card.onClick} className={`${baseClasses} text-left w-full`}>
+          {content}
+        </button>
+      )
+    }
+    return (
+      <a key={`seo-${idx}`} href={card.url} target="_blank" rel="noopener" className={baseClasses}>
+        {content}
+      </a>
+    )
+  }
 
   return (
     <div>
@@ -3806,27 +3861,20 @@ function InfoTab() {
         <p className="text-sm text-white/60 max-w-2xl mx-auto">{t('info.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cards.map((card, idx) => (
-          <a key={idx} href={card.url} target="_blank" rel="noopener"
-            className={`group relative p-5 rounded-2xl border transition transform hover:scale-105 ${
-              card.featured
-                ? 'bg-gradient-to-br from-yellow-400/15 to-orange-500/10 hover:from-yellow-400/25 hover:to-orange-500/20 border-yellow-400/40 hover:border-yellow-400/70'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-sport-400/50'
-            }`}>
-            {card.featured && (
-              <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-[10px] font-black px-2 py-0.5 rounded-full">
-                ⭐ {t('info.new')}
-              </div>
-            )}
-            <div className="text-4xl mb-3">{card.icon}</div>
-            <div className="font-bold text-base mb-1">{card.title}</div>
-            <div className="text-sm text-white/50">{card.subtitle}</div>
-            <div className="mt-3 text-xs text-sport-300 group-hover:text-sport-200 font-semibold">
-              {t('info.readMore')} →
-            </div>
-          </a>
-        ))}
+      {/* Section 1 : Widgets internes (Mes Groupes + Actualités) */}
+      <div className="mb-8">
+        <h3 className="text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">{t('info.appSection')}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {internalCards.map((card, idx) => renderCard(card, idx, true))}
+        </div>
+      </div>
+
+      {/* Section 2 : Articles SEO (favoris, calendrier, équipes...) */}
+      <div>
+        <h3 className="text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">{t('info.guidesSection')}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {seoCards.map((card, idx) => renderCard(card, idx, false))}
+        </div>
       </div>
 
       <p className="text-center text-xs text-white/30 mt-8 italic">
@@ -5266,9 +5314,9 @@ export default function App() {
     { id: 'leaderboard', label: t('tabs.leaderboard'), icon: Trophy },
     { id: 'groupsleaderboard', label: t('tabs.groupsLeaderboard'), icon: Trophy },
     { id: 'kop', label: t('tabs.kop'), icon: MessageSquare, badge: 'NEW' },
-    { id: 'groups', label: t('tabs.groups'), icon: Users },
+    // 'groups' et 'news' sont accessibles via le widget dans l'onglet Infos
+    // (decision UX : on epure le menu principal en mobile)
     ...((isLeader || (hasGroup && !isAdmin)) ? [{ id: 'mygroup', label: t('group.title'), icon: Users }] : []),
-    { id: 'news', label: t('tabs.news'), icon: Newspaper },
     { id: 'info', label: t('tabs.info'), icon: BookOpen },
     { id: 'faq', label: t('tabs.faq'), icon: HelpCircle },
     ...(user ? [{ id: 'profile', label: t('profile.title'), icon: User }] : []),
@@ -5422,7 +5470,7 @@ export default function App() {
         {activeTab === 'mygroup' && <GroupTab user={user} />}
         {activeTab === 'profile' && user && <ProfileTab currentUser={user} onUserUpdate={setUser} />}
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
-        {activeTab === 'info' && <InfoTab />}
+        {activeTab === 'info' && <InfoTab onNavigate={(tabId) => setActiveTab(tabId)} />}
         {activeTab === 'faq' && <FAQTab deepLink={faqDeepLink} onDeepLinkConsumed={() => setFaqDeepLink(null)} />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
