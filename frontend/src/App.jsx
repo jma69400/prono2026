@@ -65,24 +65,51 @@ function trackPageView(pageName) {
 // =====================================================
 function LangSwitch() {
   const { lang, setLang } = useTranslation()
+  const [open, setOpen] = useState(false)
   const flags = {
     fr: 'https://flagcdn.com/w40/fr.png',
     en: 'https://flagcdn.com/w40/gb.png',
     es: 'https://flagcdn.com/w40/es.png',
   }
   const labels = { fr: 'Français', en: 'English', es: 'Español' }
+  const codes = ['fr', 'en', 'es']
+
   return (
-    <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1 border border-white/10">
-      {['fr', 'en', 'es'].map(code => (
-        <button key={code}
-          onClick={() => setLang(code)}
-          title={labels[code]}
-          className={`flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded transition ${lang === code ? 'bg-cta-500 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-        >
-          <img src={flags[code]} alt={code} style={{width: '18px', height: '13px', borderRadius: '2px'}} />
-          <span>{code.toUpperCase()}</span>
-        </button>
-      ))}
+    <div className="relative">
+      {/* Bouton compact : juste le drapeau de la langue actuelle */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        title={labels[lang]}
+        aria-label={`Langue actuelle : ${labels[lang]}. Cliquer pour changer.`}
+        className="flex items-center justify-center w-9 h-9 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition"
+      >
+        <img src={flags[lang]} alt={lang} style={{width: '20px', height: '15px', borderRadius: '2px'}} />
+      </button>
+
+      {/* Dropdown qui s'ouvre au clic */}
+      {open && (
+        <>
+          {/* Backdrop : clic à côté ferme le menu */}
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-2 z-40 bg-base-deep border border-white/15 rounded-xl shadow-2xl overflow-hidden min-w-[160px]">
+            {codes.map(code => (
+              <button
+                key={code}
+                onClick={() => { setLang(code); setOpen(false) }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition ${
+                  lang === code
+                    ? 'bg-cta-500/20 text-white font-semibold'
+                    : 'text-white/80 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <img src={flags[code]} alt={code} style={{width: '20px', height: '15px', borderRadius: '2px'}} />
+                <span>{labels[code]}</span>
+                {lang === code && <span className="ml-auto text-cta-300">✓</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
