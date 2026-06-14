@@ -510,21 +510,24 @@ function LiveScoreBanner({ matches }) {
             <span className="font-black text-sm tracking-wider text-red-100">LIVE</span>
           </div>
 
-          {/* Score(s) en cours */}
-          <div className="flex items-center gap-4 flex-wrap text-sm">
+          {/* Score(s) en cours — sur mobile, on affiche les codes ISO seuls (FR, BR, ...) */}
+          <div className="flex items-center gap-3 flex-wrap text-sm">
             {liveMatches.map(m => {
               const liveTime = formatLiveTime(m)
               return (
-                <div key={m.id} className="flex items-center gap-2 font-semibold">
-                  <Flag code={m.home_team} size={20} />
-                  <span className="text-white">{teamName(m.home_team, lang)}</span>
-                  <span className="font-mono font-black text-white bg-red-600/40 px-2 py-0.5 rounded">
+                <div key={m.id} className="flex items-center gap-1.5 font-semibold">
+                  <Flag code={m.home_team} size={18} />
+                  {/* Nom complet sur PC, code 3-lettres sur mobile */}
+                  <span className="text-white hidden sm:inline">{teamName(m.home_team, lang)}</span>
+                  <span className="text-white sm:hidden font-mono text-xs">{m.home_team}</span>
+                  <span className="font-mono font-black text-white bg-red-600/40 px-1.5 py-0.5 rounded text-xs sm:text-sm">
                     {m.home_score ?? 0} - {m.away_score ?? 0}
                   </span>
-                  <span className="text-white">{teamName(m.away_team, lang)}</span>
-                  <Flag code={m.away_team} size={20} />
+                  <span className="text-white hidden sm:inline">{teamName(m.away_team, lang)}</span>
+                  <span className="text-white sm:hidden font-mono text-xs">{m.away_team}</span>
+                  <Flag code={m.away_team} size={18} />
                   {/* Minute / période */}
-                  <span className="text-xs font-mono font-bold text-red-100 bg-red-700/40 px-1.5 py-0.5 rounded border border-red-300/30 ml-1">
+                  <span className="text-[10px] sm:text-xs font-mono font-bold text-red-100 bg-red-700/40 px-1.5 py-0.5 rounded border border-red-300/30 ml-1">
                     {liveTime}
                   </span>
                 </div>
@@ -1114,7 +1117,9 @@ function ServerUpgradeBanner({ onGoToSupport, isSupporter }) {
 // =====================================================
 function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, isGuest, onGuestPrompt }) {
   const { t } = useTranslation()
-  const [filter, setFilter] = useState('all')
+  // Filtre par défaut : "À venir" (scheduled) pour ne pas noyer l'utilisateur
+  // dans les matchs déjà joués. Toggle disponible pour revoir "Tous" ou "Terminés".
+  const [filter, setFilter] = useState('scheduled')
   const [stageFilter, setStageFilter] = useState('all')
   const [predFilter, setPredFilter] = useState('all')  // all | missing | done
 
@@ -1209,12 +1214,13 @@ function MatchesTab({ matches, predictions, onSave, isAdmin, onAdminSetScore, is
         </div>
       )}
 
-      {/* === FILTRES par statut (Tous / À venir / Terminés) === */}
+      {/* === FILTRES par statut (À venir / Live / Terminés / Tous) === */}
       <div className="flex flex-wrap gap-2 mb-4">
         {[
-          { id: 'all', label: t('matches.all'), count: matches.length },
           { id: 'scheduled', label: t('matches.upcoming'), count: matches.filter(m => m.status === 'scheduled').length },
+          { id: 'live', label: '🔴 LIVE', count: matches.filter(m => m.status === 'live').length },
           { id: 'finished', label: t('matches.finished'), count: matches.filter(m => m.status === 'finished').length },
+          { id: 'all', label: t('matches.all'), count: matches.length },
         ].map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
             className={`px-4 py-2 rounded-full text-sm font-semibold transition ${filter === f.id ? 'bg-cta-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
@@ -5294,55 +5300,65 @@ export default function App() {
       )}
 
       <header className="border-b border-white/10 backdrop-blur-xl bg-black/20 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="max-w-6xl mx-auto px-4 py-2">
+          {/* LIGNE 1 — Logo United Pronos seul (visibilité maximale, 100% du nom) */}
+          <div className="flex items-center justify-center gap-3 py-1">
             <Trophy className="w-7 h-7 text-orange-400 shrink-0" />
-            <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">United Pronos</div>
+            <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent">
+              United Pronos
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <PredictionsCountBadge />
-            <LangSwitch />
-            <button
-              onClick={() => {
-                // Si utilisateur connecté → ouvre la chat-box interne
-                // Sinon → ouvre le formulaire de contact classique (email)
-                if (user) {
-                  window.dispatchEvent(new CustomEvent('open-chatbox'))
-                } else {
-                  setShowContact(true)
-                }
-              }}
-              className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5"
-              title={user ? 'Discuter avec le support' : t('contact.title')}>
-              {user ? '💬' : '✉️'} <span className="hidden sm:inline">{t('contact.menuItem')}</span>
-            </button>
-            {config.donations?.enabled && (
+
+          {/* LIGNE 2 — Actions (compteur pronos, langue, contact, soutien, user) */}
+          <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+            {/* Côté gauche : compteur pronos */}
+            <div className="flex items-center gap-2 shrink-0">
+              <PredictionsCountBadge />
+            </div>
+
+            {/* Côté droit : langue, contact, soutien, user/logout */}
+            <div className="flex items-center gap-2 shrink-0">
+              <LangSwitch />
               <button
-                onClick={() => setActiveTab('support')}
-                className={`relative px-2.5 py-1.5 bg-gradient-to-r from-sport-500/15 to-sport-600/15 hover:from-sport-500/25 hover:to-sport-600/25 border border-cta-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group ${
-                  user && !isSupporter ? 'btn-support-pulse' : ''
-                }`}
-                title={t('support.headerTooltip')}>
-                <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
-                <span className="hidden sm:inline">{t('support.headerButton')}</span>
+                onClick={() => {
+                  if (user) {
+                    window.dispatchEvent(new CustomEvent('open-chatbox'))
+                  } else {
+                    setShowContact(true)
+                  }
+                }}
+                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5"
+                title={user ? 'Discuter avec le support' : t('contact.title')}>
+                {user ? '💬' : '✉️'} <span className="hidden sm:inline">{t('contact.menuItem')}</span>
               </button>
-            )}
-            {user ? (
-              <>
-                <div className="text-right hidden sm:block">
-                  <div className="text-sm font-semibold">{user.username}</div>
-                  <div className="text-xs text-white/40">{isAdmin && '👑 '}{user.role}</div>
-                </div>
-                <button onClick={logout} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg" title={t('common.logout')}>
-                  <LogOut className="w-4 h-4" />
+              {config.donations?.enabled && (
+                <button
+                  onClick={() => setActiveTab('support')}
+                  className={`relative px-2.5 py-1.5 bg-gradient-to-r from-sport-500/15 to-sport-600/15 hover:from-sport-500/25 hover:to-sport-600/25 border border-cta-400/30 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition group ${
+                    user && !isSupporter ? 'btn-support-pulse' : ''
+                  }`}
+                  title={t('support.headerTooltip')}>
+                  <span className="text-base group-hover:scale-110 transition-transform">❤️</span>
+                  <span className="hidden sm:inline">{t('support.headerButton')}</span>
                 </button>
-              </>
-            ) : (
-              <button onClick={() => setShowAuth(true)}
-                className="px-3 py-1.5 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
-                <LogIn className="w-3.5 h-3.5" /> {t('auth.login')}
-              </button>
-            )}
+              )}
+              {user ? (
+                <>
+                  <div className="text-right hidden md:block">
+                    <div className="text-sm font-semibold">{user.username}</div>
+                    <div className="text-xs text-white/40">{isAdmin && '👑 '}{user.role}</div>
+                  </div>
+                  <button onClick={logout} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg" title={t('common.logout')}>
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setShowAuth(true)}
+                  className="px-3 py-1.5 bg-cta-500 hover:bg-cta-600 rounded-lg text-sm font-bold flex items-center gap-1.5">
+                  <LogIn className="w-3.5 h-3.5" /> {t('auth.login')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -5360,7 +5376,7 @@ export default function App() {
         window.scrollTo(0, 0)
       }} />
 
-      <nav className="border-b border-white/10 bg-black/10 backdrop-blur sticky z-10" style={{ top: isGuest ? '93px' : '57px' }}>
+      <nav className="border-b border-white/10 bg-black/10 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
           {tabs.map(tab => {
             const Icon = tab.icon

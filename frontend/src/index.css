@@ -271,3 +271,39 @@ input[type=number] { -moz-appearance: textfield; }
 .animate-fade-in {
   animation: fade-in 300ms ease-out;
 }
+
+/* ============================================================
+   OPTIMISATIONS MOBILE
+   - Améliorations subtiles pour rendre le site agréable sur smartphone
+   ============================================================ */
+
+/* Bouton & input plus accessibles au tactile (Apple Human Interface : 44x44px min) */
+@media (max-width: 640px) {
+  button, [role="button"], a.btn,
+  input[type="submit"], input[type="button"] {
+    min-height: 40px;  /* hauteur tactile confortable */
+  }
+  /* Inputs de score plus gros et plus lisibles sur mobile */
+  input[type="number"], input[type="text"] {
+    font-size: 16px;  /* empêche le zoom auto iOS sur focus */
+  }
+  /* Réduire les paddings excessifs sur petits écrans */
+  .max-w-6xl {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* Scroll horizontal lisse pour les tabs */
+nav .overflow-x-auto {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Cacher les scrollbars mais garder le scroll */
+nav .overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+nav .overflow-x-auto {
+  scrollbar-width: none;
+}
