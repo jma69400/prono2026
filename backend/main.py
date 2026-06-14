@@ -1142,6 +1142,35 @@ app.add_middleware(
 )
 
 
+# === Middleware HTTP : tracking online sur TOUS les appels API ===
+# Plus précis que le tracking manuel dans 2 endpoints :
+# - Compte aussi les users qui naviguent dans /api/groups, /api/predictions, etc.
+# - Compte les visiteurs anonymes qui consultent /api/config, /api/news
+# - Aligne le compteur sur l'activité réelle (proche de Google Analytics "Active users")
+@app.middleware("http")
+async def track_online_middleware(request: Request, call_next):
+    # On ne track que les routes API (pas /static, /favicon, etc.)
+    path = request.url.path
+    if path.startswith("/api/") and not path.startswith("/api/stats/"):
+        # Récupère l'user via le token JWT si présent
+        user_id = None
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            try:
+                token = auth_header[7:]
+                payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+                user_id = payload.get("sub")
+            except Exception:
+                pass
+        try:
+            track_online(request, user_id)
+        except Exception:
+            # Le tracking ne doit JAMAIS bloquer une requête
+            pass
+    response = await call_next(request)
+    return response
+
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -1443,7 +1472,8 @@ def me(user=Depends(get_current_user)):
 # =====================================================
 _online_users = {}      # {identifier: last_seen_unix_ts}
 _online_lock = threading.Lock()
-ONLINE_WINDOW_SECONDS = 300   # 5 minutes : un user est considéré "online" si activité dans ce délai
+ONLINE_WINDOW_SECONDS = 1800  # 30 minutes : un user est "online" s'il a interagi dans ce délai
+                              # Aligné sur la fenêtre Google Analytics "active users"
 ONLINE_PURGE_INTERVAL = 60    # Purge tous les 60s pour éviter que le dict grossisse sans fin
 
 def track_online(request: Request, user_id: Optional[int] = None):
@@ -1516,21 +1546,8 @@ def stats_online(response: Response):
 @app.get("/api/matches")
 def list_matches(request: Request, response: Response):
     """Liste des matchs. Cache adaptatif : 10s si match LIVE, 30s sinon.
-    Trace aussi l'utilisateur comme "online" via son polling régulier.
+    Le tracking 'online' est désormais fait par le middleware HTTP (couvre tous les endpoints).
     """
-    # Tracking online : on récupère l'user via le header Authorization si présent
-    # Sinon on utilise juste l'IP (visiteur anonyme)
-    user_id = None
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            token = auth_header[7:]
-            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            user_id = payload.get("sub")
-        except Exception:
-            pass
-    track_online(request, user_id)
-
     with get_db() as db:
         rows = db.execute("SELECT * FROM matches ORDER BY match_date").fetchall()
         result = [dict(r) for r in rows]
@@ -1561,17 +1578,7 @@ def app_snapshot(request: Request, response: Response):
     """
     response.headers["Cache-Control"] = "public, max-age=20, stale-while-revalidate=40"
 
-    # === Tracking utilisateurs en ligne (set en RAM, voir track_online) ===
-    user_id = None
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            token = auth_header[7:]
-            payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-            user_id = payload.get("sub")
-        except Exception:
-            pass
-    track_online(request, user_id)
+    # Le tracking 'online' est désormais fait par le middleware HTTP (couvre tous les endpoints).
 
     # === MATCHES (donnée critique - on ne tolère JAMAIS d'envoyer une liste vide) ===
     # Stratégie en 2 temps : cache d'abord, BDD direct si cache vide/manquant.
