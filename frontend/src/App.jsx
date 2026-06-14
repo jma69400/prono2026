@@ -275,6 +275,52 @@ const stageLabel = (stage, t) => ({
 }[stage] || stage)
 
 // =====================================================
+// PREDICTIONS COUNT BADGE — widget compact dans le header
+// Affiche le nombre TOTAL de pronostics joués sur le site
+// Effet "preuve sociale" : crée un sentiment de communauté active
+// =====================================================
+function PredictionsCountBadge() {
+  const { t } = useTranslation()
+  const [count, setCount] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchCount = async () => {
+      try {
+        const r = await api.statsOnline()
+        if (!cancelled && typeof r?.predictions === 'number') {
+          setCount(r.predictions)
+        }
+      } catch (e) {
+        // Silencieux : on garde la dernière valeur affichée
+      }
+    }
+    fetchCount()
+    // Refresh toutes les 60s (les pronostics n'évoluent pas si vite)
+    const interval = setInterval(fetchCount, 60000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+
+  if (count === null || count < 100) return null
+
+  // Format compact : "19 547" → "19.5K" si > 10000
+  const display = count >= 10000
+    ? `${(count / 1000).toFixed(1).replace('.0', '')}K`
+    : count.toLocaleString('fr-FR')
+
+  return (
+    <div
+      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold transition"
+      title={t('header.predictionsCountTooltip')}
+    >
+      <Target className="w-3.5 h-3.5 text-cta-400 shrink-0" />
+      <span className="font-mono font-bold text-cta-200">{display}</span>
+      <span className="hidden sm:inline text-white/60 text-xs">{t('header.predictionsLabel')}</span>
+    </div>
+  )
+}
+
+// =====================================================
 // PWA INSTALL BANNER — invite à installer l'app
 // Discret, fermable, mémorisé via localStorage
 // Affiche un lien vers la FAQ pour les utilisateurs qui ne savent pas comment
@@ -5227,6 +5273,7 @@ export default function App() {
             <div className="font-black text-xl bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent truncate">United Pronos</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <PredictionsCountBadge />
             <LangSwitch />
             <button
               onClick={() => {

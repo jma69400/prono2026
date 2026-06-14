@@ -1488,10 +1488,29 @@ _purge_thread.start()
 
 @app.get("/api/stats/online")
 def stats_online(response: Response):
-    """Renvoie le nombre d'utilisateurs en ligne (actifs ces 5 dernières minutes).
-    Réponse cachée 20s côté client pour éviter de marteler le serveur."""
-    response.headers["Cache-Control"] = "public, max-age=20"
-    return {"online": get_online_count()}
+    """Renvoie les stats live du site :
+    - online : nombre d'utilisateurs actifs ces 5 dernières minutes (RAM)
+    - predictions : nombre total de pronostics enregistrés (BDD)
+
+    Cache 30s côté client. predictions_count change peu sur 30s (= ~50 pronos max),
+    online change un peu plus vite mais 30s est acceptable.
+    """
+    response.headers["Cache-Control"] = "public, max-age=30"
+
+    # Compteur online (RAM, déjà optimisé)
+    online_count = get_online_count()
+
+    # Compteur prédictions (BDD, cache RAM 30s pour éviter de re-query sans cesse)
+    cached_preds = cache_get("stats:predictions_count")
+    if cached_preds is None:
+        with get_db() as db:
+            cached_preds = db.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+        cache_set("stats:predictions_count", cached_preds, ttl_seconds=30)
+
+    return {
+        "online": online_count,
+        "predictions": cached_preds,
+    }
 
 
 @app.get("/api/matches")
