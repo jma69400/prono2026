@@ -1857,7 +1857,7 @@ def leaderboard_groups_logos(response: Response, ids: str = ""):
 
 
 @app.get("/api/leaderboard/groups")
-def leaderboard_groups(response: Response, limit: int = 100):
+def leaderboard_groups(response: Response, limit: int = 500):
     """Classement des GROUPES — calcul équilibré performance × engagement.
 
     FORMULE (visible aussi côté front pour transparence) :
@@ -1870,6 +1870,7 @@ def leaderboard_groups(response: Response, limit: int = 100):
       → moins de groupes remontés, moins de RAM, moins de JSON
     - Tri ORDER BY balanced_score DESC LIMIT N côté SQL
     - Cache RAM 60s pour les pics de trafic
+    - limit=500 par défaut (couvre tous les groupes même avec 400+ inscrits)
 
     Récompense à la fois :
     - La PERFORMANCE moyenne du groupe (un groupe avec de bons pronostiqueurs)
