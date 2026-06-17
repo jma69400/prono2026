@@ -307,3 +307,37 @@ nav .overflow-x-auto::-webkit-scrollbar {
 nav .overflow-x-auto {
   scrollbar-width: none;
 }
+
+/* ============================================================
+   BANDEAU PRONOSTIQUEURS GAGNANTS (Wall of Fame)
+   - Animation defilement horizontal de droite vers gauche
+   - Vitesse moderee (60s pour traverser, pas trop rapide)
+   - S'arrete au hover pour permettre de lire les noms
+   ============================================================ */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-33.33%); }
+}
+
+.winners-marquee {
+  animation: marquee-scroll 60s linear infinite;
+}
+
+.winners-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* Sur ecran tres etroit, on accelere un peu pour ne pas frustrer */
+@media (max-width: 640px) {
+  .winners-marquee {
+    animation-duration: 40s;
+  }
+}
+
+/* Respect du parametre OS "reduire les animations" */
+@media (prefers-reduced-motion: reduce) {
+  .winners-marquee {
+    animation: none;
+    text-align: center;
+  }
+}

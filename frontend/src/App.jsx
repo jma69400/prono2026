@@ -348,6 +348,85 @@ function PredictionsCountBadge() {
 }
 
 // =====================================================
+// LAST MATCH WINNERS BANNER — Wall of fame défilant
+// Met en valeur les pronostiqueurs qui ont prédit le score exact du dernier
+// match terminé. Effet : preuve sociale + gamification + motivation.
+// =====================================================
+function LastMatchWinnersBanner() {
+  const { t, lang } = useTranslation()
+  const [data, setData] = useState(null)
+  const [dismissed, setDismissed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchData = async () => {
+      try {
+        const r = await api.lastMatchWinners()
+        if (!cancelled) setData(r)
+      } catch (e) {
+        // Silencieux : pas de bandeau si erreur API
+      }
+    }
+    fetchData()
+    // Refresh toutes les 5 minutes (les résultats ne changent plus une fois finis,
+    // mais on rafraîchit pour suivre le match suivant qui se termine)
+    const interval = setInterval(fetchData, 300000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+
+  // Pas de bandeau si pas de match terminé OU pas de gagnant OU si user a fermé
+  if (dismissed || !data || !data.match || data.winners.length === 0) return null
+
+  const { match, winners, winners_count } = data
+  const home = match.home_team
+  const away = match.away_team
+
+  // Construit la liste de noms à afficher (en boucle pour effet défilant continu)
+  // On duplique la liste pour que la transition CSS soit fluide
+  const namesText = winners.join('  •  ')
+
+  return (
+    <div className="bg-gradient-to-r from-yellow-500/15 via-orange-500/10 to-yellow-500/15 border-b border-yellow-400/30 overflow-hidden">
+      <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3">
+        {/* Trophée + score */}
+        <div className="flex items-center gap-2 shrink-0 text-sm">
+          <span className="text-lg">🏆</span>
+          <span className="font-bold text-yellow-200 hidden sm:inline">
+            {t('winners.exactScore')}
+          </span>
+          <span className="font-mono font-bold text-white bg-yellow-600/30 px-2 py-0.5 rounded text-xs">
+            {home} {match.home_score}-{match.away_score} {away}
+          </span>
+        </div>
+
+        {/* Texte défilant : noms des gagnants */}
+        <div className="flex-1 overflow-hidden relative" style={{ maskImage: 'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)' }}>
+          <div className="winners-marquee whitespace-nowrap text-sm font-semibold text-white/90">
+            {/* Duplication pour effet défilement continu sans à-coup */}
+            <span className="inline-block px-3">⭐ {namesText}  •  ⭐ {namesText}  •  ⭐ {namesText}</span>
+          </div>
+        </div>
+
+        {/* Compteur total + bouton fermer */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-yellow-200/80 font-bold hidden md:inline">
+            {winners_count} {t('winners.label')}
+          </span>
+          <button
+            onClick={() => setDismissed(true)}
+            className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition text-sm"
+            aria-label={t('common.close')}
+            title={t('common.close')}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =====================================================
 // PWA INSTALL BANNER — invite à installer l'app
 // Discret, fermable, mémorisé via localStorage
 // Affiche un lien vers la FAQ pour les utilisateurs qui ne savent pas comment
@@ -5413,6 +5492,9 @@ export default function App() {
 
       {/* Bandeau LIVE : affiche le(s) match(s) en cours en temps réel */}
       <LiveScoreBanner matches={matches} />
+
+      {/* Bandeau "wall of fame" : pronostiqueurs ayant trouvé le score exact du dernier match */}
+      <LastMatchWinnersBanner />
 
       {/* Bandeau discret : nombre de personnes en ligne */}
       <OnlineStatsBar />

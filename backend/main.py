@@ -1516,6 +1516,79 @@ _purge_thread = threading.Thread(target=_purge_online_worker, daemon=True)
 _purge_thread.start()
 
 
+@app.get("/api/stats/last-match-winners")
+def stats_last_match_winners(response: Response):
+    """Renvoie le dernier match terminé + les pronostiqueurs qui ont prédit le score exact.
+
+    USAGE FRONTEND : bandeau défilant qui met en avant les gagnants pour créer
+    une dynamique sociale (effet "wall of fame").
+
+    LOGIQUE :
+    1. Trouve le match le plus récemment terminé (status='finished')
+    2. Récupère tous les pronostiqueurs qui ont prédit EXACTEMENT le score réel
+    3. Limite à 50 noms (au-delà le défilé devient long et illisible)
+
+    Cache 5 minutes (les résultats ne changent plus une fois finis).
+    Sécurité : on ne retourne QUE le username, pas l'email/avatar/etc.
+    """
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+
+    cached = cache_get("stats:last_match_winners")
+    if cached is not None:
+        return cached
+
+    with get_db() as db:
+        # Dernier match terminé (le plus récent, par match_date desc)
+        match = db.execute("""
+            SELECT id, home_team, away_team, home_score, away_score, match_date
+            FROM matches
+            WHERE status='finished'
+            ORDER BY match_date DESC
+            LIMIT 1
+        """).fetchone()
+
+        if not match:
+            result = {"match": None, "winners": [], "winners_count": 0}
+            cache_set("stats:last_match_winners", result, ttl_seconds=300)
+            return result
+
+        # Pronostiqueurs qui ont prédit EXACTEMENT le bon score
+        # Ordre : récent d'abord (pour varier les noms affichés)
+        winners = db.execute("""
+            SELECT u.username, p.created_at
+            FROM predictions p
+            JOIN users u ON u.id = p.user_id
+            WHERE p.match_id = ? AND p.home_score = ? AND p.away_score = ?
+              AND u.role != 'admin'
+            ORDER BY p.id DESC
+            LIMIT 50
+        """, (match["id"], match["home_score"], match["away_score"])).fetchall()
+
+        # Compteur total (sans la limite, pour afficher "X au total")
+        total_count = db.execute("""
+            SELECT COUNT(*)
+            FROM predictions p
+            JOIN users u ON u.id = p.user_id
+            WHERE p.match_id = ? AND p.home_score = ? AND p.away_score = ?
+              AND u.role != 'admin'
+        """, (match["id"], match["home_score"], match["away_score"])).fetchone()[0]
+
+        result = {
+            "match": {
+                "id": match["id"],
+                "home_team": match["home_team"],
+                "away_team": match["away_team"],
+                "home_score": match["home_score"],
+                "away_score": match["away_score"],
+                "match_date": match["match_date"],
+            },
+            "winners": [w["username"] for w in winners],
+            "winners_count": total_count,
+        }
+        cache_set("stats:last_match_winners", result, ttl_seconds=300)
+        return result
+
+
 @app.get("/api/stats/online")
 def stats_online(response: Response):
     """Renvoie les stats live du site :
