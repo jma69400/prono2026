@@ -1531,7 +1531,7 @@ def stats_last_match_winners(response: Response):
     Cache 5 minutes (les résultats ne changent plus une fois finis).
     Sécurité : on ne retourne QUE le username, pas l'email/avatar/etc.
     """
-    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=120"
 
     cached = cache_get("stats:last_match_winners")
     if cached is not None:
@@ -1549,7 +1549,7 @@ def stats_last_match_winners(response: Response):
 
         if not match:
             result = {"match": None, "winners": [], "winners_count": 0}
-            cache_set("stats:last_match_winners", result, ttl_seconds=300)
+            cache_set("stats:last_match_winners", result, ttl_seconds=60)
             return result
 
         # Pronostiqueurs qui ont prédit EXACTEMENT le bon score
@@ -1585,7 +1585,9 @@ def stats_last_match_winners(response: Response):
             "winners": [w["username"] for w in winners],
             "winners_count": total_count,
         }
-        cache_set("stats:last_match_winners", result, ttl_seconds=300)
+        # Cache court (60s) pour que le bandeau se mette a jour rapidement
+        # quand un nouveau match se termine
+        cache_set("stats:last_match_winners", result, ttl_seconds=60)
         return result
 
 

@@ -355,7 +355,15 @@ function PredictionsCountBadge() {
 function LastMatchWinnersBanner() {
   const { t, lang } = useTranslation()
   const [data, setData] = useState(null)
-  const [dismissed, setDismissed] = useState(false)
+  // On stocke l'ID du match dont l'utilisateur a fermé le bandeau.
+  // Si un nouveau match termine (autre ID), le bandeau ré-apparait.
+  // Mémorisé en localStorage pour persister entre refresh.
+  const [dismissedMatchId, setDismissedMatchId] = useState(() => {
+    try {
+      const stored = localStorage.getItem('winners_banner_dismissed_match_id')
+      return stored ? parseInt(stored, 10) : null
+    } catch { return null }
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -368,14 +376,16 @@ function LastMatchWinnersBanner() {
       }
     }
     fetchData()
-    // Refresh toutes les 5 minutes (les résultats ne changent plus une fois finis,
-    // mais on rafraîchit pour suivre le match suivant qui se termine)
-    const interval = setInterval(fetchData, 300000)
+    // Refresh toutes les 60 secondes pour reactivite quand un match termine.
+    // Le backend cache 60s aussi → max 2 min de latence cumulee = acceptable.
+    const interval = setInterval(fetchData, 60000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [])
 
-  // Pas de bandeau si pas de match terminé OU pas de gagnant OU si user a fermé
-  if (dismissed || !data || !data.match || data.winners.length === 0) return null
+  // Conditions pour cacher : pas de data, pas de match, pas de gagnants,
+  // OU le user a explicitement ferme ce match precis (autres matchs = ré-affichage)
+  if (!data || !data.match || data.winners.length === 0) return null
+  if (dismissedMatchId === data.match.id) return null
 
   const { match, winners, winners_count } = data
   const home = match.home_team
@@ -384,6 +394,11 @@ function LastMatchWinnersBanner() {
   // Construit la liste de noms à afficher (en boucle pour effet défilant continu)
   // On duplique la liste pour que la transition CSS soit fluide
   const namesText = winners.join('  •  ')
+
+  const handleDismiss = () => {
+    setDismissedMatchId(match.id)
+    try { localStorage.setItem('winners_banner_dismissed_match_id', String(match.id)) } catch {}
+  }
 
   return (
     <div className="bg-gradient-to-r from-yellow-500/15 via-orange-500/10 to-yellow-500/15 border-b border-yellow-400/30 overflow-hidden">
@@ -413,7 +428,7 @@ function LastMatchWinnersBanner() {
             {winners_count} {t('winners.label')}
           </span>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={handleDismiss}
             className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded transition text-sm"
             aria-label={t('common.close')}
             title={t('common.close')}
