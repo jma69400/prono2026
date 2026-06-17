@@ -17,10 +17,12 @@ const FAQ_DATA = {
       items: [
         {
           q: 'Comment créer un compte ?',
+          tag: 'create-account',
           a: 'Clique sur le bouton "S\'inscrire" en haut à droite. Tu peux choisir entre 3 modes : Joueur Solo (jouer seul), Leader (créer un groupe avec tes amis/collègues), ou Membre (rejoindre un groupe existant). L\'inscription est 100% gratuite.',
         },
         {
           q: 'Le site est-il vraiment gratuit ?',
+          tag: 'is-free',
           a: 'Oui, totalement gratuit. Pas d\'abonnement, pas de pub, pas d\'achat intégré. United Pronos vit uniquement grâce aux dons volontaires des utilisateurs qui veulent soutenir le projet.',
         },
         {
@@ -39,6 +41,7 @@ const FAQ_DATA = {
       items: [
         {
           q: 'Jusqu\'à quand puis-je saisir ou modifier mon pronostic ?',
+          tag: 'when-predict',
           a: `Tu peux saisir ou modifier ton pronostic **jusqu'à 5 minutes avant le coup d'envoi du match**.
 
 ⏰ **Pourquoi 5 minutes et pas pile au coup d'envoi ?**
@@ -57,10 +60,12 @@ const FAQ_DATA = {
         },
         {
           q: 'Comment fonctionnent les pronostics ?',
+          tag: 'how-predict',
           a: 'Pour chaque match, tu prédis le score exact (ex: 2-1). Tu peux modifier ton pronostic jusqu\'à 5 minutes avant le coup d\'envoi du match. Une fois ce délai passé, tes prédictions sont verrouillées.',
         },
         {
           q: 'Comment sont calculés les points ?',
+          tag: 'how-points',
           a: 'Score exact (ex: 2-1 et tu as misé 2-1) = 5 points. Bon vainqueur + bonne différence de buts (ex: 3-2 et tu as misé 2-1) = 3 points. Bon vainqueur seulement = 1 point. Mauvaise prédiction = 0 point.',
         },
         {
@@ -90,6 +95,7 @@ Les pronostics ne deviennent visibles **qu'au coup d'envoi du match**. Avant, il
         },
         {
           q: 'Que se passe-t-il en cas de prolongations ou tirs au but ?',
+          tag: 'extra-time',
           a: 'Le score retenu est celui à la fin du temps réglementaire (90 minutes + arrêts de jeu), pas après prolongations ou tirs au but. C\'est la règle standard FIFA.',
         },
         {
@@ -156,10 +162,12 @@ Si ça ne marche toujours pas, écris-nous via le formulaire de contact, on t'ai
       items: [
         {
           q: 'Comment créer un groupe ?',
+          tag: 'create-group',
           a: 'Inscris-toi en tant que "Leader" pour créer ton groupe. Tu pourras personnaliser le nom, ajouter un logo, et inviter tes amis/collègues avec un code d\'invitation unique ou un lien direct.',
         },
         {
           q: 'Comment inviter mes amis ou collègues à rejoindre mon groupe ?',
+          tag: 'invite-friends',
           a: `Tu as 3 façons d'inviter des personnes dans ton groupe :
 
 1. **Partage le lien direct** (le plus simple) : Va dans l'onglet "Mon Groupe", tu y trouveras ton lien d'invitation au format "unitedpronos.com/join/TONCODE". Clique sur "Copier le lien" et partage-le par WhatsApp, SMS, Slack, Teams, Discord ou email. La personne qui clique arrive directement sur la page d'inscription avec ton groupe déjà sélectionné.
@@ -177,6 +185,7 @@ Si ça ne marche toujours pas, écris-nous via le formulaire de contact, on t'ai
         },
         {
           q: 'Comment rejoindre un groupe existant ?',
+          tag: 'join-group',
           a: 'Demande le code d\'invitation ou le lien à ton ami(e) leader. Inscris-toi en tant que "Membre" en utilisant ce code. Tu seras automatiquement ajouté au groupe.',
         },
         {
@@ -234,6 +243,7 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       items: [
         {
           q: 'Comment contacter le support ?',
+          tag: 'contact-support',
           a: 'Tu as 2 options : (1) Si tu es connecté, clique sur le bouton 💬 flottant en bas à droite pour démarrer une conversation directe avec l\'équipe. (2) Si tu n\'es pas connecté, utilise le bouton ✉️ Contact en haut.',
         },
         {
@@ -256,6 +266,7 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       items: [
         {
           q: 'Comment fonctionne le classement des groupes ?',
+          tag: 'groups-ranking',
           a: 'Le classement des groupes utilise une formule équilibrée : Score = Moyenne par membre × (1 + log10(membres actifs)). Cette formule récompense à la fois la performance moyenne du groupe ET son engagement collectif. Un petit groupe ultra-performant peut donc battre un gros groupe peu actif. Les groupes avec moins de 2 membres actifs sont exclus du classement. Détails complets dans l\'onglet "🏆 Groupes".',
         },
         {
@@ -294,10 +305,12 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
         },
         {
           q: 'Comment supprimer mon compte ?',
+          tag: 'delete-account',
           a: 'Contacte le support via la chat-box 💬 pour demander la suppression de ton compte. Tes données seront supprimées sous 7 jours conformément au RGPD.',
         },
         {
           q: 'J\'ai oublié mon mot de passe',
+          tag: 'forgot-password',
           a: 'Sur l\'écran de connexion, clique sur "Mot de passe oublié ?". Tu recevras un email avec un lien pour le réinitialiser. Si tu ne reçois rien, vérifie tes spams ou contacte le support.',
         },
       ],
@@ -308,6 +321,7 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       items: [
         {
           q: 'Mes données sont-elles en sécurité ?',
+          tag: 'data-safety',
           a: 'Oui, nous prenons la sécurité très au sérieux : connexion HTTPS, mots de passe hashés (impossibles à voir même par nous), serveurs hébergés en Allemagne (Hetzner). Aucune donnée n\'est revendue à des tiers.',
         },
         {
@@ -316,6 +330,7 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
         },
         {
           q: 'Comment soutenir United Pronos ?',
+          tag: 'support-site',
           a: 'Si tu kiffes le site, tu peux faire un don ☕ via Ko-fi ou Stripe (en haut à droite). 100% des dons servent à payer le serveur et maintenir le site gratuit pour tous.',
         },
         {
@@ -340,10 +355,12 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       items: [
         {
           q: 'How do I create an account?',
+          tag: 'create-account',
           a: 'Click "Sign up" in the top right corner. You can choose between 3 modes: Solo Player (play alone), Leader (create a group with friends/colleagues), or Member (join an existing group). Registration is 100% free.',
         },
         {
           q: 'Is the site really free?',
+          tag: 'is-free',
           a: 'Yes, completely free. No subscription, no ads, no in-app purchases. United Pronos lives only through voluntary donations from users who want to support the project.',
         },
         {
@@ -362,6 +379,7 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
       items: [
         {
           q: 'Until when can I submit or change my prediction?',
+          tag: 'when-predict',
           a: `You can submit or change your prediction **up to 5 minutes before kick-off**.
 
 ⏰ **Why 5 minutes and not right at kick-off?**
@@ -380,10 +398,12 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
         },
         {
           q: 'How do predictions work?',
+          tag: 'how-predict',
           a: 'For each match, you predict the exact score (e.g., 2-1). You can modify your prediction up to 5 minutes before kick-off. Once that deadline passes, your predictions are locked.',
         },
         {
           q: 'How are points calculated?',
+          tag: 'how-points',
           a: 'Exact score (e.g., 2-1 predicted, 2-1 actual) = 5 points. Right winner + right goal difference (e.g., 3-2 actual, 2-1 predicted) = 3 points. Right winner only = 1 point. Wrong prediction = 0 points.',
         },
         {
@@ -413,6 +433,7 @@ Predictions only become visible **at kickoff**. Before that, they remain **stric
         },
         {
           q: 'What happens with extra time or penalties?',
+          tag: 'extra-time',
           a: 'The score considered is the one at the end of regular time (90 minutes + stoppage time), not after extra time or penalties. Standard FIFA rule.',
         },
         {
@@ -478,10 +499,12 @@ If it still doesn't work, write to us via the contact form, we'll help you!`,
       items: [
         {
           q: 'How do I create a group?',
+          tag: 'create-group',
           a: 'Sign up as "Leader" to create your group. You can customize the name, add a logo, and invite friends/colleagues with a unique invite code or direct link.',
         },
         {
           q: 'How do I invite friends or colleagues to join my group?',
+          tag: 'invite-friends',
           a: `You have 3 ways to invite people to your group:
 
 1. **Share the direct link** (easiest) : Go to the "My Group" tab where you'll find your invitation link in the format "unitedpronos.com/join/YOURCODE". Click "Copy link" and share it via WhatsApp, SMS, Slack, Teams, Discord or email. The person who clicks lands directly on the signup page with your group pre-selected.
@@ -499,6 +522,7 @@ If it still doesn't work, write to us via the contact form, we'll help you!`,
         },
         {
           q: 'How do I join an existing group?',
+          tag: 'join-group',
           a: 'Ask your leader friend for the invite code or link. Sign up as "Member" using this code. You\'ll be automatically added to the group.',
         },
         {
@@ -556,6 +580,7 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
       items: [
         {
           q: 'How do I contact support?',
+          tag: 'contact-support',
           a: 'You have 2 options: (1) If you\'re logged in, click the floating 💬 button at the bottom right to start a direct conversation with the team. (2) If not logged in, use the ✉️ Contact button at the top.',
         },
         {
@@ -578,6 +603,7 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
       items: [
         {
           q: 'How does the groups ranking work?',
+          tag: 'groups-ranking',
           a: 'The groups ranking uses a balanced formula: Score = Average per member × (1 + log10(active members)). It rewards both individual performance AND collective engagement. A small high-performing group can beat a large inactive one. Groups with fewer than 2 active members are excluded. Full details in the "🏆 Groups" tab.',
         },
         {
@@ -616,10 +642,12 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         },
         {
           q: 'How do I delete my account?',
+          tag: 'delete-account',
           a: 'Contact support via the 💬 chatbox to request account deletion. Your data will be deleted within 7 days in accordance with GDPR.',
         },
         {
           q: 'I forgot my password',
+          tag: 'forgot-password',
           a: 'On the login screen, click "Forgot password?". You\'ll receive an email with a link to reset it. If you don\'t receive anything, check your spam or contact support.',
         },
       ],
@@ -630,6 +658,7 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
       items: [
         {
           q: 'Is my data safe?',
+          tag: 'data-safety',
           a: 'Yes, we take security very seriously: HTTPS connection, hashed passwords (we can\'t even see them), servers hosted in Germany (Hetzner). No data is sold to third parties.',
         },
         {
@@ -638,6 +667,7 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         },
         {
           q: 'How can I support United Pronos?',
+          tag: 'support-site',
           a: 'If you love the site, you can donate ☕ via Ko-fi or Stripe (top right). 100% of donations pay for the server and keep the site free for everyone.',
         },
         {
@@ -666,6 +696,7 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         },
         {
           q: '¿El sitio es realmente gratis?',
+          tag: 'is-free',
           a: 'Sí, totalmente gratis. Sin suscripción, sin anuncios, sin compras integradas. United Pronos vive solo gracias a las donaciones voluntarias de los usuarios que quieren apoyar el proyecto.',
         },
         {
@@ -702,10 +733,12 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         },
         {
           q: '¿Cómo funcionan los pronósticos?',
+          tag: 'how-predict',
           a: 'Para cada partido, predices el resultado exacto (ej: 2-1). Puedes modificar tu pronóstico hasta 5 minutos antes del inicio del partido. Pasado ese plazo, tus predicciones se bloquean.',
         },
         {
           q: '¿Cómo se calculan los puntos?',
+          tag: 'how-points',
           a: 'Resultado exacto (ej: 2-1 pronosticado y real) = 5 puntos. Ganador correcto + diferencia correcta (ej: 3-2 real, 2-1 pronosticado) = 3 puntos. Solo ganador correcto = 1 punto. Pronóstico incorrecto = 0 puntos.',
         },
         {
@@ -735,6 +768,7 @@ Los pronósticos solo se vuelven visibles **al inicio del partido**. Antes, perm
         },
         {
           q: '¿Qué pasa con prórroga o penaltis?',
+          tag: 'extra-time',
           a: 'El resultado considerado es al final del tiempo reglamentario (90 minutos + tiempo añadido), no después de prórroga o penaltis. Regla estándar FIFA.',
         },
         {
@@ -800,6 +834,7 @@ Si no funciona, escríbenos por el formulario de contacto, ¡te ayudaremos!`,
       items: [
         {
           q: '¿Cómo creo un grupo?',
+          tag: 'create-group',
           a: 'Regístrate como "Líder" para crear tu grupo. Puedes personalizar el nombre, añadir logo, e invitar amigos/colegas con un código de invitación único o enlace directo.',
         },
         {
@@ -821,6 +856,7 @@ Si no funciona, escríbenos por el formulario de contacto, ¡te ayudaremos!`,
         },
         {
           q: '¿Cómo me uno a un grupo existente?',
+          tag: 'join-group',
           a: 'Pide el código de invitación o enlace a tu amigo líder. Regístrate como "Miembro" usando este código. Serás añadido automáticamente al grupo.',
         },
         {
@@ -900,6 +936,7 @@ Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, log
       items: [
         {
           q: '¿Cómo funciona la clasificación de grupos?',
+          tag: 'groups-ranking',
           a: 'La clasificación de grupos usa una fórmula equilibrada: Puntuación = Promedio por miembro × (1 + log10(miembros activos)). Recompensa tanto el rendimiento medio como el compromiso colectivo. Un grupo pequeño de alto rendimiento puede vencer a uno grande poco activo. Se excluyen los grupos con menos de 2 miembros activos. Detalles completos en la pestaña "🏆 Grupos".',
         },
         {
@@ -938,10 +975,12 @@ Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, log
         },
         {
           q: '¿Cómo elimino mi cuenta?',
+          tag: 'delete-account',
           a: 'Contacta con soporte vía el chat 💬 para solicitar la eliminación. Tus datos se eliminarán en 7 días según RGPD.',
         },
         {
           q: 'Olvidé mi contraseña',
+          tag: 'forgot-password',
           a: 'En la pantalla de login, haz clic en "¿Olvidaste tu contraseña?". Recibirás un email con un enlace para restablecerla. Si no recibes nada, revisa spam o contacta soporte.',
         },
       ],
@@ -952,6 +991,7 @@ Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, log
       items: [
         {
           q: '¿Mis datos están seguros?',
+          tag: 'data-safety',
           a: 'Sí, nos tomamos la seguridad muy en serio: conexión HTTPS, contraseñas hasheadas (ni siquiera nosotros podemos verlas), servidores alojados en Alemania (Hetzner). No se venden datos a terceros.',
         },
         {
@@ -960,6 +1000,7 @@ Una vez líder, ve a la pestaña **"Mi Grupo"** para crear tu grupo (nombre, log
         },
         {
           q: '¿Cómo puedo apoyar a United Pronos?',
+          tag: 'support-site',
           a: 'Si te encanta el sitio, puedes donar ☕ vía Ko-fi o Stripe (arriba a la derecha). El 100% de las donaciones pagan el servidor y mantienen el sitio gratis para todos.',
         },
         {
