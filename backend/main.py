@@ -3349,8 +3349,8 @@ TEAM_NAME_MAPPING = {
     "Egypt": ["Égypte", "Egypt", "Egipto", "EGY"],
     "Algeria": ["Algérie", "Algeria", "Argelia", "ALG", "DZA"],
     "Ghana": ["Ghana", "GHA"],
-    "DR Congo": ["RD Congo", "DR Congo", "DRC", "COD"],
-    "Cape Verde": ["Cap-Vert", "Cape Verde", "Cabo Verde", "CPV", "CV"],
+    "DR Congo": ["RD Congo", "DR Congo", "Congo DR", "DRC", "COD"],
+    "Cape Verde": ["Cap-Vert", "Cape Verde", "Cape Verde Islands", "Cabo Verde", "CPV", "CV"],
     # Asie
     "Japan": ["Japon", "Japan", "Japón", "JPN"],
     "South Korea": ["Corée du Sud", "South Korea", "Korea Republic", "Corea del Sur", "KOR"],

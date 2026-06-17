@@ -94,6 +94,27 @@ const FAQ_DATA = {
 Les pronostics ne deviennent visibles **qu'au coup d'envoi du match**. Avant, ils restent **strictement privés**, même pour le leader du groupe. Pourquoi ? Pour éviter que quelqu'un puisse copier le pronostic du meilleur joueur juste avant le verrouillage.`,
         },
         {
+          q: 'Pourquoi les scores LIVE ont-ils 5 à 15 minutes de retard ?',
+          tag: 'live-delay',
+          a: `Notre source de données sportives (Football-Data.org) est **gratuite** et met les scores à jour avec **5 à 15 minutes de délai**.
+
+**Pourquoi ce délai ?**
+Les APIs sportives en temps réel coûtent entre 25 et 500 €/mois selon les fournisseurs. Pour rester **100% gratuit pour vous**, nous utilisons une source gratuite qui actualise ses données par lot.
+
+**Est-ce que ça change quelque chose pour mes pronostics ?**
+**Non, absolument pas !** Tous les pronostics sont comptabilisés correctement à la fin du match. Le délai n'affecte que l'affichage en direct, pas le scoring.
+
+**Comment savoir le score réel en direct ?**
+- 📺 Regarde le match à la TV ou en streaming
+- 🌐 Va sur un site spécialisé (L'Équipe, Goal, BeIN Sports...)
+- 📱 Active les notifications de ta fédération sportive
+
+**Et si vous payiez une API temps réel ?**
+Ça coûterait ~25-50 €/mois pendant le Mondial. Si United Pronos devient suffisamment populaire, on envisagera cet investissement. En attendant, on a fait le choix de la gratuité totale pour tout le monde.
+
+Merci pour votre compréhension ! 🙏`,
+        },
+        {
           q: 'Que se passe-t-il en cas de prolongations ou tirs au but ?',
           tag: 'extra-time',
           a: 'Le score retenu est celui à la fin du temps réglementaire (90 minutes + arrêts de jeu), pas après prolongations ou tirs au but. C\'est la règle standard FIFA.',
@@ -432,6 +453,24 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
 Predictions only become visible **at kickoff**. Before that, they remain **strictly private**, even for the group leader. Why? To prevent anyone from copying the top player's prediction just before lock-in.`,
         },
         {
+          q: 'Why do LIVE scores have a 5-15 minute delay?',
+          tag: 'live-delay',
+          a: `Our sports data source (Football-Data.org) is **free** and updates scores with a **5 to 15 minute delay**.
+
+**Why this delay?**
+Real-time sports APIs cost between €25 and €500/month depending on the provider. To keep United Pronos **100% free for you**, we use a free source that updates data in batches.
+
+**Does this affect my predictions?**
+**Not at all!** All predictions are correctly tallied at the end of the match. The delay only affects the live display, not the scoring.
+
+**How can I know the real-time score?**
+- 📺 Watch the match on TV or streaming
+- 🌐 Go to a specialized website (ESPN, Goal, Sky Sports...)
+- 📱 Enable notifications from your sports federation
+
+Thank you for your understanding! 🙏`,
+        },
+        {
           q: 'What happens with extra time or penalties?',
           tag: 'extra-time',
           a: 'The score considered is the one at the end of regular time (90 minutes + stoppage time), not after extra time or penalties. Standard FIFA rule.',
@@ -765,6 +804,24 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
 
 🤝 **Regla de juego limpio estricta**:
 Los pronósticos solo se vuelven visibles **al inicio del partido**. Antes, permanecen **estrictamente privados**, incluso para el líder del grupo. ¿Por qué? Para evitar que alguien copie el pronóstico del mejor jugador justo antes del cierre.`,
+        },
+        {
+          q: '¿Por qué los resultados EN VIVO tienen un retraso de 5-15 minutos?',
+          tag: 'live-delay',
+          a: `Nuestra fuente de datos deportivos (Football-Data.org) es **gratuita** y actualiza los resultados con un **retraso de 5 a 15 minutos**.
+
+**¿Por qué este retraso?**
+Las APIs deportivas en tiempo real cuestan entre 25 y 500 €/mes según el proveedor. Para mantener United Pronos **100% gratis para ti**, usamos una fuente gratuita que actualiza los datos por lotes.
+
+**¿Afecta esto a mis pronósticos?**
+**¡En absoluto!** Todos los pronósticos se calculan correctamente al final del partido. El retraso solo afecta a la visualización en directo, no a la puntuación.
+
+**¿Cómo saber el resultado en tiempo real?**
+- 📺 Mira el partido en TV o streaming
+- 🌐 Ve a una web especializada (Marca, AS, ESPN...)
+- 📱 Activa las notificaciones de tu federación deportiva
+
+¡Gracias por tu comprensión! 🙏`,
         },
         {
           q: '¿Qué pasa con prórroga o penaltis?',

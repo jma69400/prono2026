@@ -613,6 +613,14 @@ function LiveScoreBanner({ matches }) {
               )
             })}
           </div>
+
+          {/* Info transparence : scores en differe par notre source de donnees gratuite */}
+          <div
+            className="ml-auto text-[10px] sm:text-xs text-red-100/60 italic shrink-0 hidden md:block cursor-help"
+            title={t('live.delayTooltip')}
+          >
+            ⓘ {t('live.delayInfo')}
+          </div>
         </div>
       </div>
     </div>
