@@ -2278,11 +2278,60 @@ def admin_delete_user(
         try:
             db.execute("DELETE FROM contact_messages WHERE user_id=?", (user_id,))
         except Exception:
-            pass  # Table peut ne pas exister selon migrations
+            pass
 
-        # Si l'utilisateur est leader d'un groupe, on désigne le groupe comme "orphelin"
-        # (on ne supprime PAS le groupe pour ne pas pénaliser les autres membres)
-        db.execute("UPDATE groups SET leader_id=NULL WHERE leader_id=?", (user_id,))
+        # Messages Kop United postés par cet utilisateur
+        try:
+            db.execute("DELETE FROM kop_messages WHERE user_id=?", (user_id,))
+            # Aussi : si l'user a deleted_by sur des messages, on remet à NULL
+            db.execute("UPDATE kop_messages SET deleted_by=NULL WHERE deleted_by=?", (user_id,))
+        except Exception:
+            pass
+
+        # === GESTION DU LEADERSHIP DE GROUPE ===
+        # La colonne groups.leader_id est NOT NULL → on ne peut pas mettre NULL.
+        # Stratégie : pour chaque groupe dont cet user est leader, on cherche un
+        # nouveau leader parmi les autres membres (celui avec le plus de pronos).
+        # Si pas d'autre membre, on supprime le groupe (il n'a plus de raison d'exister).
+        leader_groups = db.execute(
+            "SELECT id, name FROM groups WHERE leader_id=?",
+            (user_id,)
+        ).fetchall()
+
+        for grp in leader_groups:
+            grp_id = grp["id"]
+            grp_name = grp["name"]
+
+            # Cherche un nouveau leader parmi les autres membres du groupe
+            # Critères : pas l'user supprimé, plus de pronos = plus engagé
+            new_leader = db.execute("""
+                SELECT u.id, u.username, COUNT(p.id) AS preds
+                FROM users u
+                LEFT JOIN predictions p ON p.user_id = u.id
+                WHERE u.group_id = ? AND u.id != ?
+                GROUP BY u.id
+                ORDER BY preds DESC, u.id ASC
+                LIMIT 1
+            """, (grp_id, user_id)).fetchone()
+
+            if new_leader:
+                # Promouvoir ce membre comme nouveau leader
+                db.execute(
+                    "UPDATE groups SET leader_id=? WHERE id=?",
+                    (new_leader["id"], grp_id)
+                )
+                # Le promouvoir aussi côté users (role = leader)
+                db.execute(
+                    "UPDATE users SET role='leader' WHERE id=?",
+                    (new_leader["id"],)
+                )
+                print(f"[DELETE_USER] Groupe '{grp_name}' (#{grp_id}) : nouveau leader = {new_leader['username']} (#{new_leader['id']})")
+            else:
+                # Aucun autre membre → on supprime le groupe et nettoie les references
+                # (pas de membres actifs = pas de raison de garder ce groupe)
+                db.execute("UPDATE users SET group_id=NULL WHERE group_id=?", (grp_id,))
+                db.execute("DELETE FROM groups WHERE id=?", (grp_id,))
+                print(f"[DELETE_USER] Groupe '{grp_name}' (#{grp_id}) supprimé (plus de membre)")
 
         # Suppression du user lui-même
         db.execute("DELETE FROM users WHERE id=?", (user_id,))
@@ -2290,7 +2339,8 @@ def admin_delete_user(
         # 4. Log d'audit ANONYMISÉ (RGPD : pas d'email/username, juste l'ID)
         log_action(
             user["id"], "delete_user_gdpr",
-            f"user_id={user_id} email_sent={email_sent} reason={'yes' if reason else 'none'}",
+            f"user_id={user_id} email_sent={email_sent} reason={'yes' if reason else 'none'} "
+            f"groups_handled={len(leader_groups)}",
             db=db
         )
 
