@@ -18,7 +18,13 @@ import { api } from './api'
 import { useTranslation } from './i18n.jsx'
 
 const MAX_LENGTH = 280
-const POLL_INTERVAL_MS = 7000  // 7 secondes, équilibre fluidité/charge serveur
+const POLL_INTERVAL_MS = 3000  // 3 secondes : style chat live, plus reactif
+const MAX_MESSAGES_DISPLAYED = 50  // Limite affichage pour performance
+const SLOW_MODE_SECONDS = 3  // Anti-spam : 3s entre 2 messages d'un meme user
+
+// Emojis de reaction rapide (style TikTok Live / Twitch)
+// Doit matcher EXACTEMENT ALLOWED_REACTIONS cote backend
+const QUICK_REACTIONS = ['❤️', '🔥', '👏', '😂', '⚽']
 
 /**
  * Parse le contenu d'un message Kop et génère du JSX avec liens cliquables.
@@ -189,6 +195,42 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
     }
   }
 
+  /**
+   * Ajoute ou retire une reaction emoji sur un message (toggle).
+   * Optimistic UI : on met à jour immédiatement le state local pour fluidité,
+   * puis on appelle l'API. Si l'API échoue, on revert.
+   */
+  const handleReact = async (msgId, emoji) => {
+    if (!user || isGuest) {
+      onLoginPrompt?.()
+      return
+    }
+
+    // Snapshot pour rollback en cas d'erreur
+    const previousMessages = messages
+
+    // Mise a jour optimiste du state
+    setMessages(prev => prev.map(m => {
+      if (m.id !== msgId) return m
+      const myReactions = m.my_reactions || []
+      const reactions = { ...(m.reactions || {}) }
+      const hadIt = myReactions.includes(emoji)
+      // Toggle
+      const newMyReactions = hadIt ? myReactions.filter(e => e !== emoji) : [...myReactions, emoji]
+      reactions[emoji] = (reactions[emoji] || 0) + (hadIt ? -1 : 1)
+      // Si compteur 0, on retire la clé pour propreté
+      if (reactions[emoji] <= 0) delete reactions[emoji]
+      return { ...m, reactions, my_reactions: newMyReactions }
+    }))
+
+    try {
+      await api.kopReact(msgId, emoji)
+    } catch (e) {
+      // Rollback en cas d'erreur (rare)
+      setMessages(previousMessages)
+    }
+  }
+
   const handleKeyDown = (e) => {
     // Entrée = envoi, Shift+Entrée = nouvelle ligne (mais on ne supporte qu'une ligne ici)
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -233,18 +275,42 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
     } catch { return '' }
   }
 
+  // Compteur de personnes en ligne pour effet "chat live actif"
+  const [onlineCount, setOnlineCount] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    const fetchOnline = async () => {
+      try {
+        const r = await api.statsOnline()
+        if (!cancelled) setOnlineCount(r.online)
+      } catch {}
+    }
+    fetchOnline()
+    const interval = setInterval(fetchOnline, 15000)  // Refresh 15s
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
+
   return (
     <div className="max-w-3xl mx-auto px-2 sm:px-4 py-4">
-      {/* En-tête avec présentation et règles */}
+      {/* En-tête avec compteur live (style TikTok / Twitch) */}
       <div className="mb-4 p-4 bg-gradient-to-br from-sport-500/15 to-cta-500/10 border border-sport-400/30 rounded-2xl">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className="text-3xl">💬</span>
           <h2 className="text-2xl font-black bg-gradient-to-r from-brand-orange to-brand-pink bg-clip-text text-transparent">
             Kop United
           </h2>
-          <span className="ml-auto text-xs px-2 py-0.5 bg-cta-500/20 text-cta-200 border border-cta-400/40 rounded-full font-bold">
-            ✨ NEW
-          </span>
+          {/* Compteur live "X regardent" — effet preuve sociale */}
+          {onlineCount !== null && onlineCount > 0 && (
+            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-red-500/15 border border-red-400/30 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="text-xs font-bold text-red-200">
+                {onlineCount} {t('kop.watchingNow')}
+              </span>
+            </div>
+          )}
         </div>
         <p className="text-sm text-white/70 leading-relaxed">
           {t('kop.intro')}
@@ -271,11 +337,13 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
             <p className="text-xs mt-1">{t('kop.emptySub')}</p>
           </div>
         ) : (
-          messages.map(msg => {
+          // Limite à 50 messages affichés (les plus récents)
+          // Animation slide-up pour les nouveaux messages
+          messages.slice(-MAX_MESSAGES_DISPLAYED).map(msg => {
             const isMine = user && msg.user_id === user.id
             const isAuthorAdmin = msg.role === 'admin'
             return (
-              <div key={msg.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
+              <div key={msg.id} className={`flex gap-2 kop-message-slide-up ${isMine ? 'flex-row-reverse' : ''}`}>
                 {/* Avatar */}
                 <div className="shrink-0">
                   {msg.avatar_data ? (
@@ -304,16 +372,65 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
                   }`}>
                     {renderMessageContent(msg.content, onFaqDeepLink)}
                   </div>
-                  {/* Bouton suppression : visible si message à soi OU admin */}
-                  {(isMine || isAdmin) && (
-                    <button
-                      onClick={() => handleDelete(msg.id)}
-                      className="ml-2 inline-block text-xs text-white/30 hover:text-red-400 transition mt-0.5"
-                      title={t('kop.delete')}
-                    >
-                      <Trash2 className="w-3 h-3 inline" />
-                    </button>
-                  )}
+
+                  {/* === BARRE DE REACTIONS === */}
+                  {/* Affiche les reactions deja posees (compteurs) + bouton "+" pour reagir */}
+                  <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'} flex-wrap`}>
+                    {/* Compteurs des reactions existantes */}
+                    {Object.entries(msg.reactions || {}).map(([emoji, count]) => {
+                      const hasReacted = (msg.my_reactions || []).includes(emoji)
+                      return (
+                        <button
+                          key={emoji}
+                          onClick={() => handleReact(msg.id, emoji)}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs transition ${
+                            hasReacted
+                              ? 'bg-cta-500/30 border border-cta-400/50 text-white'
+                              : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                          }`}
+                          title={t('kop.reactToggle')}
+                        >
+                          <span>{emoji}</span>
+                          <span className="font-bold">{count}</span>
+                        </button>
+                      )
+                    })}
+
+                    {/* Bouton "+ reagir" : ouvre un mini picker des 5 emojis rapides */}
+                    {user && !isGuest && (
+                      <div className="relative group">
+                        <button
+                          className="px-1.5 py-0.5 text-xs text-white/30 hover:text-white/70 transition"
+                          title={t('kop.reactAdd')}
+                        >
+                          +
+                        </button>
+                        {/* Popover des emojis (au hover/focus) */}
+                        <div className="absolute z-10 bottom-full left-0 mb-1 hidden group-hover:flex group-focus-within:flex bg-base-deep border border-white/15 rounded-lg shadow-2xl p-1 gap-0.5">
+                          {QUICK_REACTIONS.map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji) }}
+                              className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded text-base transition"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bouton suppression : visible si message à soi OU admin */}
+                    {(isMine || isAdmin) && (
+                      <button
+                        onClick={() => handleDelete(msg.id)}
+                        className="ml-1 text-white/30 hover:text-red-400 transition"
+                        title={t('kop.delete')}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )

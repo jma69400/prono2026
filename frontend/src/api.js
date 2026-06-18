@@ -83,6 +83,9 @@ export const api = {
   leaderboardGroupsLogos: (ids) => request(`/leaderboard/groups/logos?ids=${ids.join(',')}`),
   // Stats du dernier match termine + pronostiqueurs ayant trouve le score exact
   lastMatchWinners: () => request('/stats/last-match-winners'),
+
+  // Reactions emoji sur les messages Kop
+  kopReact: (messageId, emoji) => request(`/kop/messages/${messageId}/react?emoji=${encodeURIComponent(emoji)}`, { method: 'POST' }),
   // === Donations / Supporters ===
   donationsStats: () => request('/donations/stats'),
   declareDonation: () => request('/donations/declare', { method: 'POST' }),

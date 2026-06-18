@@ -334,6 +334,9 @@ const TRANSLATIONS = {
     'kop.justNow': "à l'instant",
     'kop.delete': 'Supprimer',
     'kop.deleteConfirm': 'Supprimer ce message ?',
+    'kop.reactAdd': 'Ajouter une réaction',
+    'kop.reactToggle': 'Cliquer pour ajouter/retirer cette réaction',
+    'kop.watchingNow': "personnes regardent",
 
     'matches.all': 'Tous', 'matches.progressTitle': 'Tes pronostics', 'matches.progressComplete': 'Tous tes pronostics sont saisis !', 'matches.progressAllDone': 'Bravo, rien à compléter ! 🎉', 'matches.progressMatches': 'matchs pronostiqués', 'matches.progressRemaining': 'restants', 'matches.progressShowMissing': 'Voir les matchs sans pronostic', 'matches.predFilterAll': 'Tous', 'matches.predFilterMissing': 'Sans prono', 'matches.predFilterDone': 'Pronostiqués', 'matches.cardNoPredBadge': 'Sans prono', 'matches.upcoming': 'À venir', 'matches.finished': 'Terminés', 'matches.live': 'EN DIRECT',
     'matches.aiPredict': 'IA prédit', 'matches.confidence': 'Confiance',
@@ -751,6 +754,9 @@ const TRANSLATIONS = {
     'kop.justNow': 'just now',
     'kop.delete': 'Delete',
     'kop.deleteConfirm': 'Delete this message?',
+    'kop.reactAdd': 'Add a reaction',
+    'kop.reactToggle': 'Click to add/remove this reaction',
+    'kop.watchingNow': "watching now",
 
     'matches.all': 'All', 'matches.progressTitle': 'Your predictions', 'matches.progressComplete': 'All your predictions are saved!', 'matches.progressAllDone': 'Well done, nothing left to do! 🎉', 'matches.progressMatches': 'matches predicted', 'matches.progressRemaining': 'remaining', 'matches.progressShowMissing': 'Show matches without prediction', 'matches.predFilterAll': 'All', 'matches.predFilterMissing': 'Missing', 'matches.predFilterDone': 'Predicted', 'matches.cardNoPredBadge': 'No prediction', 'matches.upcoming': 'Upcoming', 'matches.finished': 'Finished', 'matches.live': 'LIVE',
     'matches.aiPredict': 'AI predicts', 'matches.confidence': 'Confidence',
@@ -1168,6 +1174,9 @@ const TRANSLATIONS = {
     'kop.justNow': 'ahora mismo',
     'kop.delete': 'Eliminar',
     'kop.deleteConfirm': '¿Eliminar este mensaje?',
+    'kop.reactAdd': 'Añadir una reacción',
+    'kop.reactToggle': 'Clic para añadir/quitar esta reacción',
+    'kop.watchingNow': "están viendo ahora",
 
     'matches.all': 'Todos', 'matches.progressTitle': 'Tus pronósticos', 'matches.progressComplete': '¡Todos tus pronósticos están guardados!', 'matches.progressAllDone': '¡Bien hecho, nada que completar! 🎉', 'matches.progressMatches': 'partidos pronosticados', 'matches.progressRemaining': 'restantes', 'matches.progressShowMissing': 'Ver partidos sin pronóstico', 'matches.predFilterAll': 'Todos', 'matches.predFilterMissing': 'Sin prono', 'matches.predFilterDone': 'Pronosticados', 'matches.cardNoPredBadge': 'Sin prono', 'matches.upcoming': 'Próximos', 'matches.finished': 'Terminados', 'matches.live': 'EN VIVO',
     'matches.aiPredict': 'IA predice', 'matches.confidence': 'Confianza',

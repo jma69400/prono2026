@@ -397,6 +397,23 @@ def init_db():
         db.execute("CREATE INDEX IF NOT EXISTS idx_kop_user_created ON kop_messages(user_id, created_at DESC)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_kop_deleted ON kop_messages(is_deleted)")
 
+        # === Reactions emoji sur les messages Kop (1 user × 1 message × 1 emoji = unique) ===
+        # Permet aux utilisateurs de reagir rapidement avec un emoji sans avoir
+        # a taper un message complet. Style TikTok Live / Twitch chat.
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS kop_reactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                emoji TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(message_id, user_id, emoji),
+                FOREIGN KEY (message_id) REFERENCES kop_messages(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_kop_reactions_message ON kop_reactions(message_id)")
+
     # === Index APRÈS la migration (pour éviter "no such column: group_id") ===
     with get_db() as db:
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id)")
@@ -565,6 +582,22 @@ def decode_token(token: str) -> dict:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except JWTError:
         raise HTTPException(401, "Token invalide ou expiré")
+
+
+def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[dict]:
+    """Comme get_current_user mais retourne None si pas authentifié au lieu de raise.
+    Utilise pour les endpoints accessibles aux visiteurs ET aux users connectes.
+    """
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        user_id = int(payload["sub"])
+        with get_db() as db:
+            user = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            return dict(user) if user else None
+    except Exception:
+        return None
 
 
 def get_current_user(token: Optional[str] = Depends(oauth2_scheme)) -> dict:
@@ -4536,15 +4569,22 @@ class KopMessageIn(BaseModel):
 
 
 @app.get("/api/kop/messages")
-def kop_list_messages(response: Response, before_id: Optional[int] = None, limit: int = 50):
+def kop_list_messages(response: Response, before_id: Optional[int] = None, limit: int = 50,
+                       user_optional=Depends(get_current_user_optional)):
     """Liste paginée des messages du chat Kop United (du plus récent au plus ancien).
     - before_id : pour pagination "charger plus ancien" (cursor-based)
     - limit : 50 max par défaut, plafonné à 100
+
+    Renvoie aussi les réactions emoji agrégées par message :
+    - reactions : {emoji: count, ...} (ex: {"❤️": 12, "🔥": 3})
+    - my_reactions : [emoji, ...] (emojis que CET utilisateur a posés sur ce message)
     """
     limit = min(max(1, limit), 100)
     # Cache HTTP très court (3s) : les messages changent vite, mais on évite
     # quand même de marteler la BDD si plusieurs utilisateurs polent en même temps.
     response.headers["Cache-Control"] = "public, max-age=3"
+
+    current_user_id = user_optional["id"] if user_optional else None
 
     with get_db() as db:
         if before_id:
@@ -4570,10 +4610,93 @@ def kop_list_messages(response: Response, before_id: Optional[int] = None, limit
                 LIMIT ?
             """, (limit,)).fetchall()
 
+        # === Réactions agrégées par message (une seule requête pour TOUS les messages) ===
+        message_ids = [r["id"] for r in rows]
+        reactions_by_msg = {}
+        my_reactions_by_msg = {}
+
+        if message_ids:
+            placeholders = ','.join('?' * len(message_ids))
+            # Compte par message x emoji
+            for r in db.execute(
+                f"SELECT message_id, emoji, COUNT(*) AS n FROM kop_reactions "
+                f"WHERE message_id IN ({placeholders}) GROUP BY message_id, emoji",
+                message_ids
+            ).fetchall():
+                mid = r["message_id"]
+                if mid not in reactions_by_msg:
+                    reactions_by_msg[mid] = {}
+                reactions_by_msg[mid][r["emoji"]] = r["n"]
+
+            # Reactions de l'utilisateur courant (pour pouvoir highlight les emojis qu'il a deja)
+            if current_user_id:
+                for r in db.execute(
+                    f"SELECT message_id, emoji FROM kop_reactions "
+                    f"WHERE message_id IN ({placeholders}) AND user_id = ?",
+                    message_ids + [current_user_id]
+                ).fetchall():
+                    mid = r["message_id"]
+                    if mid not in my_reactions_by_msg:
+                        my_reactions_by_msg[mid] = []
+                    my_reactions_by_msg[mid].append(r["emoji"])
+
     # Renvoie dans l'ordre chronologique (plus ancien en haut) pour le rendu côté front
-    messages = [dict(r) for r in rows]
+    messages = []
+    for r in rows:
+        d = dict(r)
+        d["reactions"] = reactions_by_msg.get(d["id"], {})
+        d["my_reactions"] = my_reactions_by_msg.get(d["id"], [])
+        messages.append(d)
     messages.reverse()
     return {"messages": messages, "has_more": len(rows) == limit}
+
+
+# === REACTIONS EMOJI sur les messages Kop ===
+# Style TikTok Live : 1 tap suffit pour reagir, pas besoin de taper un message.
+# Liste des emojis autorises (whitelist pour eviter abus / encodage exotique)
+ALLOWED_REACTIONS = ['❤️', '🔥', '👏', '😂', '⚽']
+
+
+@app.post("/api/kop/messages/{message_id}/react")
+def kop_react(message_id: int, emoji: str, user=Depends(get_current_user)):
+    """Ajoute ou retire une reaction emoji sur un message Kop.
+    Toggle : si la reaction existe deja, on la supprime (1 tap pour ajouter, 1 pour enlever).
+    """
+    if emoji not in ALLOWED_REACTIONS:
+        raise HTTPException(400, "Emoji non autorise")
+
+    with get_db() as db:
+        # Verifier que le message existe et n'est pas supprime
+        msg = db.execute(
+            "SELECT id FROM kop_messages WHERE id = ? AND is_deleted = 0",
+            (message_id,)
+        ).fetchone()
+        if not msg:
+            raise HTTPException(404, "Message introuvable")
+
+        # Toggle : on essaie de supprimer (si existait, c'est fait ; sinon, INSERT)
+        existing = db.execute(
+            "SELECT id FROM kop_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?",
+            (message_id, user["id"], emoji)
+        ).fetchone()
+
+        if existing:
+            db.execute("DELETE FROM kop_reactions WHERE id = ?", (existing["id"],))
+            action = "removed"
+        else:
+            db.execute(
+                "INSERT INTO kop_reactions (message_id, user_id, emoji) VALUES (?, ?, ?)",
+                (message_id, user["id"], emoji)
+            )
+            action = "added"
+
+        # Compteur final pour cet emoji sur ce message
+        new_count = db.execute(
+            "SELECT COUNT(*) FROM kop_reactions WHERE message_id = ? AND emoji = ?",
+            (message_id, emoji)
+        ).fetchone()[0]
+
+    return {"ok": True, "action": action, "emoji": emoji, "count": new_count}
 
 
 @app.post("/api/kop/messages")

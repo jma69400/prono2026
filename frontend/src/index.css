@@ -341,3 +341,29 @@ nav .overflow-x-auto {
     text-align: center;
   }
 }
+
+/* ============================================================
+   KOP UNITED CHAT — Animation style TikTok Live
+   - Chaque nouveau message slide depuis le bas avec fade-in
+   ============================================================ */
+@keyframes kop-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kop-message-slide-up {
+  animation: kop-slide-up 400ms ease-out;
+}
+
+/* Respect accessibilite : pas d'animation si l'OS le demande */
+@media (prefers-reduced-motion: reduce) {
+  .kop-message-slide-up {
+    animation: none;
+  }
+}
