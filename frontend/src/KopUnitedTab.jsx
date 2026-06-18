@@ -327,7 +327,58 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
         </p>
       </div>
 
-      {/* Zone des messages */}
+      {/* Zone de saisie EN HAUT — plus accessible, ergonomie chat live moderne */}
+      <div className="mb-3">
+        {isGuest || !user ? (
+          <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
+            <p className="text-sm text-white/60 mb-2">{t('kop.loginPrompt')}</p>
+            <button onClick={onLoginPrompt}
+              className="px-4 py-2 bg-cta-500 hover:bg-cta-600 text-white rounded-lg text-sm font-bold transition">
+              {t('kop.loginButton')}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex gap-2 items-stretch">
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value.slice(0, MAX_LENGTH))}
+                onKeyDown={handleKeyDown}
+                placeholder={t('kop.placeholder')}
+                disabled={sending}
+                rows={1}
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 focus:border-green-400/50 focus:outline-none rounded-lg text-sm resize-none placeholder-white/30"
+                style={{ minHeight: '42px', maxHeight: '120px' }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={sending || !content.trim()}
+                className="px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition flex items-center justify-center"
+                title={t('kop.send')}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Compteur caractères + erreur */}
+            <div className="flex items-center justify-between mt-1.5 text-xs">
+              {error ? (
+                <span className="text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {error}
+                </span>
+              ) : (
+                <span className="text-white/40">{t('kop.hint')}</span>
+              )}
+              <span className={`font-mono ${
+                content.length > MAX_LENGTH - 20 ? 'text-amber-400' : 'text-white/40'
+              }`}>
+                {content.length} / {MAX_LENGTH}
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Zone des messages (en dessous de la saisie) */}
       <div
         ref={messagesContainerRef}
         className="bg-base-surface/40 border border-white/10 rounded-2xl overflow-y-auto p-3 space-y-2"
@@ -462,57 +513,6 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
               </div>
             )
           })
-        )}
-      </div>
-
-      {/* Zone de saisie */}
-      <div className="mt-3">
-        {isGuest || !user ? (
-          <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
-            <p className="text-sm text-white/60 mb-2">{t('kop.loginPrompt')}</p>
-            <button onClick={onLoginPrompt}
-              className="px-4 py-2 bg-cta-500 hover:bg-cta-600 text-white rounded-lg text-sm font-bold transition">
-              {t('kop.loginButton')}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-2 items-stretch">
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value.slice(0, MAX_LENGTH))}
-                onKeyDown={handleKeyDown}
-                placeholder={t('kop.placeholder')}
-                disabled={sending}
-                rows={1}
-                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 focus:border-sport-400/50 focus:outline-none rounded-lg text-sm resize-none placeholder-white/30"
-                style={{ minHeight: '42px', maxHeight: '120px' }}
-              />
-              <button
-                onClick={handleSend}
-                disabled={sending || !content.trim()}
-                className="px-4 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-bold transition flex items-center justify-center"
-                title={t('kop.send')}
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-            {/* Compteur caractères + erreur */}
-            <div className="flex items-center justify-between mt-1.5 text-xs">
-              {error ? (
-                <span className="text-red-400 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {error}
-                </span>
-              ) : (
-                <span className="text-white/40">{t('kop.hint')}</span>
-              )}
-              <span className={`font-mono ${
-                content.length > MAX_LENGTH - 20 ? 'text-amber-400' : 'text-white/40'
-              }`}>
-                {content.length} / {MAX_LENGTH}
-              </span>
-            </div>
-          </>
         )}
       </div>
     </div>
