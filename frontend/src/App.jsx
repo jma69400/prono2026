@@ -442,6 +442,144 @@ function LastMatchWinnersBanner() {
 }
 
 // =====================================================
+// LIVE UP PROMO MODAL — modale apparaissant a chaque login pendant 7 jours
+// Objectif : faire decouvrir le chat communautaire aux pronostiqueurs
+// Affichee :
+//   - Si l'utilisateur est connecte
+//   - Si la date actuelle est avant CAMPAIGN_END_DATE
+//   - Si l'utilisateur n'a pas deja vu la modale dans cette session (sessionStorage)
+//   - Si l'utilisateur n'a pas clique "Ne plus jamais afficher" (localStorage)
+// =====================================================
+// Date de fin de campagne : 7 jours apres deploiement (modifie au besoin)
+const LIVE_UP_CAMPAIGN_END = '2026-06-25T23:59:59Z'
+
+function LiveUpPromoModal({ user, onGoToLiveUp }) {
+  const { t } = useTranslation()
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    if (!user) return  // Pas connecte = pas de modale
+
+    // 1. La campagne est-elle encore active ?
+    const campaignEnd = new Date(LIVE_UP_CAMPAIGN_END).getTime()
+    if (Date.now() > campaignEnd) return  // Campagne expiree
+
+    // 2. L'utilisateur a-t-il deja desactive definitivement ?
+    try {
+      if (localStorage.getItem('live_up_promo_never_again_v1') === '1') return
+    } catch {}
+
+    // 3. Deja affichee dans cette session ?
+    try {
+      if (sessionStorage.getItem('live_up_promo_shown_session_v1') === '1') return
+    } catch {}
+
+    // OK, on affiche apres un court delai (laisse l'UI se charger)
+    const timer = setTimeout(() => {
+      setShown(true)
+      try { sessionStorage.setItem('live_up_promo_shown_session_v1', '1') } catch {}
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [user])
+
+  if (!shown) return null
+
+  const handleGoToLiveUp = () => {
+    setShown(false)
+    onGoToLiveUp?.()
+  }
+
+  const handleClose = () => {
+    setShown(false)
+  }
+
+  const handleNeverShowAgain = () => {
+    try { localStorage.setItem('live_up_promo_never_again_v1', '1') } catch {}
+    setShown(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div
+        className="relative max-w-md w-full bg-gradient-to-br from-green-900/95 via-emerald-900/95 to-base-deep border-2 border-green-400/50 rounded-2xl shadow-2xl shadow-green-500/30 p-6"
+        style={{ animation: 'kop-slide-up 400ms ease-out' }}
+      >
+        {/* Bouton fermer */}
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 rounded-full transition"
+          aria-label={t('common.close')}
+        >
+          ✕
+        </button>
+
+        {/* Logo / Point pulsant LIVE */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <span className="relative flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
+          </span>
+          <h2
+            className="text-3xl font-black tracking-tight"
+            style={{
+              color: '#22c55e',
+              textShadow: '0 0 20px rgba(34, 197, 94, 0.6)',
+            }}
+          >
+            LIVE UP
+          </h2>
+        </div>
+
+        {/* Titre accrocheur */}
+        <h3 className="text-xl font-bold text-white text-center mb-3">
+          {t('liveUpPromo.title')}
+        </h3>
+
+        {/* Texte invitatif */}
+        <p className="text-white/85 text-sm leading-relaxed mb-4 text-center">
+          {t('liveUpPromo.body')}
+        </p>
+
+        {/* Avantages list */}
+        <ul className="space-y-2 mb-5 text-sm text-white/80">
+          <li className="flex items-start gap-2">
+            <span className="text-green-400 mt-0.5">✓</span>
+            <span>{t('liveUpPromo.benefit1')}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-400 mt-0.5">✓</span>
+            <span>{t('liveUpPromo.benefit2')}</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-400 mt-0.5">✓</span>
+            <span>{t('liveUpPromo.benefit3')}</span>
+          </li>
+        </ul>
+
+        {/* CTA principal */}
+        <button
+          onClick={handleGoToLiveUp}
+          className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-black text-base rounded-xl shadow-lg shadow-green-500/30 transition transform hover:scale-105 active:scale-95"
+        >
+          🚀 {t('liveUpPromo.cta')}
+        </button>
+
+        {/* Footer : ne plus afficher */}
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleNeverShowAgain}
+            className="text-xs text-white/40 hover:text-white/70 underline transition"
+          >
+            {t('liveUpPromo.neverAgain')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // PWA INSTALL BANNER — invite à installer l'app
 // Discret, fermable, mémorisé via localStorage
 // Affiche un lien vers la FAQ pour les utilisateurs qui ne savent pas comment
@@ -5528,6 +5666,15 @@ export default function App() {
         setActiveTab('faq')
         window.scrollTo(0, 0)
       }} />
+
+      {/* Modale promo Live UP : invite a decouvrir le chat (campagne 7 jours) */}
+      <LiveUpPromoModal
+        user={user}
+        onGoToLiveUp={() => {
+          setActiveTab('kop')
+          window.scrollTo(0, 0)
+        }}
+      />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
