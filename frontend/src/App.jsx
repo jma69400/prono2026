@@ -464,9 +464,10 @@ function LiveUpPromoModal({ user, onGoToLiveUp }) {
     const campaignEnd = new Date(LIVE_UP_CAMPAIGN_END).getTime()
     if (Date.now() > campaignEnd) return  // Campagne expiree
 
-    // 2. L'utilisateur a-t-il deja desactive definitivement ?
+    // 2. L'utilisateur a-t-il clique "Plus tard" recemment ? (cache 24h)
     try {
-      if (localStorage.getItem('live_up_promo_never_again_v1') === '1') return
+      const snoozedUntil = parseInt(localStorage.getItem('live_up_promo_snoozed_until_v1') || '0', 10)
+      if (snoozedUntil > Date.now()) return  // Encore dans la periode de pause 24h
     } catch {}
 
     // 3. Deja affichee dans cette session ?
@@ -493,8 +494,13 @@ function LiveUpPromoModal({ user, onGoToLiveUp }) {
     setShown(false)
   }
 
-  const handleNeverShowAgain = () => {
-    try { localStorage.setItem('live_up_promo_never_again_v1', '1') } catch {}
+  const handleSnooze24h = () => {
+    // Cache la modale pour les 24 prochaines heures (pas pour toujours)
+    // Permet a l'utilisateur de "pas maintenant" sans tuer la conversion long-terme
+    try {
+      const snoozeUntil = Date.now() + (24 * 60 * 60 * 1000)  // +24h
+      localStorage.setItem('live_up_promo_snoozed_until_v1', String(snoozeUntil))
+    } catch {}
     setShown(false)
   }
 
@@ -564,13 +570,13 @@ function LiveUpPromoModal({ user, onGoToLiveUp }) {
           🚀 {t('liveUpPromo.cta')}
         </button>
 
-        {/* Footer : ne plus afficher */}
+        {/* Footer : reporter de 24h (snooze doux pour ne pas tuer la conversion) */}
         <div className="mt-4 text-center">
           <button
-            onClick={handleNeverShowAgain}
+            onClick={handleSnooze24h}
             className="text-xs text-white/40 hover:text-white/70 underline transition"
           >
-            {t('liveUpPromo.neverAgain')}
+            {t('liveUpPromo.snooze')}
           </button>
         </div>
       </div>
