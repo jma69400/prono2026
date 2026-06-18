@@ -93,24 +93,23 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
-  const wasAtBottomRef = useRef(true)
+  const wasAtTopRef = useRef(true)
 
   const isAdmin = user?.role === 'admin'
 
-  // Détection : l'utilisateur est-il déjà scrollé tout en bas ?
-  // Si oui, scroll auto en bas à chaque nouveau message. Sinon, on ne déplace pas
-  // (l'utilisateur lit l'historique, pas la peine de l'interrompre).
-  const checkIfAtBottom = () => {
+  // Détection : l'utilisateur est-il déjà scrollé tout en haut ?
+  // Si oui, scroll auto en haut à chaque nouveau message. Sinon, on ne déplace pas
+  // (l'utilisateur lit l'historique plus ancien, pas la peine de l'interrompre).
+  const checkIfAtTop = () => {
     const c = messagesContainerRef.current
     if (!c) return true
-    const threshold = 50  // tolérance 50px
-    return c.scrollHeight - c.scrollTop - c.clientHeight < threshold
+    return c.scrollTop < 50  // tolerance 50px
   }
 
-  const scrollToBottom = (smooth = false) => {
-    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' })
+  const scrollToTop = (smooth = false) => {
+    const c = messagesContainerRef.current
+    if (c) c.scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' })
   }
 
   // Chargement initial
@@ -120,7 +119,7 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
       // PROTECTION : si la réponse est vide ou invalide, on garde l'état actuel
       // (évite de "vider" l'historique sur erreur réseau transitoire)
       if (data && Array.isArray(data.messages)) {
-        wasAtBottomRef.current = checkIfAtBottom()
+        wasAtTopRef.current = checkIfAtTop()
         setMessages(data.messages)
       }
     } catch (e) {
@@ -132,7 +131,7 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
 
   useEffect(() => {
     fetchMessages()
-    scrollToBottom(false)
+    scrollToTop(false)
   }, [])
 
   // Polling avec pause si onglet caché
@@ -157,10 +156,10 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
     }
   }, [])
 
-  // Scroll auto en bas si l'utilisateur y était déjà
+  // Scroll auto en haut si l'utilisateur y était déjà
   useEffect(() => {
-    if (wasAtBottomRef.current) {
-      scrollToBottom(true)
+    if (wasAtTopRef.current) {
+      scrollToTop(true)
     }
   }, [messages.length])
 
@@ -277,6 +276,8 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
 
   // Compteur de personnes en ligne pour effet "chat live actif"
   const [onlineCount, setOnlineCount] = useState(null)
+  // ID du message dont le picker emoji est ouvert (null = aucun ouvert)
+  const [pickerOpenForMsg, setPickerOpenForMsg] = useState(null)
   useEffect(() => {
     let cancelled = false
     const fetchOnline = async () => {
@@ -292,22 +293,28 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
 
   return (
     <div className="max-w-3xl mx-auto px-2 sm:px-4 py-4">
-      {/* En-tête avec compteur live (style TikTok / Twitch) */}
-      <div className="mb-4 p-4 bg-gradient-to-br from-sport-500/15 to-cta-500/10 border border-sport-400/30 rounded-2xl">
+      {/* En-tête "LIVE UP" — vert néon style Spotify avec point pulsant */}
+      <div className="mb-4 p-4 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-green-500/15 border border-green-400/40 rounded-2xl shadow-lg shadow-green-500/10">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="text-3xl">💬</span>
-          <h2 className="text-2xl font-black bg-gradient-to-r from-brand-orange to-brand-pink bg-clip-text text-transparent">
-            Kop United
+          {/* Point pulsant vert (style Spotify online) */}
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+          </span>
+          <h2 className="text-2xl font-black tracking-tight" style={{
+            color: '#22c55e',
+            textShadow: '0 0 20px rgba(34, 197, 94, 0.5)',
+          }}>
+            LIVE UP
           </h2>
+          <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-200 border border-green-400/40 rounded-full font-bold">
+            EN DIRECT
+          </span>
           {/* Compteur live "X regardent" — effet preuve sociale */}
           {onlineCount !== null && onlineCount > 0 && (
-            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-red-500/15 border border-red-400/30 rounded-full">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              <span className="text-xs font-bold text-red-200">
-                {onlineCount} {t('kop.watchingNow')}
+            <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-green-500/15 border border-green-400/30 rounded-full">
+              <span className="text-xs font-bold text-green-200">
+                👀 {onlineCount} {t('kop.watchingNow')}
               </span>
             </div>
           )}
@@ -339,7 +346,9 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
         ) : (
           // Limite à 50 messages affichés (les plus récents)
           // Animation slide-up pour les nouveaux messages
-          messages.slice(-MAX_MESSAGES_DISPLAYED).map(msg => {
+          // Dernier message EN HAUT (style Twitter/Threads)
+          // On prend les 50 plus récents et on les affiche en ordre inversé
+          messages.slice(-MAX_MESSAGES_DISPLAYED).slice().reverse().map(msg => {
             const isMine = user && msg.user_id === user.id
             const isAuthorAdmin = msg.role === 'admin'
             return (
@@ -396,27 +405,45 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
                       )
                     })}
 
-                    {/* Bouton "+ reagir" : ouvre un mini picker des 5 emojis rapides */}
+                    {/* Bouton "+ reagir" : ouvre un picker des 5 emojis rapides (au CLIC) */}
                     {user && !isGuest && (
-                      <div className="relative group">
+                      <div className="relative">
                         <button
-                          className="px-1.5 py-0.5 text-xs text-white/30 hover:text-white/70 transition"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setPickerOpenForMsg(pickerOpenForMsg === msg.id ? null : msg.id)
+                          }}
+                          className="px-2 py-1 text-sm bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white/80 transition"
                           title={t('kop.reactAdd')}
                         >
-                          +
+                          + 😀
                         </button>
-                        {/* Popover des emojis (au hover/focus) */}
-                        <div className="absolute z-10 bottom-full left-0 mb-1 hidden group-hover:flex group-focus-within:flex bg-base-deep border border-white/15 rounded-lg shadow-2xl p-1 gap-0.5">
-                          {QUICK_REACTIONS.map(emoji => (
-                            <button
-                              key={emoji}
-                              onClick={(e) => { e.stopPropagation(); handleReact(msg.id, emoji) }}
-                              className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded text-base transition"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
+                        {/* Popover des emojis : ouvert au CLIC, gros boutons visibles */}
+                        {pickerOpenForMsg === msg.id && (
+                          <>
+                            {/* Backdrop : clic ailleurs ferme le picker */}
+                            <div
+                              className="fixed inset-0 z-30"
+                              onClick={() => setPickerOpenForMsg(null)}
+                            />
+                            <div className="absolute z-40 bottom-full left-0 mb-2 flex bg-gradient-to-b from-base-deep to-black border border-white/20 rounded-xl shadow-2xl p-2 gap-1">
+                              {QUICK_REACTIONS.map(emoji => (
+                                <button
+                                  key={emoji}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleReact(msg.id, emoji)
+                                    setPickerOpenForMsg(null)
+                                  }}
+                                  className="w-10 h-10 flex items-center justify-center hover:bg-white/15 active:scale-90 rounded-lg text-2xl transition shadow-md"
+                                  title={emoji}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -436,7 +463,6 @@ export default function KopUnitedTab({ user, isGuest, onLoginPrompt, onFaqDeepLi
             )
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Zone de saisie */}
