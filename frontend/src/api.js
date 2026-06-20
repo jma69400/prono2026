@@ -89,6 +89,9 @@ export const api = {
 
   // Bilan personnalise au login (modale festive avec points gagnes)
   meLoginSummary: () => request('/me/login-summary'),
+
+  // Liste des matchs recemment termines avec son prono (pour modale temps reel)
+  meRecentMatchResults: () => request('/me/recent-match-results'),
   // === Donations / Supporters ===
   donationsStats: () => request('/donations/stats'),
   declareDonation: () => request('/donations/declare', { method: 'POST' }),

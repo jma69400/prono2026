@@ -603,6 +603,206 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
 
 
 // =====================================================
+// MATCH RESULT MODAL — affichage en temps reel des resultats
+// Polling toutes les 30s pour detecter les matchs nouvellement termines
+// sur lesquels l'user a pronostique. Affiche une modale specifique par match.
+// L'user mémorise les match_ids deja vus dans localStorage pour ne pas
+// les revoir 50 fois.
+//
+// Particularite : queue d'affichage. Si 3 matchs terminent pendant son absence,
+// on affiche modale 1, puis modale 2, puis modale 3 sequentiellement.
+// =====================================================
+const SEEN_RESULTS_KEY = 'match_results_seen_v1'
+
+function MatchResultModal({ user }) {
+  const { t, lang } = useTranslation()
+  const [queue, setQueue] = useState([])  // File d'attente des matchs a afficher
+  const [current, setCurrent] = useState(null)  // Match actuellement affiche
+
+  // Charger les IDs deja vus depuis localStorage
+  const getSeen = () => {
+    try {
+      const raw = localStorage.getItem(SEEN_RESULTS_KEY)
+      return raw ? new Set(JSON.parse(raw)) : new Set()
+    } catch { return new Set() }
+  }
+
+  const markAsSeen = (matchId) => {
+    try {
+      const seen = getSeen()
+      seen.add(matchId)
+      // Limite a 100 IDs pour ne pas exploser localStorage
+      const arr = Array.from(seen).slice(-100)
+      localStorage.setItem(SEEN_RESULTS_KEY, JSON.stringify(arr))
+    } catch {}
+  }
+
+  // Fonction de fetch et filtrage
+  const fetchAndUpdate = async () => {
+    try {
+      const r = await api.meRecentMatchResults()
+      if (!r || !Array.isArray(r.results)) return
+      const seen = getSeen()
+      // Filtrer : on ne garde QUE ceux qu'on n'a pas vus
+      const newOnes = r.results.filter(item => !seen.has(item.match_id))
+      if (newOnes.length > 0) {
+        // Ordre chronologique (du plus ancien au plus recent)
+        // pour que l'user voie ses matchs dans le bon ordre
+        newOnes.sort((a, b) => a.match_date.localeCompare(b.match_date))
+        setQueue(prev => [...prev, ...newOnes])
+      }
+    } catch (e) {
+      // Silencieux (auth peut etre invalide, etc.)
+    }
+  }
+
+  // Polling : au mount + toutes les 30s
+  useEffect(() => {
+    if (!user) return
+    fetchAndUpdate()  // Immediate au login
+    const interval = setInterval(fetchAndUpdate, 30000)  // 30 secondes
+    return () => clearInterval(interval)
+  }, [user])
+
+  // Quand la queue change et qu'il n'y a pas de modale en cours, on prend le premier
+  useEffect(() => {
+    if (!current && queue.length > 0) {
+      setCurrent(queue[0])
+      setQueue(prev => prev.slice(1))
+    }
+  }, [queue, current])
+
+  if (!current) return null
+
+  const handleClose = () => {
+    // Marquer comme vu (ne pas reapparaitre)
+    markAsSeen(current.match_id)
+    setCurrent(null)
+    // Si d'autres dans la queue, ils s'afficheront via le useEffect ci-dessus
+  }
+
+  // Config visuelle selon la categorie de resultat
+  const config = {
+    exact: {
+      emoji: '🎯',
+      title: t('matchResult.titleExact'),
+      gradient: 'from-yellow-400 to-orange-500',
+      message: t('matchResult.msgExact'),
+      bgGradient: 'from-yellow-900/40 via-orange-900/30 to-base-deep',
+      borderColor: 'border-yellow-400/50',
+    },
+    winner_diff: {
+      emoji: '🥇',
+      title: t('matchResult.titleWinnerDiff'),
+      gradient: 'from-sport-400 to-sport-600',
+      message: t('matchResult.msgWinnerDiff'),
+      bgGradient: 'from-green-900/40 via-emerald-900/30 to-base-deep',
+      borderColor: 'border-green-400/50',
+    },
+    winner: {
+      emoji: '✅',
+      title: t('matchResult.titleWinner'),
+      gradient: 'from-sport-400 to-emerald-500',
+      message: t('matchResult.msgWinner'),
+      bgGradient: 'from-emerald-900/30 via-base-surface to-base-deep',
+      borderColor: 'border-emerald-400/40',
+    },
+    wrong: {
+      emoji: '😬',
+      title: t('matchResult.titleWrong'),
+      gradient: 'from-cta-400 to-cta-600',
+      message: t('matchResult.msgWrong'),
+      bgGradient: 'from-orange-900/30 via-red-900/20 to-base-deep',
+      borderColor: 'border-orange-400/40',
+    },
+  }
+  const cfg = config[current.category] || config.wrong
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div
+        className={`relative max-w-md w-full bg-gradient-to-br ${cfg.bgGradient} border-2 ${cfg.borderColor} rounded-2xl shadow-2xl p-6`}
+        style={{ animation: 'kop-slide-up 400ms ease-out' }}
+      >
+        {/* Bouton fermer */}
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 rounded-full transition z-10"
+          aria-label={t('common.close')}
+        >
+          ✕
+        </button>
+
+        {/* Header festif */}
+        <div className="text-center mb-5">
+          <div className="text-6xl mb-3" style={{ animation: 'kop-slide-up 600ms ease-out 200ms both' }}>
+            {cfg.emoji}
+          </div>
+          <h2 className={`text-2xl font-black bg-gradient-to-r ${cfg.gradient} bg-clip-text text-transparent`}>
+            {cfg.title}
+          </h2>
+        </div>
+
+        {/* Score : ton prono vs vrai score */}
+        <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-4">
+          <div className="text-xs text-white/50 uppercase tracking-wide mb-2 text-center">
+            {current.home_team} vs {current.away_team}
+          </div>
+          <div className="flex items-center justify-center gap-4 text-center">
+            {/* Ton prono */}
+            <div>
+              <div className="text-xs text-white/50 mb-1">{t('matchResult.yourPred')}</div>
+              <div className="text-2xl font-black text-white/80">{current.my_score}</div>
+            </div>
+            <div className="text-white/30">vs</div>
+            {/* Vrai score */}
+            <div>
+              <div className="text-xs text-white/50 mb-1">{t('matchResult.realScore')}</div>
+              <div className={`text-2xl font-black bg-gradient-to-r ${cfg.gradient} bg-clip-text text-transparent`}>
+                {current.real_score}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Points gagnes (gros chiffre central) */}
+        <div className="text-center mb-4">
+          <div className={`inline-block px-6 py-3 bg-gradient-to-r ${cfg.gradient} rounded-2xl shadow-lg`}>
+            <div className="text-xs text-white/80 uppercase tracking-wider">
+              {t('matchResult.points')}
+            </div>
+            <div className="text-3xl font-black text-white">
+              {current.points > 0 ? `+${current.points}` : '0'}
+            </div>
+          </div>
+        </div>
+
+        {/* Message adaptatif */}
+        <p className="text-sm text-white/80 text-center mb-5 leading-relaxed">
+          {cfg.message}
+        </p>
+
+        {/* Indicateur "X autres modales en attente" si la queue n'est pas vide */}
+        {queue.length > 0 && (
+          <p className="text-xs text-white/40 text-center mb-3">
+            ⏭️ {queue.length} {queue.length > 1 ? t('matchResult.othersWaiting_plural') : t('matchResult.othersWaiting')}
+          </p>
+        )}
+
+        {/* Bouton fermer */}
+        <button
+          onClick={handleClose}
+          className="w-full py-3 bg-gradient-to-r from-white/10 to-white/5 hover:from-white/15 hover:to-white/10 text-white font-bold rounded-xl border border-white/10 transition"
+        >
+          {queue.length > 0 ? t('matchResult.next') : t('matchResult.continue')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // LIVE UP PROMO MODAL — modale apparaissant a chaque login pendant 7 jours
 // Objectif : faire decouvrir le chat communautaire aux pronostiqueurs
 // Affichee :
@@ -5858,6 +6058,10 @@ export default function App() {
           window.scrollTo(0, 0)
         }}
       />
+
+      {/* Modales en temps reel pour chaque match termine
+          (polling 30s + queue d'affichage sequentielle si plusieurs matchs) */}
+      <MatchResultModal user={user} />
 
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">

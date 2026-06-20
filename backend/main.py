@@ -1549,6 +1549,70 @@ _purge_thread = threading.Thread(target=_purge_online_worker, daemon=True)
 _purge_thread.start()
 
 
+@app.get("/api/me/recent-match-results")
+def me_recent_match_results(user=Depends(get_current_user), since_hours: int = 24):
+    """Liste les matchs termines RECEMMENT sur lesquels CET user a pronostique.
+
+    Utilise pour la modale en temps reel : quand un match se termine pendant que
+    l'user est connecte, on lui montre son resultat (points gagnes, score exact, etc).
+
+    Le frontend appelle cet endpoint en polling (~30s) et compare avec sa propre
+    liste de match_ids deja "vus" (stocke en localStorage cote client).
+
+    Renvoie aussi les details necessaires pour afficher une modale festive :
+    - Le pronostic du user
+    - Le vrai score
+    - Les points gagnes
+    - Une categorie (exact / winner+diff / winner / wrong) pour adapter le ton
+
+    Limite a 10 matchs recents (assez pour couvrir 1 journee de Mondial typique).
+    """
+    user_id = user["id"]
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=since_hours)).isoformat()
+
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT m.id AS match_id, m.home_team, m.away_team,
+                   m.home_score AS real_h, m.away_score AS real_a,
+                   m.match_date,
+                   p.home_score AS my_h, p.away_score AS my_a,
+                   p.points
+            FROM matches m
+            JOIN predictions p ON p.match_id = m.id AND p.user_id = ?
+            WHERE m.status = 'finished'
+              AND m.match_date > ?
+            ORDER BY m.match_date DESC
+            LIMIT 10
+        """, (user_id, cutoff)).fetchall()
+
+        results = []
+        for r in rows:
+            pts = r["points"] or 0
+            # Categorise pour adapter le ton de la modale cote front
+            if pts == 5:
+                category = "exact"
+            elif pts == 3:
+                category = "winner_diff"
+            elif pts == 1:
+                category = "winner"
+            else:
+                category = "wrong"
+
+            results.append({
+                "match_id": r["match_id"],
+                "home_team": r["home_team"],
+                "away_team": r["away_team"],
+                "real_score": f"{r['real_h']}-{r['real_a']}",
+                "my_score": f"{r['my_h']}-{r['my_a']}",
+                "points": pts,
+                "category": category,
+                "match_date": r["match_date"],
+            })
+
+    return {"results": results}
+
+
 @app.get("/api/me/login-summary")
 def me_login_summary(user=Depends(get_current_user)):
     """Bilan personnalise depuis la derniere connexion de l'utilisateur.
