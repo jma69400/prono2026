@@ -11,6 +11,63 @@ body {
   color: white;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================
+   AMELIORATIONS UX/UI PROFESSIONNELLES
+   ============================================ */
+
+/* Smooth scroll partout (cohérence) */
+html { scroll-behavior: smooth; }
+
+/* Selection text au design propre (vert sport) */
+::selection {
+  background: rgba(16, 185, 129, 0.4);
+  color: white;
+}
+
+/* Focus visible pour accessibilité - mais discret */
+*:focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* Sauf pour les boutons qui ont deja leur propre style */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(16, 185, 129, 0.8);
+  outline-offset: 2px;
+}
+
+/* Inputs : focus plus pro (au lieu de focus bleu navigateur) */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* Eviter le "flash" blanc lors du chargement des images */
+img {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Transitions globales pour les boutons (cohérence sur tout le site) */
+button {
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+button:active {
+  transform: scale(0.98);
+}
+
+/* Cards : ombre subtile au hover (effet professionnel) */
+.card-hover-effect {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover-effect:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 /* Scrollbar en bleu sport (cohérent avec la palette) */
@@ -310,27 +367,31 @@ nav .overflow-x-auto {
 
 /* ============================================================
    BANDEAU PRONOSTIQUEURS GAGNANTS (Wall of Fame)
-   - Animation defilement horizontal de droite vers gauche
-   - Vitesse moderee (30s pour traverser, vitesse confortable)
+   - Defilement horizontal droite vers gauche
+   - 15s desktop / 10s mobile (vitesse rapide mais lisible)
+   - GPU-accelerated via will-change + transform 3d
    - S'arrete au hover pour permettre de lire les noms
    ============================================================ */
 @keyframes marquee-scroll {
-  0%   { transform: translateX(0%); }
-  100% { transform: translateX(-33.33%); }
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-33.333%, 0, 0); }
 }
 
 .winners-marquee {
-  animation: marquee-scroll 30s linear infinite;
+  animation: marquee-scroll 15s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .winners-marquee:hover {
   animation-play-state: paused;
 }
 
-/* Sur ecran tres etroit, on accelere encore un peu pour ne pas frustrer */
+/* Mobile : encore plus rapide pour ne pas frustrer sur petit ecran */
 @media (max-width: 640px) {
   .winners-marquee {
-    animation-duration: 20s;
+    animation-duration: 10s;
   }
 }
 

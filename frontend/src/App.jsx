@@ -5788,16 +5788,10 @@ export default function App() {
             <div className="flex items-center gap-2 shrink-0">
               <LangSwitch />
               <button
-                onClick={() => {
-                  if (user) {
-                    window.dispatchEvent(new CustomEvent('open-chatbox'))
-                  } else {
-                    setShowContact(true)
-                  }
-                }}
-                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5"
-                title={user ? 'Discuter avec le support' : t('contact.title')}>
-                {user ? '💬' : '✉️'} <span className="hidden sm:inline">{t('contact.menuItem')}</span>
+                onClick={() => setShowContact(true)}
+                className="px-2.5 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition"
+                title={t('contact.title')}>
+                ✉️ <span className="hidden sm:inline">{t('contact.menuItem')}</span>
               </button>
               {config.donations?.enabled && (
                 <button
