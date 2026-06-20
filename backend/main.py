@@ -1566,10 +1566,21 @@ def me_login_summary(user=Depends(get_current_user)):
     """
     user_id = user["id"]
     with get_db() as db:
+        # Assure que la colonne last_login_at existe (auto-migration silencieuse)
+        # Si elle existe deja, ALTER TABLE leve une exception qu'on ignore.
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
+            db.commit()
+        except Exception:
+            pass  # Colonne deja presente, OK
+
         # Recupere la derniere connexion enregistree
         u = db.execute("SELECT last_login_at FROM users WHERE id=?", (user_id,)).fetchone()
         from datetime import datetime, timezone, timedelta
-        last_login = u["last_login_at"] if u and "last_login_at" in u.keys() else None
+        try:
+            last_login = u["last_login_at"] if u else None
+        except (KeyError, IndexError):
+            last_login = None
 
         # Si pas de last_login, on prend les 24 dernieres heures par defaut
         if not last_login:
@@ -1623,23 +1634,16 @@ def me_login_summary(user=Depends(get_current_user)):
         """, (my_total,)).fetchone()[0]
 
         # Met a jour last_login pour la prochaine fois
+        # La colonne est garantie d'exister (auto-creee en debut de fonction)
         try:
             db.execute(
                 "UPDATE users SET last_login_at = ? WHERE id = ?",
                 (datetime.now(timezone.utc).isoformat(), user_id)
             )
             db.commit()
-        except Exception:
-            # Si la colonne n'existe pas, on essaie de la creer
-            try:
-                db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
-                db.execute(
-                    "UPDATE users SET last_login_at = ? WHERE id = ?",
-                    (datetime.now(timezone.utc).isoformat(), user_id)
-                )
-                db.commit()
-            except Exception:
-                pass
+        except Exception as e:
+            # En cas d'erreur (BDD verrouillee, etc.), on log mais on n'echoue pas
+            print(f"[login-summary] WARN: cannot update last_login_at: {e}")
 
     # Determiner le ton du message (positif si points OK, encourageant sinon)
     if matches_count == 0:
