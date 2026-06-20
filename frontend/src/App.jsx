@@ -925,7 +925,7 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
         <div className="text-center min-w-[120px]">
           {(locked || isLive) ? (
             <div className={`text-3xl font-black ${isLive ? 'text-red-400' : 'text-sport-400'}`}>
-              {match.home_score} - {match.away_score}
+              {match.home_score ?? 0} - {match.away_score ?? 0}
             </div>
           ) : (
             <>
@@ -1755,7 +1755,7 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
           <div className="flex-1 min-w-0">
             <div className="font-bold flex items-center gap-2 flex-wrap">
               {entry.username}
-              {!!entry.is_supporter && <SupporterBadge small />}
+              {entry.is_supporter && <SupporterBadge small />}
               {entry.role === 'leader' && <span className="text-xs text-purple-300">👑</span>}
             </div>
             <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
