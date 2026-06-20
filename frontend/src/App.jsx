@@ -5860,7 +5860,7 @@ export default function App() {
       <LoginSummaryModal
         user={user}
         onGoToDonate={() => {
-          setActiveTab('donate')
+          setActiveTab('support')
           window.scrollTo(0, 0)
         }}
       />
