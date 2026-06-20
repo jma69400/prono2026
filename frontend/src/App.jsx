@@ -442,6 +442,167 @@ function LastMatchWinnersBanner() {
 }
 
 // =====================================================
+// LOGIN SUMMARY MODAL — bilan festif au login
+// Affiche depuis la derniere connexion :
+// - Points gagnes
+// - Nombre de scores exacts / bons gagnants / erreurs
+// - Message adaptatif selon les performances (celebrate / positive / encourage)
+// - Invitation a laisser un pourboire (compliance Stripe : "pourboire", pas "don")
+// =====================================================
+function LoginSummaryModal({ user, onClose, onGoToDonate }) {
+  const { t } = useTranslation()
+  const [data, setData] = useState(null)
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    // 1 fois par session uniquement (sinon on spammerait a chaque tab switch)
+    try {
+      if (sessionStorage.getItem('login_summary_shown_v1') === '1') return
+    } catch {}
+
+    let cancelled = false
+    api.meLoginSummary().then(r => {
+      if (cancelled) return
+      // On n'affiche QUE s'il y a des matchs joues depuis la derniere fois
+      // (sinon on spammerait des utilisateurs qui ouvrent l'app plusieurs fois par jour)
+      if (r && r.matches_count > 0) {
+        setData(r)
+        // Petit delai pour laisser l'UI se charger
+        setTimeout(() => setShown(true), 1000)
+        try { sessionStorage.setItem('login_summary_shown_v1', '1') } catch {}
+      }
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [user])
+
+  if (!shown || !data) return null
+
+  const { matches_count, points_won, exact_count, winner_count, miss_count, best_pred, current_rank, mood } = data
+
+  // Choisir le titre et l'emoji selon le mood
+  const moodConfig = {
+    celebrate: { emoji: '🏆', title: t('summary.titleCelebrate'), gradient: 'from-yellow-400 to-orange-500' },
+    positive:  { emoji: '⚽', title: t('summary.titlePositive'),  gradient: 'from-sport-400 to-sport-600' },
+    encourage: { emoji: '💪', title: t('summary.titleEncourage'), gradient: 'from-cta-400 to-cta-600' },
+    no_matches: { emoji: '👋', title: t('summary.titleHello'),    gradient: 'from-purple-400 to-pink-500' },
+  }
+  const { emoji, title, gradient } = moodConfig[mood] || moodConfig.positive
+
+  const handleClose = () => setShown(false)
+  const handleGoToDonate = () => {
+    setShown(false)
+    onGoToDonate?.()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div
+        className="relative max-w-md w-full bg-gradient-to-br from-base-deep via-base-surface to-base-deep border-2 border-white/20 rounded-2xl shadow-2xl p-6 overflow-hidden"
+        style={{ animation: 'kop-slide-up 400ms ease-out' }}
+      >
+        {/* Bouton fermer */}
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 rounded-full transition z-10"
+          aria-label={t('common.close')}
+        >
+          ✕
+        </button>
+
+        {/* Header avec gros emoji */}
+        <div className="text-center mb-5">
+          <div className="text-6xl mb-3" style={{ animation: 'kop-slide-up 600ms ease-out 200ms both' }}>
+            {emoji}
+          </div>
+          <h2 className={`text-2xl font-black bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}>
+            {title}
+          </h2>
+        </div>
+
+        {/* Stats principales */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {/* Points gagnes */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <div className="text-3xl font-black text-sport-400">+{points_won}</div>
+            <div className="text-xs text-white/60 mt-1">{t('summary.pointsWon')}</div>
+          </div>
+          {/* Rang actuel */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+            <div className="text-3xl font-black text-cta-400">#{current_rank}</div>
+            <div className="text-xs text-white/60 mt-1">{t('summary.currentRank')}</div>
+          </div>
+        </div>
+
+        {/* Mini-stats : exacts / gagnants / faux */}
+        <div className="flex items-center justify-center gap-4 mb-5 text-sm">
+          {exact_count > 0 && (
+            <div className="flex flex-col items-center">
+              <span className="text-xl">🎯</span>
+              <span className="font-bold text-white">{exact_count}</span>
+              <span className="text-[10px] text-white/50">{t('summary.exactScores')}</span>
+            </div>
+          )}
+          {winner_count > 0 && (
+            <div className="flex flex-col items-center">
+              <span className="text-xl">✅</span>
+              <span className="font-bold text-white">{winner_count}</span>
+              <span className="text-[10px] text-white/50">{t('summary.winnerOnly')}</span>
+            </div>
+          )}
+          {miss_count > 0 && (
+            <div className="flex flex-col items-center">
+              <span className="text-xl">😬</span>
+              <span className="font-bold text-white">{miss_count}</span>
+              <span className="text-[10px] text-white/50">{t('summary.misses')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Highlight : meilleur prono (score exact) */}
+        {best_pred && (
+          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-400/30 rounded-xl p-3 mb-5 text-center">
+            <div className="text-xs text-yellow-300 mb-1">🏆 {t('summary.bestPred')}</div>
+            <div className="font-bold text-white">
+              {best_pred.home_team} {best_pred.score} {best_pred.away_team}
+            </div>
+          </div>
+        )}
+
+        {/* Message adaptatif */}
+        <p className="text-sm text-white/70 text-center mb-5 leading-relaxed">
+          {mood === 'celebrate' && t('summary.msgCelebrate')}
+          {mood === 'positive' && t('summary.msgPositive')}
+          {mood === 'encourage' && t('summary.msgEncourage')}
+        </p>
+
+        {/* Invitation pourboire (compliance Stripe : pas "don") */}
+        <div className="bg-pink-500/10 border border-pink-400/30 rounded-xl p-4 mb-4 text-center">
+          <p className="text-sm text-white/80 mb-3">
+            ❤️ {t('summary.tipInvite')}
+          </p>
+          <button
+            onClick={handleGoToDonate}
+            className="px-5 py-2 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white text-sm font-bold rounded-lg shadow-lg transition transform hover:scale-105"
+          >
+            {t('summary.tipButton')}
+          </button>
+        </div>
+
+        {/* Fermer simple */}
+        <button
+          onClick={handleClose}
+          className="w-full py-2 text-sm text-white/50 hover:text-white/80 transition"
+        >
+          {t('summary.continueButton')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // LIVE UP PROMO MODAL — modale apparaissant a chaque login pendant 7 jours
 // Objectif : faire decouvrir le chat communautaire aux pronostiqueurs
 // Affichee :
@@ -450,8 +611,9 @@ function LastMatchWinnersBanner() {
 //   - Si l'utilisateur n'a pas deja vu la modale dans cette session (sessionStorage)
 //   - Si l'utilisateur n'a pas clique "Ne plus jamais afficher" (localStorage)
 // =====================================================
-// Date de fin de campagne : 7 jours apres deploiement (modifie au besoin)
-const LIVE_UP_CAMPAIGN_END = '2026-06-25T23:59:59Z'
+// Date de fin de campagne : DATE PASSEE = campagne arretee
+// La modale n'apparaitra plus a personne (campaignEnd < Date.now())
+const LIVE_UP_CAMPAIGN_END = '2026-06-20T00:00:00Z'
 
 function LiveUpPromoModal({ user, onGoToLiveUp }) {
   const { t } = useTranslation()
@@ -1753,15 +1915,27 @@ function LeaderboardTab({ leaderboard, currentUserId, isAdmin }) {
             </div>
           ) : null}
           <div className="flex-1 min-w-0">
+            {/* Ligne 1 : pseudo + badges (sa propre ligne, pas de wrap avec autre chose) */}
             <div className="font-bold flex items-center gap-2 flex-wrap">
-              {entry.username}
-              {entry.is_supporter && <SupporterBadge small />}
+              <span>{entry.username}</span>
+              {/* IMPORTANT : !!entry.is_supporter force la conversion booléenne.
+                  SQLite renvoie 0/1 (entier) au lieu de false/true. React affiche
+                  alors "0" comme du texte quand on fait juste `entry.is_supporter && ...`.
+                  D'où l'apparence "Marie0" dans le classement. Le double-bang fix ça. */}
+              {!!entry.is_supporter && <SupporterBadge small />}
               {entry.role === 'leader' && <span className="text-xs text-purple-300">👑</span>}
             </div>
-            <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
-              {entry.group_name && <span className="text-sport-300/70">{entry.group_name} ·</span>}
-              <span>{entry.predictions_count} {entry.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}</span>
-            </div>
+            {/* Ligne 2 : sous-titre avec stats (groupe + nb pronos)
+                Ne s'affiche QUE si il y a quelque chose à montrer (évite le "0 pronos" tout seul) */}
+            {(entry.group_name || (entry.predictions_count && entry.predictions_count > 0)) && (
+              <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap mt-0.5">
+                {entry.group_name && <span className="text-sport-300/70">{entry.group_name}</span>}
+                {entry.group_name && entry.predictions_count > 0 && <span className="text-white/30">·</span>}
+                {entry.predictions_count > 0 && (
+                  <span>{entry.predictions_count} {entry.predictions_count > 1 ? t('leaderboard.predictions_plural') : t('leaderboard.predictions')}</span>
+                )}
+              </div>
+            )}
           </div>
           <div className="text-2xl font-black text-sport-400 shrink-0">
             {entry.total_points}<span className="text-sm text-white/40 ml-1">{t('matches.points')}</span>
@@ -5678,6 +5852,15 @@ export default function App() {
         user={user}
         onGoToLiveUp={() => {
           setActiveTab('kop')
+          window.scrollTo(0, 0)
+        }}
+      />
+
+      {/* Modale bilan personnalise au login (animation festive + invitation pourboire) */}
+      <LoginSummaryModal
+        user={user}
+        onGoToDonate={() => {
+          setActiveTab('donate')
           window.scrollTo(0, 0)
         }}
       />

@@ -1549,6 +1549,121 @@ _purge_thread = threading.Thread(target=_purge_online_worker, daemon=True)
 _purge_thread.start()
 
 
+@app.get("/api/me/login-summary")
+def me_login_summary(user=Depends(get_current_user)):
+    """Bilan personnalise depuis la derniere connexion de l'utilisateur.
+
+    USAGE : affiche une modale festive au login pour booster l'engagement.
+    Calcule :
+    - Nombre de matchs termines depuis la derniere connexion
+    - Points gagnes depuis la derniere connexion
+    - Meilleur prono (score exact) et pire prono (faux)
+    - Rang actuel + evolution du rang
+
+    Si l'utilisateur revient pour la 1ere fois (last_login NULL), on prend 24h en arriere.
+    On met a jour last_login a CHAQUE appel a cet endpoint (cote logique : c'est le bilan
+    a l'arrivee, donc on consigne ce moment comme nouveau point de reference).
+    """
+    user_id = user["id"]
+    with get_db() as db:
+        # Recupere la derniere connexion enregistree
+        u = db.execute("SELECT last_login_at FROM users WHERE id=?", (user_id,)).fetchone()
+        from datetime import datetime, timezone, timedelta
+        last_login = u["last_login_at"] if u and "last_login_at" in u.keys() else None
+
+        # Si pas de last_login, on prend les 24 dernieres heures par defaut
+        if not last_login:
+            since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        else:
+            since = last_login
+
+        # Matchs termines depuis "since" sur lesquels CET user a pronostique
+        preds = db.execute("""
+            SELECT p.points, p.home_score AS my_h, p.away_score AS my_a,
+                   m.home_team, m.away_team, m.home_score AS real_h, m.away_score AS real_a,
+                   m.match_date
+            FROM predictions p
+            JOIN matches m ON m.id = p.match_id
+            WHERE p.user_id = ?
+              AND m.status = 'finished'
+              AND m.match_date > ?
+            ORDER BY m.match_date DESC
+        """, (user_id, since)).fetchall()
+
+        matches_count = len(preds)
+        points_won = sum((p["points"] or 0) for p in preds)
+        exact_count = sum(1 for p in preds if (p["points"] or 0) == 5)
+        winner_count = sum(1 for p in preds if (p["points"] or 0) in (1, 3))
+        miss_count = sum(1 for p in preds if (p["points"] or 0) == 0)
+
+        # Meilleur prono : score exact si dispo, sinon mention "rien d'excpetionnel"
+        best_pred = None
+        for p in preds:
+            if (p["points"] or 0) == 5:
+                best_pred = {
+                    "home_team": p["home_team"],
+                    "away_team": p["away_team"],
+                    "score": f"{p['my_h']}-{p['my_a']}",
+                    "points": 5,
+                }
+                break
+
+        # Calcul du rang actuel
+        # NOTE : peut etre couteux si beaucoup d'users - on cache pas trop strict
+        my_total = db.execute(
+            "SELECT COALESCE(SUM(points), 0) FROM predictions WHERE user_id=?",
+            (user_id,)
+        ).fetchone()[0]
+        my_rank = db.execute("""
+            SELECT COUNT(*) + 1 FROM (
+                SELECT user_id, COALESCE(SUM(points), 0) AS total
+                FROM predictions GROUP BY user_id
+                HAVING total > ?
+            )
+        """, (my_total,)).fetchone()[0]
+
+        # Met a jour last_login pour la prochaine fois
+        try:
+            db.execute(
+                "UPDATE users SET last_login_at = ? WHERE id = ?",
+                (datetime.now(timezone.utc).isoformat(), user_id)
+            )
+            db.commit()
+        except Exception:
+            # Si la colonne n'existe pas, on essaie de la creer
+            try:
+                db.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
+                db.execute(
+                    "UPDATE users SET last_login_at = ? WHERE id = ?",
+                    (datetime.now(timezone.utc).isoformat(), user_id)
+                )
+                db.commit()
+            except Exception:
+                pass
+
+    # Determiner le ton du message (positif si points OK, encourageant sinon)
+    if matches_count == 0:
+        mood = "no_matches"   # Pas de matchs joues
+    elif points_won == 0:
+        mood = "encourage"    # Peut mieux faire
+    elif exact_count > 0:
+        mood = "celebrate"    # Au moins 1 score exact !
+    else:
+        mood = "positive"     # Quelques points gagnes
+
+    return {
+        "matches_count": matches_count,
+        "points_won": points_won,
+        "exact_count": exact_count,
+        "winner_count": winner_count,
+        "miss_count": miss_count,
+        "best_pred": best_pred,
+        "current_rank": my_rank,
+        "current_total_points": my_total,
+        "mood": mood,
+    }
+
+
 @app.get("/api/stats/last-match-winners")
 def stats_last_match_winners(response: Response):
     """Renvoie le dernier match terminé + les pronostiqueurs qui ont prédit le score exact.

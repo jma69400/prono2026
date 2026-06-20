@@ -86,6 +86,9 @@ export const api = {
 
   // Reactions emoji sur les messages Kop
   kopReact: (messageId, emoji) => request(`/kop/messages/${messageId}/react?emoji=${encodeURIComponent(emoji)}`, { method: 'POST' }),
+
+  // Bilan personnalise au login (modale festive avec points gagnes)
+  meLoginSummary: () => request('/me/login-summary'),
   // === Donations / Supporters ===
   donationsStats: () => request('/donations/stats'),
   declareDonation: () => request('/donations/declare', { method: 'POST' }),
