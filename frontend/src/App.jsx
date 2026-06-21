@@ -829,6 +829,243 @@ function MatchResultModal({ user }) {
 
 
 // =====================================================
+// COOKIE CONSENT BANNER (RGPD / CMP-compliant)
+// Obligatoire pour Google AdSense en Europe depuis 2024.
+// Stocke le choix dans localStorage avec une cle horodatee (revalidation 6 mois).
+//
+// 3 categories de cookies :
+// - Essentiels (toujours actifs) : authentification, preferences, langue
+// - Analytics (Google Analytics) : optionnels, opt-in
+// - Publicite (AdSense) : optionnels, opt-in
+// =====================================================
+const COOKIE_CONSENT_KEY = 'cookie_consent_v1'
+const COOKIE_CONSENT_EXPIRY_DAYS = 180  // 6 mois
+
+function CookieConsentBanner({ onGoToPrivacy }) {
+  const { t } = useTranslation()
+  const [shown, setShown] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
+  const [analyticsConsent, setAnalyticsConsent] = useState(true)
+  const [adsConsent, setAdsConsent] = useState(true)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COOKIE_CONSENT_KEY)
+      if (!raw) {
+        // Jamais vu le bandeau -> afficher
+        setTimeout(() => setShown(true), 500)
+        return
+      }
+      const parsed = JSON.parse(raw)
+      const expiryMs = COOKIE_CONSENT_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+      if (Date.now() - (parsed.timestamp || 0) > expiryMs) {
+        // Consentement expire -> redemander
+        setTimeout(() => setShown(true), 500)
+      }
+    } catch {
+      setTimeout(() => setShown(true), 500)
+    }
+  }, [])
+
+  const saveConsent = (consent) => {
+    try {
+      localStorage.setItem(COOKIE_CONSENT_KEY, JSON.stringify({
+        ...consent,
+        timestamp: Date.now(),
+      }))
+      // Diffuser un evenement pour que d'autres composants reagissent
+      window.dispatchEvent(new CustomEvent('cookie-consent-updated', { detail: consent }))
+    } catch {}
+    setShown(false)
+  }
+
+  const acceptAll = () => saveConsent({ essential: true, analytics: true, ads: true })
+  const rejectAll = () => saveConsent({ essential: true, analytics: false, ads: false })
+  const customize = () => saveConsent({
+    essential: true,
+    analytics: analyticsConsent,
+    ads: adsConsent,
+  })
+
+  if (!shown) return null
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-base-deep border-t-2 border-sport-400/40 shadow-2xl">
+      <div className="max-w-6xl mx-auto p-4 sm:p-5">
+        {!showDetails ? (
+          <>
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl shrink-0">🍪</span>
+              <div className="flex-1 text-sm text-white/85 leading-relaxed">
+                <p className="font-bold text-white mb-1">{t('cookies.title')}</p>
+                <p>{t('cookies.intro')}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button onClick={() => setShowDetails(true)}
+                className="px-4 py-2 text-sm text-white/70 hover:text-white border border-white/20 rounded-lg transition">
+                {t('cookies.customize')}
+              </button>
+              <button onClick={rejectAll}
+                className="px-4 py-2 text-sm bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg transition">
+                {t('cookies.rejectAll')}
+              </button>
+              <button onClick={acceptAll}
+                className="px-5 py-2 text-sm font-bold bg-gradient-to-r from-sport-500 to-emerald-600 hover:from-sport-600 hover:to-emerald-700 rounded-lg shadow-lg transition">
+                {t('cookies.acceptAll')}
+              </button>
+            </div>
+            <p className="text-xs text-white/40 mt-3 text-center">
+              <button onClick={() => onGoToPrivacy?.()} className="underline hover:text-white/70">
+                {t('cookies.learnMore')}
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl shrink-0">⚙️</span>
+              <div className="flex-1">
+                <p className="font-bold text-white mb-1">{t('cookies.customizeTitle')}</p>
+                <p className="text-sm text-white/70">{t('cookies.customizeIntro')}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {/* Essentiels (toujours actifs) */}
+              <div className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg">
+                <div>
+                  <p className="font-semibold text-sm text-white">{t('cookies.essential')}</p>
+                  <p className="text-xs text-white/50">{t('cookies.essentialDesc')}</p>
+                </div>
+                <span className="text-xs px-2 py-1 bg-sport-500/20 text-sport-300 rounded font-bold">
+                  {t('cookies.alwaysActive')}
+                </span>
+              </div>
+
+              {/* Analytics */}
+              <label className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/8">
+                <div>
+                  <p className="font-semibold text-sm text-white">{t('cookies.analytics')}</p>
+                  <p className="text-xs text-white/50">{t('cookies.analyticsDesc')}</p>
+                </div>
+                <input type="checkbox" checked={analyticsConsent}
+                  onChange={e => setAnalyticsConsent(e.target.checked)}
+                  className="w-5 h-5 accent-sport-500" />
+              </label>
+
+              {/* Publicite */}
+              <label className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/8">
+                <div>
+                  <p className="font-semibold text-sm text-white">{t('cookies.ads')}</p>
+                  <p className="text-xs text-white/50">{t('cookies.adsDesc')}</p>
+                </div>
+                <input type="checkbox" checked={adsConsent}
+                  onChange={e => setAdsConsent(e.target.checked)}
+                  className="w-5 h-5 accent-sport-500" />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button onClick={() => setShowDetails(false)}
+                className="px-4 py-2 text-sm text-white/70 hover:text-white border border-white/20 rounded-lg transition">
+                {t('cookies.back')}
+              </button>
+              <button onClick={customize}
+                className="px-5 py-2 text-sm font-bold bg-gradient-to-r from-sport-500 to-emerald-600 hover:from-sport-600 hover:to-emerald-700 rounded-lg shadow-lg transition">
+                {t('cookies.saveChoices')}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
+// ADBANNER — composant de bandeau publicitaire AdSense
+// Reste invisible tant que :
+// 1. L'utilisateur n'a pas donne son consentement aux pubs (RGPD)
+// 2. AdSense n'est pas configure (pas de publisher ID)
+// 3. AdSense n'a pas approuve le site
+//
+// Quand activé, affiche le slot AdSense configure dans config.ads.client_id
+// =====================================================
+function AdBanner({ slot = 'auto', position = 'top' }) {
+  const [hasAdsConsent, setHasAdsConsent] = useState(() => {
+    try {
+      const raw = localStorage.getItem(COOKIE_CONSENT_KEY)
+      if (!raw) return false
+      return JSON.parse(raw).ads === true
+    } catch { return false }
+  })
+
+  const [adsenseConfig, setAdsenseConfig] = useState(null)
+
+  // Reagir aux changements de consentement
+  useEffect(() => {
+    const handler = (e) => setHasAdsConsent(!!e.detail?.ads)
+    window.addEventListener('cookie-consent-updated', handler)
+    return () => window.removeEventListener('cookie-consent-updated', handler)
+  }, [])
+
+  // Recuperer la config AdSense (publisher ID) depuis /api/config
+  useEffect(() => {
+    if (!hasAdsConsent) return
+    fetch('/api/config').then(r => r.json()).then(c => {
+      if (c?.ads?.adsense_client_id) {
+        setAdsenseConfig(c.ads)
+      }
+    }).catch(() => {})
+  }, [hasAdsConsent])
+
+  // Charger le script AdSense (1 seule fois sur la page) une fois consenti et configure
+  useEffect(() => {
+    if (!hasAdsConsent || !adsenseConfig?.adsense_client_id) return
+    if (document.querySelector('script[data-adsense-loaded]')) return
+    const script = document.createElement('script')
+    script.async = true
+    script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseConfig.adsense_client_id}`
+    script.crossOrigin = 'anonymous'
+    script.dataset.adsenseLoaded = 'true'
+    document.head.appendChild(script)
+  }, [hasAdsConsent, adsenseConfig])
+
+  // Activer le slot via adsbygoogle.push (apres chargement du script)
+  useEffect(() => {
+    if (!hasAdsConsent || !adsenseConfig?.adsense_client_id) return
+    const timer = setTimeout(() => {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({})
+      } catch (e) {
+        // Silencieux : AdSense pas encore charge
+      }
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [hasAdsConsent, adsenseConfig])
+
+  // Si pas de consentement OU pas configure, on n'affiche RIEN (pas de placeholder visible)
+  if (!hasAdsConsent || !adsenseConfig?.adsense_client_id) return null
+
+  return (
+    <div className={`ad-banner ad-${position} w-full text-center py-2`}>
+      <p className="text-[10px] text-white/30 mb-1">Publicité</p>
+      <ins
+        className="adsbygoogle"
+        style={{ display: 'block' }}
+        data-ad-client={adsenseConfig.adsense_client_id}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  )
+}
+
+
+// =====================================================
 // LIVE UP PROMO MODAL — modale apparaissant a chaque login pendant 7 jours
 // Objectif : faire decouvrir le chat communautaire aux pronostiqueurs
 // Affichee :
@@ -6070,6 +6307,16 @@ export default function App() {
           (polling 30s + queue d'affichage sequentielle si plusieurs matchs) */}
       <MatchResultModal user={user} />
 
+      {/* Bandeau cookies CMP-compliant (obligatoire pour AdSense en Europe) */}
+      <CookieConsentBanner onGoToPrivacy={() => {
+        setFaqDeepLink('data-safety')
+        setActiveTab('faq')
+        window.scrollTo(0, 0)
+      }} />
+
+      {/* Bandeau pub HAUT — invisible tant que pas consenti + AdSense non configure */}
+      <AdBanner slot="auto" position="top" />
+
       <nav className="border-b border-white/10 bg-black/10 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 flex overflow-x-auto">
           {tabs.map(tab => {
@@ -6120,6 +6367,9 @@ export default function App() {
         {activeTab === 'faq' && <FAQTab deepLink={faqDeepLink} onDeepLinkConsumed={() => setFaqDeepLink(null)} />}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
+
+      {/* Bandeau pub BAS — meme conditions que top (consent + adsense configure) */}
+      <AdBanner slot="auto" position="bottom" />
 
       {/* Footer enrichi avec liens vers les articles SEO (boost SEO interne + UX) */}
       <footer className="border-t border-white/10 mt-12 py-8">

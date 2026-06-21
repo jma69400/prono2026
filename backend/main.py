@@ -27,6 +27,7 @@ from typing import Optional
 import feedparser
 from fastapi import FastAPI, HTTPException, Depends, status, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from passlib.context import CryptContext
@@ -5666,9 +5667,28 @@ def admin_invalidate_supporter(user_id: int, admin=Depends(require_admin)):
         return {"ok": True}
 
 
+@app.get("/ads.txt", response_class=PlainTextResponse)
+def ads_txt():
+    """Fichier ads.txt requis par Google AdSense pour la verification du domaine.
+
+    Format officiel : 'google.com, pub-XXXXXXXXXX, DIRECT, f08c47fec0942fa0'
+    Voir : https://support.google.com/adsense/answer/7532444
+
+    Le publisher ID complet est lu depuis ADSENSE_CLIENT_ID (format 'ca-pub-XXX'),
+    on en retire le prefix 'ca-' pour le format ads.txt.
+    """
+    client_id = os.environ.get("ADSENSE_CLIENT_ID", "")
+    if not client_id:
+        return "# AdSense client ID not configured yet"
+    # client_id est de la forme 'ca-pub-XXXXXXXXXX'
+    # ads.txt veut le format 'pub-XXXXXXXXXX' (sans le 'ca-')
+    pub_id = client_id.replace("ca-", "")
+    return f"google.com, {pub_id}, DIRECT, f08c47fec0942fa0\n"
+
+
 @app.get("/api/config")
 def public_config():
-    """Configuration publique exposée au frontend (liens de dons, features, analytics)."""
+    """Configuration publique exposée au frontend (liens de dons, features, analytics, ads)."""
     return {
         "donations": {
             "stripe": os.environ.get("DONATION_STRIPE_LINK", ""),
@@ -5685,6 +5705,12 @@ def public_config():
         "analytics": {
             "ga_measurement_id": os.environ.get("GA_MEASUREMENT_ID", ""),
             "enabled": bool(os.environ.get("GA_MEASUREMENT_ID")),
+        },
+        # Configuration AdSense - publisher ID expose au frontend pour charger les bandeaux
+        # Vide tant qu'AdSense n'a pas approuve le site. Format: 'ca-pub-XXXXXXXXXX'.
+        "ads": {
+            "adsense_client_id": os.environ.get("ADSENSE_CLIENT_ID", ""),
+            "enabled": bool(os.environ.get("ADSENSE_CLIENT_ID")),
         },
         "features": {
             "translation": True,
