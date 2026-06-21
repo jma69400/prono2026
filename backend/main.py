@@ -3764,11 +3764,20 @@ def fetch_match_results() -> dict:
             # a ce match. Empêche l'API de réécraser un score corrigé manuellement
             # (par ex. si Football-Data.org renvoie un score erroné).
             # Pour réautoriser la synchro API, admin doit faire reset-score.
-            if current.get("admin_override") if isinstance(current, dict) else (
-                "admin_override" in current.keys() and current["admin_override"]
-            ):
+            #
+            # IMPORTANT : `current` est un Row SQLite. On accede via try/except
+            # pour gerer le cas ou la colonne n'existe pas encore (migration pas
+            # tournee) sans planter.
+            is_locked = False
+            try:
+                is_locked = bool(current["admin_override"])
+            except (KeyError, IndexError):
+                is_locked = False
+            if is_locked:
                 stats["skipped"] += 1
-                stats["details"].append(f"⚠ {home_name}-{away_name} : skip (admin_override=1)")
+                stats["details"].append(
+                    f"🔒 {home_name}-{away_name} : SKIP (admin_override=1, score force par admin)"
+                )
                 continue
 
             # Sécurité : ne pas écraser un match qui était déjà marqué FINISHED en BDD
