@@ -829,6 +829,234 @@ function MatchResultModal({ user }) {
 
 
 // =====================================================
+// LEGAL TAB — 3 pages légales requises par AdSense
+// - Privacy Policy (politique de confidentialité)
+// - Terms of Service (conditions d'utilisation)
+// - About (à propos / contact)
+//
+// Une seule prop `section` détermine quelle page afficher.
+// Tout en français pour l'instant (multilingue plus tard si AdSense exige).
+// =====================================================
+function LegalTab({ section = 'privacy', onNavigate }) {
+  const { t, lang } = useTranslation()
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      {/* Navigation entre les 3 pages legales */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        <button
+          onClick={() => onNavigate?.('privacy')}
+          className={`px-3 py-1.5 text-sm rounded-lg transition ${
+            section === 'privacy' ? 'bg-sport-500 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'
+          }`}
+        >
+          🔒 Confidentialité
+        </button>
+        <button
+          onClick={() => onNavigate?.('terms')}
+          className={`px-3 py-1.5 text-sm rounded-lg transition ${
+            section === 'terms' ? 'bg-sport-500 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'
+          }`}
+        >
+          📋 Conditions
+        </button>
+        <button
+          onClick={() => onNavigate?.('about')}
+          className={`px-3 py-1.5 text-sm rounded-lg transition ${
+            section === 'about' ? 'bg-sport-500 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'
+          }`}
+        >
+          ℹ️ À propos
+        </button>
+      </div>
+
+      {section === 'privacy' && (
+        <div className="prose prose-invert max-w-none text-sm text-white/85 leading-relaxed">
+          <h1 className="text-2xl font-black text-white mb-2">Politique de confidentialité</h1>
+          <p className="text-xs text-white/40 mb-6">Dernière mise à jour : {today}</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">1. Qui sommes-nous ?</h2>
+          <p>United Pronos (<a href="https://unitedpronos.com" className="text-sport-400 underline">unitedpronos.com</a>) est un site personnel de pronostics gratuits dédié à la Coupe du Monde de football FIFA 2026. Le site est édité par un particulier à titre de hobby, et non par une entreprise commerciale.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">2. Quelles données collectons-nous ?</h2>
+          <p>Lorsque tu utilises United Pronos, nous collectons :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li><strong>Données d'inscription</strong> : email, pseudo, mot de passe (chiffré)</li>
+            <li><strong>Données d'usage</strong> : pronostics que tu effectues, points cumulés, groupes auxquels tu appartiens</li>
+            <li><strong>Données techniques</strong> : adresse IP (anonymisée), navigateur, langue préférée</li>
+            <li><strong>Cookies</strong> : techniques (session de connexion, langue) et publicitaires (uniquement avec ton accord)</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">3. Pourquoi ces données ?</h2>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>Te permettre de te connecter et participer aux pronostics</li>
+            <li>Afficher le classement et calculer tes points</li>
+            <li>Te contacter en cas de problème via ton email</li>
+            <li>Améliorer le site (statistiques anonymes)</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">4. Publicités Google AdSense</h2>
+          <p>Ce site utilise <strong>Google AdSense</strong> pour afficher des publicités. Google peut utiliser des cookies (notamment le cookie DoubleClick) pour diffuser des annonces basées sur tes visites précédentes sur ce site ou d'autres sites web. Tu peux :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>Désactiver l'utilisation du cookie DoubleClick sur la <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener" className="text-sport-400 underline">page des paramètres publicitaires de Google</a></li>
+            <li>Refuser les cookies publicitaires via notre bandeau cookies (icône en bas de page)</li>
+            <li>Consulter les pratiques publicitaires de Google sur <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener" className="text-sport-400 underline">policies.google.com/technologies/ads</a></li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">5. Google Analytics</h2>
+          <p>Nous utilisons Google Analytics pour comprendre comment le site est utilisé (anonymement). Tu peux refuser ces cookies via notre bandeau cookies.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">6. Avec qui partageons-nous tes données ?</h2>
+          <p>Nous ne vendons <strong>JAMAIS</strong> tes données. Nous les partageons uniquement avec :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li><strong>Google</strong> (Analytics, AdSense) si tu acceptes les cookies correspondants</li>
+            <li><strong>Resend</strong> (notre service d'envoi d'emails) pour les emails transactionnels</li>
+            <li><strong>Hetzner</strong> (notre hébergeur) pour stocker les données du site</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">7. Combien de temps gardons-nous tes données ?</h2>
+          <p>Tes données sont conservées tant que ton compte est actif. Tu peux supprimer ton compte à tout moment depuis tes paramètres : toutes tes données seront effacées dans les 30 jours.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">8. Tes droits RGPD</h2>
+          <p>Conformément au RGPD, tu as le droit de :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li><strong>Accéder</strong> à tes données</li>
+            <li><strong>Rectifier</strong> tes données</li>
+            <li><strong>Supprimer</strong> ton compte et tes données</li>
+            <li><strong>Limiter</strong> ou <strong>t'opposer</strong> au traitement</li>
+            <li><strong>Porter plainte</strong> auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener" className="text-sport-400 underline">cnil.fr</a>)</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">9. Contact</h2>
+          <p>Pour toute question sur tes données personnelles : <a href="mailto:contact@unitedpronos.com" className="text-sport-400 underline">contact@unitedpronos.com</a></p>
+        </div>
+      )}
+
+      {section === 'terms' && (
+        <div className="prose prose-invert max-w-none text-sm text-white/85 leading-relaxed">
+          <h1 className="text-2xl font-black text-white mb-2">Conditions d'utilisation</h1>
+          <p className="text-xs text-white/40 mb-6">Dernière mise à jour : {today}</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">1. Présentation du service</h2>
+          <p>United Pronos est un site <strong>100% gratuit</strong> de pronostics sportifs sur la Coupe du Monde de football FIFA 2026. C'est un jeu de prédiction à but récréatif : aucun argent réel n'est misé, gagné ou échangé en lien avec les pronostics.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">2. Ce que United Pronos N'EST PAS</h2>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>❌ <strong>Pas un site de paris sportifs</strong></li>
+            <li>❌ <strong>Pas un site de jeux d'argent</strong></li>
+            <li>❌ <strong>Pas un service avec abonnement payant</strong></li>
+            <li>❌ <strong>Pas une plateforme commerciale</strong></li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">3. Inscription et compte</h2>
+          <p>L'inscription est gratuite et accessible à toute personne âgée de <strong>16 ans minimum</strong>. Tu t'engages à :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>Fournir une adresse email valide qui t'appartient</li>
+            <li>Choisir un pseudo respectueux (pas d'insulte, pas de marque, pas d'usurpation d'identité)</li>
+            <li>Conserver tes identifiants confidentiels</li>
+            <li>Ne pas créer plusieurs comptes</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">4. Système de points</h2>
+          <p>Les pronostics rapportent des points virtuels :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li><strong>5 points</strong> : score exact prédit</li>
+            <li><strong>3 points</strong> : bon vainqueur + bon écart de buts</li>
+            <li><strong>1 point</strong> : bon vainqueur seulement</li>
+            <li><strong>0 point</strong> : mauvais pronostic</li>
+          </ul>
+          <p>Ces points sont <strong>purement virtuels</strong> et n'ont aucune valeur monétaire. Ils servent uniquement au classement ludique.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">5. Règles de bonne conduite</h2>
+          <p>Tu t'engages à respecter les autres utilisateurs et à ne pas :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>Insulter, harceler ou discriminer d'autres membres</li>
+            <li>Publier du contenu illégal, raciste, sexiste ou diffamatoire</li>
+            <li>Faire du spam ou de la publicité non autorisée</li>
+            <li>Tenter de pirater le site ou d'accéder à des données d'autres utilisateurs</li>
+            <li>Utiliser de scripts automatisés (bots) pour pronostiquer</li>
+          </ul>
+          <p>Le non-respect de ces règles peut entraîner la suppression de ton compte sans préavis.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">6. Pourboires (tips)</h2>
+          <p>Tu peux laisser un pourboire facultatif via Stripe, Ko-fi ou PayPal pour soutenir le site et aider à couvrir les frais d'hébergement. Ces pourboires sont :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>100% volontaires</li>
+            <li>Ne donnent <strong>aucun avantage</strong> dans le jeu</li>
+            <li>Ne sont pas remboursables (sauf cas exceptionnel)</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">7. Publicités</h2>
+          <p>Le site affiche des publicités Google AdSense pour couvrir ses frais. En naviguant sur le site avec consentement aux cookies publicitaires, tu acceptes l'affichage de ces publicités.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">8. Disponibilité du service</h2>
+          <p>United Pronos est fourni "en l'état" sans garantie de disponibilité 24/7. L'éditeur se réserve le droit de modifier, suspendre ou arrêter le service à tout moment.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">9. Limitation de responsabilité</h2>
+          <p>L'éditeur du site ne saurait être tenu responsable :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>D'éventuelles erreurs dans les résultats de matchs (données issues d'API tierces)</li>
+            <li>De la perte de tes pronostics en cas de problème technique</li>
+            <li>De litiges entre utilisateurs au sein d'un même groupe</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">10. Modifications des conditions</h2>
+          <p>Ces conditions peuvent être mises à jour. La date en haut de cette page indique la dernière modification.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">11. Droit applicable</h2>
+          <p>Ces conditions sont régies par le droit français. Tout litige sera soumis aux tribunaux français compétents.</p>
+        </div>
+      )}
+
+      {section === 'about' && (
+        <div className="prose prose-invert max-w-none text-sm text-white/85 leading-relaxed">
+          <h1 className="text-2xl font-black text-white mb-2">À propos & Contact</h1>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">United Pronos, c'est quoi ?</h2>
+          <p>United Pronos est un site personnel et gratuit de pronostics sur la Coupe du Monde de football FIFA 2026. L'idée est simple : <strong>vivre le Mondial à fond entre amis</strong>, en pronostiquant chaque match et en se chambrant gentiment dans la bonne humeur.</p>
+          <p>Que tu sois un fan inconditionnel ou un débutant, c'est ouvert à tous, sans inscription compliquée et sans rien à payer.</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">Qui suis-je ?</h2>
+          <p>United Pronos est un projet <strong>personnel</strong> développé sur mon temps libre, par passion pour le football et le développement web. Ce n'est pas une entreprise commerciale, juste un projet hobby.</p>
+          <p>Les pourboires éventuels et les revenus publicitaires servent uniquement à couvrir les frais (~20€/mois d'hébergement, le nom de domaine, le service email).</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">Comment ça marche ?</h2>
+          <ol className="list-decimal pl-6 space-y-1 my-2">
+            <li>Tu crées ton compte gratuit (30 secondes)</li>
+            <li>Tu pronostiques les scores des matchs</li>
+            <li>Tu gagnes des points selon la précision de tes pronostics</li>
+            <li>Tu te bats pour grimper dans le classement global ou de ton groupe d'amis</li>
+            <li>Tu kiffes le Mondial à fond ⚽🏆</li>
+          </ol>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">Une question ? Un bug ?</h2>
+          <p>Si tu as une question, un bug à signaler, une suggestion, ou simplement envie de discuter :</p>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li>📧 Email : <a href="mailto:contact@unitedpronos.com" className="text-sport-400 underline">contact@unitedpronos.com</a></li>
+            <li>💬 Formulaire de contact accessible depuis le bouton "Contact" dans le menu</li>
+            <li>🟢 Live UP : discute directement avec la communauté</li>
+          </ul>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">Soutenir le projet</h2>
+          <p>Si tu kiffes United Pronos et que tu veux nous aider à le maintenir gratuit et sans pubs intrusives, tu peux nous laisser un petit pourboire via le menu "Pourboire". 100% va aux frais d'hébergement et d'amélioration du site. Merci ❤️</p>
+
+          <h2 className="text-lg font-bold text-white mt-6 mb-2">Mentions techniques</h2>
+          <ul className="list-disc pl-6 space-y-1 my-2">
+            <li><strong>Hébergement</strong> : Hetzner Online GmbH (Allemagne)</li>
+            <li><strong>Email</strong> : Resend (USA)</li>
+            <li><strong>Analytics</strong> : Google Analytics</li>
+            <li><strong>Données de match</strong> : Football-Data.org API</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// =====================================================
 // COOKIE CONSENT BANNER (RGPD / CMP-compliant)
 // Obligatoire pour Google AdSense en Europe depuis 2024.
 // Stocke le choix dans localStorage avec une cle horodatee (revalidation 6 mois).
@@ -6365,6 +6593,9 @@ export default function App() {
         {activeTab === 'news' && <NewsTab news={news} onRefresh={handleRefreshNews} isAdmin={isAdmin} />}
         {activeTab === 'info' && <InfoTab onNavigate={(tabId) => setActiveTab(tabId)} />}
         {activeTab === 'faq' && <FAQTab deepLink={faqDeepLink} onDeepLinkConsumed={() => setFaqDeepLink(null)} />}
+        {['privacy', 'terms', 'about'].includes(activeTab) && (
+          <LegalTab section={activeTab} onNavigate={(sec) => setActiveTab(sec)} />
+        )}
         {activeTab === 'admin' && isAdmin && <AdminTab user={user} />}
       </main>
 
@@ -6405,6 +6636,26 @@ export default function App() {
           </div>
           <div className="text-center text-xs text-white/30">
             {t('common.footer')}
+          </div>
+
+          {/* Liens vers les pages légales (requis par AdSense) */}
+          <div className="mt-4 pt-4 border-t border-white/5 flex flex-wrap justify-center gap-4 text-xs text-white/40">
+            <button onClick={() => { setActiveTab('privacy'); window.scrollTo(0, 0) }}
+              className="hover:text-white/70 underline transition">
+              🔒 Confidentialité
+            </button>
+            <button onClick={() => { setActiveTab('terms'); window.scrollTo(0, 0) }}
+              className="hover:text-white/70 underline transition">
+              📋 Conditions
+            </button>
+            <button onClick={() => { setActiveTab('about'); window.scrollTo(0, 0) }}
+              className="hover:text-white/70 underline transition">
+              ℹ️ À propos
+            </button>
+            <button onClick={() => setShowContact(true)}
+              className="hover:text-white/70 underline transition">
+              ✉️ Contact
+            </button>
           </div>
         </div>
       </footer>
