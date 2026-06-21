@@ -3379,7 +3379,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
             <p className="text-lg text-white/60 max-w-2xl mx-auto">{t('home.modes.subtitle')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
 
             {/* MODE 1 — SOLO */}
             <div className="relative bg-white/5 border border-white/10 rounded-3xl p-8 hover:border-sport-400/40 transition group">
@@ -3400,7 +3400,7 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
             </div>
 
             {/* MODE 2 — GROUPE (mis en avant) */}
-            <div className="relative bg-gradient-to-br from-sport-500/10 to-sport-600/10 border-2 border-sport-400/40 rounded-3xl p-8 hover:border-sport-400/60 transition group shadow-xl shadow-sport-500/10 md:scale-105">
+            <div className="relative bg-gradient-to-br from-sport-500/10 to-sport-600/10 border-2 border-sport-400/40 rounded-3xl p-8 hover:border-sport-400/60 transition group shadow-xl shadow-sport-500/10">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-cta-500 to-cta-600 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap">
                 ⭐ {t('home.modes.popular')}
               </div>
@@ -3417,25 +3417,6 @@ function HomePage({ onSignup, onLogin, onContinueAsGuest, onContact }) {
               <button onClick={onSignup}
                 className="w-full py-3 bg-gradient-to-r from-cta-500 to-cta-600 hover:from-cta-600 hover:to-cta-700 rounded-lg font-bold text-sm transition shadow-lg shadow-orange-500/20">
                 {t('home.modes.group.cta')} →
-              </button>
-              <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
-            </div>
-
-            {/* MODE 3 — PRO ENTREPRISE */}
-            <div className="relative bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-400/30 rounded-3xl p-8 hover:border-purple-400/50 transition group">
-              <div className="text-5xl mb-4">🏢</div>
-              <h3 className="text-2xl font-black mb-2">{t('home.modes.pro.title')}</h3>
-              <p className="text-purple-300 font-semibold mb-4 text-sm">{t('home.modes.pro.tagline')}</p>
-              <p className="text-white/70 text-sm mb-6 leading-relaxed">{t('home.modes.pro.desc')}</p>
-              <ul className="space-y-2 mb-6 text-sm">
-                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet1')}</span></li>
-                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet2')}</span></li>
-                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet3')}</span></li>
-                <li className="flex items-start gap-2"><Check className="w-4 h-4 text-green-400 shrink-0 mt-0.5" /><span>{t('home.modes.pro.bullet4')}</span></li>
-              </ul>
-              <button onClick={onSignup}
-                className="w-full py-3 bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500 hover:to-blue-500 border border-purple-400/40 hover:border-purple-400 rounded-lg font-bold text-sm transition">
-                {t('home.modes.pro.cta')} →
               </button>
               <div className="mt-3 text-center text-xs text-white/40">{t('home.modes.free')}</div>
             </div>
