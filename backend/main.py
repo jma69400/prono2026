@@ -305,6 +305,26 @@ def init_db():
             print("[MIGRATION] Ajout de admin_override à matches")
             db.execute("ALTER TABLE matches ADD COLUMN admin_override INTEGER DEFAULT 0")
 
+    # === MIGRATION : pronostics bonus Over/Under 2.5 + BTTS sur predictions ===
+    # Deux nouveaux pronos OPTIONNELS par match :
+    # - over_under : 'over' / 'under' / NULL  (Over/Under 2.5 buts)
+    # - btts       : 'yes'  / 'no'   / NULL  (Both Teams To Score)
+    # Deux nouveaux champs pour stocker les points calcules :
+    # - over_under_points : 0 ou 2 (+2 si correct)
+    # - btts_points       : 0 ou 2 (+2 si correct)
+    #
+    # Score total d'un prono = points (score) + over_under_points + btts_points
+    # Donc max = 5 + 2 + 2 = 9 points
+    # NULL signifie : l'utilisateur n'a pas pronostique ce bonus -> 0 point (pas de penalite)
+    with get_db() as db:
+        pred_cols = {row[1] for row in db.execute("PRAGMA table_info(predictions)").fetchall()}
+        if "over_under" not in pred_cols:
+            print("[MIGRATION] Ajout des colonnes bonus (over_under, btts) a predictions")
+            db.execute("ALTER TABLE predictions ADD COLUMN over_under TEXT")
+            db.execute("ALTER TABLE predictions ADD COLUMN btts TEXT")
+            db.execute("ALTER TABLE predictions ADD COLUMN over_under_points INTEGER DEFAULT 0")
+            db.execute("ALTER TABLE predictions ADD COLUMN btts_points INTEGER DEFAULT 0")
+
     # === MIGRATION : ajouter colonnes admin_reply, replied_at à contact_messages ===
     with get_db() as db:
         contact_cols = {row[1] for row in db.execute("PRAGMA table_info(contact_messages)").fetchall()}
@@ -723,20 +743,111 @@ def compute_points(pred_h: int, pred_a: int, real_h: int, real_a: int) -> int:
     return 0
 
 
+def compute_over_under_points(pred_ou, real_h, real_a):
+    """Calcule les points du bonus Over/Under 2.5 buts.
+
+    Args:
+        pred_ou : 'over', 'under', ou None (l'user n'a pas pronostique)
+        real_h, real_a : score reel du match
+
+    Returns:
+        2 si correct, 0 sinon (jamais negatif - pas de penalite si pas pronostique)
+
+    Regle :
+    - 'over'  => correct si total >= 3 buts
+    - 'under' => correct si total <= 2 buts
+    """
+    if pred_ou is None or pred_ou == "":
+        return 0  # Pas de prono = pas de bonus, pas de penalite
+    if real_h is None or real_a is None:
+        return 0
+    total = real_h + real_a
+    if pred_ou == "over" and total >= 3:
+        return 2
+    if pred_ou == "under" and total <= 2:
+        return 2
+    return 0
+
+
+def compute_btts_points(pred_btts, real_h, real_a):
+    """Calcule les points du bonus BTTS (Both Teams To Score).
+
+    Args:
+        pred_btts : 'yes', 'no', ou None
+        real_h, real_a : score reel du match
+
+    Returns:
+        2 si correct, 0 sinon (jamais negatif)
+
+    Regle :
+    - 'yes' => correct si les 2 equipes ont marque (real_h > 0 ET real_a > 0)
+    - 'no'  => correct si au moins une equipe n'a pas marque
+    """
+    if pred_btts is None or pred_btts == "":
+        return 0
+    if real_h is None or real_a is None:
+        return 0
+    both_scored = (real_h > 0 and real_a > 0)
+    if pred_btts == "yes" and both_scored:
+        return 2
+    if pred_btts == "no" and not both_scored:
+        return 2
+    return 0
+
+
+def _update_pred_points(db, pred_id, pred_h, pred_a, pred_ou, pred_btts, real_h, real_a):
+    """Helper centralise : met a jour les 3 categories de points d'un prono.
+
+    En une seule requete BDD, on UPDATE :
+    - points (score) = 5 / 3 / 1 / 0
+    - over_under_points = 2 / 0
+    - btts_points = 2 / 0
+
+    Args:
+        db : connexion BDD (transaction en cours)
+        pred_id : ID du pronostic
+        pred_h, pred_a : score pronostique par l'user
+        pred_ou : 'over' / 'under' / None
+        pred_btts : 'yes' / 'no' / None
+        real_h, real_a : score reel du match
+
+    Returns:
+        dict avec les 3 points calcules : {points, ou_points, btts_points, total}
+    """
+    pts = compute_points(pred_h, pred_a, real_h, real_a)
+    ou_pts = compute_over_under_points(pred_ou, real_h, real_a)
+    btts_pts = compute_btts_points(pred_btts, real_h, real_a)
+    db.execute(
+        "UPDATE predictions SET points=?, over_under_points=?, btts_points=? WHERE id=?",
+        (pts, ou_pts, btts_pts, pred_id),
+    )
+    return {"points": pts, "ou_points": ou_pts, "btts_points": btts_pts, "total": pts + ou_pts + btts_pts}
+
+
 def recalc_match_points(match_id: int):
+    """Recalcul des points (score + bonus Over/Under + bonus BTTS) pour tous les pronos d'un match."""
     with get_db() as db:
         m = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         if not m:
             return
         preds = db.execute("SELECT * FROM predictions WHERE match_id=?", (match_id,)).fetchall()
-        # Si le match n'a plus de score (reset), on remet tous les points à 0
+        # Si le match n'a plus de score (reset), on remet TOUS les points à 0 (score + bonus)
         if m["home_score"] is None or m["away_score"] is None:
             for p in preds:
-                db.execute("UPDATE predictions SET points=0 WHERE id=?", (p["id"],))
+                db.execute(
+                    "UPDATE predictions SET points=0, over_under_points=0, btts_points=0 WHERE id=?",
+                    (p["id"],)
+                )
             return
+        # Sinon, recalcul complet (score + bonus)
         for p in preds:
-            pts = compute_points(p["home_score"], p["away_score"], m["home_score"], m["away_score"])
-            db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+            _update_pred_points(
+                db, p["id"],
+                p["home_score"], p["away_score"],
+                p["over_under"] if "over_under" in p.keys() else None,
+                p["btts"] if "btts" in p.keys() else None,
+                m["home_score"], m["away_score"]
+            )
 
 
 # =====================================================
@@ -1159,6 +1270,11 @@ class PredictionIn(BaseModel):
     match_id: int
     home_score: int = Field(ge=0, le=20)
     away_score: int = Field(ge=0, le=20)
+    # Bonus OPTIONNELS (None = pas pronostique = 0 point, pas de penalite)
+    # - over_under : 'over' (>=3 buts) ou 'under' (<=2 buts)
+    # - btts       : 'yes' (les 2 equipes marquent) ou 'no'
+    over_under: Optional[str] = None  # 'over' | 'under' | None
+    btts: Optional[str] = None        # 'yes' | 'no' | None
 
 
 class ScoreIn(BaseModel):
@@ -1704,12 +1820,12 @@ def me_login_summary(user=Depends(get_current_user)):
         # Calcul du rang actuel
         # NOTE : peut etre couteux si beaucoup d'users - on cache pas trop strict
         my_total = db.execute(
-            "SELECT COALESCE(SUM(points), 0) FROM predictions WHERE user_id=?",
+            "SELECT COALESCE(SUM(COALESCE(points,0) + COALESCE(over_under_points,0) + COALESCE(btts_points,0)), 0) FROM predictions WHERE user_id=?",
             (user_id,)
         ).fetchone()[0]
         my_rank = db.execute("""
             SELECT COUNT(*) + 1 FROM (
-                SELECT user_id, COALESCE(SUM(points), 0) AS total
+                SELECT user_id, COALESCE(SUM(COALESCE(points,0) + COALESCE(over_under_points,0) + COALESCE(btts_points,0)), 0) AS total
                 FROM predictions GROUP BY user_id
                 HAVING total > ?
             )
@@ -1913,7 +2029,7 @@ def app_snapshot(request: Request, response: Response):
                 # OPTIMISATION : pas d'avatar_data, email, logo_data (gonfle la réponse à 20+ MB)
                 rows = db.execute("""
                     SELECT u.id, u.username, u.role, u.group_id,
-                           COALESCE(SUM(p.points), 0) AS total_points,
+                           COALESCE(SUM(COALESCE(p.points,0) + COALESCE(p.over_under_points,0) + COALESCE(p.btts_points,0)), 0) AS total_points,
                            COUNT(p.id) AS predictions_count,
                            g.name AS group_name,
                            g.slug AS group_slug,
@@ -2030,19 +2146,23 @@ def save_prediction(data: PredictionIn, user=Depends(get_current_user)):
                     # bloquer tous les pronos par sécurité défensive
                     print(f"[WARN save_prediction] match_date mal formaté pour match {data.match_id}: {m['match_date']} - {e}")
 
+                # Normaliser les bonus : '' -> None pour la BDD
+                ou_value = data.over_under if data.over_under in ("over", "under") else None
+                btts_value = data.btts if data.btts in ("yes", "no") else None
+
                 existing = db.execute(
                     "SELECT id FROM predictions WHERE user_id=? AND match_id=?",
                     (user["id"], data.match_id),
                 ).fetchone()
                 if existing:
                     db.execute(
-                        "UPDATE predictions SET home_score=?, away_score=?, updated_at=datetime('now') WHERE id=?",
-                        (data.home_score, data.away_score, existing["id"]),
+                        "UPDATE predictions SET home_score=?, away_score=?, over_under=?, btts=?, updated_at=datetime('now') WHERE id=?",
+                        (data.home_score, data.away_score, ou_value, btts_value, existing["id"]),
                     )
                 else:
                     db.execute(
-                        "INSERT INTO predictions (user_id, match_id, home_score, away_score) VALUES (?,?,?,?)",
-                        (user["id"], data.match_id, data.home_score, data.away_score),
+                        "INSERT INTO predictions (user_id, match_id, home_score, away_score, over_under, btts) VALUES (?,?,?,?,?,?)",
+                        (user["id"], data.match_id, data.home_score, data.away_score, ou_value, btts_value),
                     )
                 # Invalide le cache leaderboard car les stats utilisateur changent
                 cache_invalidate("leaderboard:")
@@ -2085,7 +2205,7 @@ def leaderboard(response: Response):
         # donc aucune perte fonctionnelle.
         rows = db.execute("""
             SELECT u.id, u.username, u.role, u.group_id,
-                   COALESCE(SUM(p.points), 0) AS total_points,
+                   COALESCE(SUM(COALESCE(p.points,0) + COALESCE(p.over_under_points,0) + COALESCE(p.btts_points,0)), 0) AS total_points,
                    COUNT(p.id) AS predictions_count,
                    g.name AS group_name,
                    g.slug AS group_slug,
@@ -2206,7 +2326,7 @@ def leaderboard_groups(response: Response, limit: int = 500):
                 g.created_at,
                 COUNT(DISTINCT u.id) AS members_count,
                 COUNT(DISTINCT p.user_id) AS active_members,
-                COALESCE(SUM(p.points), 0) AS total_points,
+                COALESCE(SUM(COALESCE(p.points,0) + COALESCE(p.over_under_points,0) + COALESCE(p.btts_points,0)), 0) AS total_points,
                 COALESCE(COUNT(p.id), 0) AS total_predictions,
                 leader.username AS leader_username
             FROM groups g
@@ -2725,15 +2845,23 @@ def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
         )
         log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score} (admin_override=1)", db=db)
 
-        # 2. Recalcul des points DANS LA MÊME TRANSACTION
-        preds = db.execute("SELECT id, home_score, away_score FROM predictions WHERE match_id=?", (match_id,)).fetchall()
+        # 2. Recalcul des points DANS LA MÊME TRANSACTION (score + bonus)
+        preds = db.execute(
+            "SELECT id, home_score, away_score, over_under, btts FROM predictions WHERE match_id=?",
+            (match_id,)
+        ).fetchall()
         pred_count = 0
         for p in preds:
-            pts = compute_points(p["home_score"], p["away_score"], data.home_score, data.away_score)
-            db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+            _update_pred_points(
+                db, p["id"],
+                p["home_score"], p["away_score"],
+                p["over_under"] if "over_under" in p.keys() else None,
+                p["btts"] if "btts" in p.keys() else None,
+                data.home_score, data.away_score
+            )
             pred_count += 1
 
-        print(f"[SET_SCORE] match={match_id} {data.home_score}-{data.away_score} → {pred_count} pronos recalculés")
+        print(f"[SET_SCORE] match={match_id} {data.home_score}-{data.away_score} → {pred_count} pronos recalculés (avec bonus)")
 
     # Invalide tous les caches affectés : matches, classements (le score change le ranking)
     cache_invalidate("matches:")
@@ -3949,21 +4077,26 @@ def fetch_match_results() -> dict:
             # === RECALCUL ATOMIQUE DES POINTS DANS LA MÊME CONNEXION ===
             # On recalcule directement les points ici plutôt que d'appeler
             # recalc_match_points() qui ouvrait une AUTRE connexion (risque de race condition).
-            # Pour les matchs FINISHED : on calcule les points selon le score.
-            # Pour les matchs LIVE : on met points=0 (pas de score officiel encore).
+            # Pour les matchs FINISHED : on calcule les points selon le score (+ bonus Over/Under, BTTS).
+            # Pour les matchs LIVE : on met tout a 0 (pas de score officiel encore).
             if new_status == "finished":
                 preds = db.execute(
-                    "SELECT id, home_score, away_score FROM predictions WHERE match_id=?",
+                    "SELECT id, home_score, away_score, over_under, btts FROM predictions WHERE match_id=?",
                     (db_match["id"],),
                 ).fetchall()
                 for p in preds:
-                    pts = compute_points(p["home_score"], p["away_score"], home_score, away_score)
-                    db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
-                stats["details"].append(f"  → {len(preds)} pronos recalculés")
+                    _update_pred_points(
+                        db, p["id"],
+                        p["home_score"], p["away_score"],
+                        p["over_under"] if "over_under" in p.keys() else None,
+                        p["btts"] if "btts" in p.keys() else None,
+                        home_score, away_score
+                    )
+                stats["details"].append(f"  → {len(preds)} pronos recalculés (avec bonus)")
             else:
                 # Match passé en live : on remet à 0 au cas où il était finished avant
                 db.execute(
-                    "UPDATE predictions SET points=0 WHERE match_id=?",
+                    "UPDATE predictions SET points=0, over_under_points=0, btts_points=0 WHERE match_id=?",
                     (db_match["id"],),
                 )
     except Exception as e:

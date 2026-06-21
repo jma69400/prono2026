@@ -65,8 +65,11 @@ export const api = {
   me: () => request('/me'),
   matches: () => request('/matches'),
   myPredictions: () => request('/predictions'),
-  savePrediction: (match_id, home_score, away_score) =>
-    request('/predictions', { method: 'POST', body: JSON.stringify({ match_id, home_score, away_score }) }),
+  savePrediction: (match_id, home_score, away_score, over_under = null, btts = null) =>
+    request('/predictions', {
+      method: 'POST',
+      body: JSON.stringify({ match_id, home_score, away_score, over_under, btts })
+    }),
   // Renvoie l'objet complet { ranked: [...], ranked_count, excluded_admins, total_users }
   // Rétrocompatible : si une version ancienne du backend renvoie un tableau, on l'enveloppe.
   leaderboard: async () => {

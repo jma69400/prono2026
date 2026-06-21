@@ -348,6 +348,70 @@ function PredictionsCountBadge() {
 }
 
 // =====================================================
+// BONUS PRONOS ANNOUNCEMENT BANNER
+// Bandeau d'information sur la nouvelle feature de bonus pronos
+// (Over/Under 2.5 + BTTS). Fermable par l'user, ne reapparait plus.
+// Stocke la decision dans localStorage avec une cle versionnee.
+//
+// IMPORTANT : a retirer apres ~7 jours pour ne pas surcharger l'UI.
+// =====================================================
+const BONUS_ANNOUNCEMENT_KEY = 'bonus_pronos_announcement_dismissed_v1'
+
+function BonusPronosAnnouncement() {
+  const { t } = useTranslation()
+  const [shown, setShown] = useState(false)
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem(BONUS_ANNOUNCEMENT_KEY) === '1'
+      if (!dismissed) setShown(true)
+    } catch {}
+  }, [])
+
+  const dismiss = () => {
+    try { localStorage.setItem(BONUS_ANNOUNCEMENT_KEY, '1') } catch {}
+    setShown(false)
+  }
+
+  if (!shown) return null
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 mt-3">
+      <div className="bg-gradient-to-r from-purple-500/15 via-pink-500/15 to-orange-500/15 border border-purple-400/30 rounded-xl p-4 relative">
+        <button onClick={dismiss}
+          className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 rounded-full transition"
+          aria-label="Fermer">
+          ✕
+        </button>
+        <div className="flex items-start gap-3 pr-8">
+          <div className="text-3xl shrink-0">🎁</div>
+          <div className="flex-1">
+            <h3 className="font-black text-white text-base mb-1">
+              {t('bonus.announceTitle')}
+            </h3>
+            <p className="text-sm text-white/80 leading-relaxed mb-2">
+              {t('bonus.announceText')}
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="px-2 py-1 bg-purple-500/20 border border-purple-400/30 rounded text-purple-200">
+                ⬆⬇ {t('matches.overUnder')} <strong>+2 pts</strong>
+              </span>
+              <span className="px-2 py-1 bg-pink-500/20 border border-pink-400/30 rounded text-pink-200">
+                ✓✗ {t('matches.btts')} <strong>+2 pts</strong>
+              </span>
+              <span className="px-2 py-1 bg-orange-500/20 border border-orange-400/30 rounded text-orange-200">
+                {t('bonus.maxPoints')} <strong>9 pts/match</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // LAST MATCH WINNERS BANNER — Wall of fame défilant
 // Met en valeur les pronostiqueurs qui ont prédit le score exact du dernier
 // match terminé. Effet : preuve sociale + gamification + motivation.
@@ -1646,6 +1710,9 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
   const { t, lang } = useTranslation()
   const [predH, setPredH] = useState(prediction?.home_score ?? '')
   const [predA, setPredA] = useState(prediction?.away_score ?? '')
+  // Bonus pronos OPTIONNELS : Over/Under 2.5 et BTTS
+  const [predOU, setPredOU] = useState(prediction?.over_under ?? '')
+  const [predBTTS, setPredBTTS] = useState(prediction?.btts ?? '')
   const [adminH, setAdminH] = useState(match.home_score ?? '')
   const [adminA, setAdminA] = useState(match.away_score ?? '')
   const [saved, setSaved] = useState(false)
@@ -1654,6 +1721,8 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
   useEffect(() => {
     setPredH(prediction?.home_score ?? '')
     setPredA(prediction?.away_score ?? '')
+    setPredOU(prediction?.over_under ?? '')
+    setPredBTTS(prediction?.btts ?? '')
   }, [prediction])
 
   useEffect(() => {
@@ -1713,7 +1782,10 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
   const save = async () => {
     if (predH === '' || predA === '' || anyTBD) return
     if (isGuest) { onGuestPrompt(); return }
-    await onSave(match.id, parseInt(predH), parseInt(predA))
+    // Bonus optionnels : '' (non choisi) -> null (pas pronostique)
+    const ouValue = predOU === '' ? null : predOU
+    const bttsValue = predBTTS === '' ? null : predBTTS
+    await onSave(match.id, parseInt(predH), parseInt(predA), ouValue, bttsValue)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -2017,6 +2089,69 @@ function MatchCard({ match, prediction, onSave, isAdmin, onAdminSetScore, isGues
                 {isGuest ? <><LogIn className="w-4 h-4" /> {t('auth.guestLogin')}</> : (saved ? <><Check className="w-4 h-4" /> OK</> : t('matches.pronostic'))}
               </button>
             </div>
+
+            {/* === BONUS PRONOS OPTIONNELS (+2 pts chacun si correct) ===
+                Affiches uniquement si NON verrouille (match pas commence) ET non guest */}
+            {!locked && !isGuest && !anyTBD && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <div className="text-[10px] text-white/40 uppercase tracking-wider text-center mb-2">
+                  🎁 {t('matches.bonusPronos')} <span className="text-cta-300">(+2 pts {t('matches.bonusEach')})</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Over/Under 2.5 buts */}
+                  <div>
+                    <div className="text-[10px] text-white/50 mb-1 text-center">{t('matches.overUnder')}</div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPredOU(predOU === 'over' ? '' : 'over')}
+                        className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold transition ${
+                          predOU === 'over' ? 'bg-cta-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/60'
+                        }`}
+                      >
+                        ⬆ {t('matches.over')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPredOU(predOU === 'under' ? '' : 'under')}
+                        className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold transition ${
+                          predOU === 'under' ? 'bg-cta-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/60'
+                        }`}
+                      >
+                        ⬇ {t('matches.under')}
+                      </button>
+                    </div>
+                  </div>
+                  {/* BTTS - Both Teams To Score */}
+                  <div>
+                    <div className="text-[10px] text-white/50 mb-1 text-center">{t('matches.btts')}</div>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPredBTTS(predBTTS === 'yes' ? '' : 'yes')}
+                        className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold transition ${
+                          predBTTS === 'yes' ? 'bg-cta-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/60'
+                        }`}
+                      >
+                        ✓ {t('matches.bttsYes')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPredBTTS(predBTTS === 'no' ? '' : 'no')}
+                        className={`flex-1 px-2 py-1.5 rounded text-[11px] font-bold transition ${
+                          predBTTS === 'no' ? 'bg-cta-500 text-white' : 'bg-white/5 hover:bg-white/10 text-white/60'
+                        }`}
+                      >
+                        ✗ {t('matches.bttsNo')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[9px] text-white/30 text-center mt-1.5 italic">
+                  {t('matches.bonusOptional')}
+                </div>
+              </div>
+            )}
 
             {/* Hint si pas encore pronostiqué */}
             {!prediction && !isGuest && (
@@ -6228,8 +6363,8 @@ export default function App() {
     }
   }, [leaderboard, user, isGuest])
 
-  const handleSavePrediction = async (matchId, h, a) => {
-    await api.savePrediction(matchId, h, a)
+  const handleSavePrediction = async (matchId, h, a, overUnder = null, btts = null) => {
+    await api.savePrediction(matchId, h, a, overUnder, btts)
     const [p, l] = await Promise.all([api.myPredictions(), api.leaderboard()])
     setPredictions(p); setLeaderboard(l)
 
@@ -6501,6 +6636,7 @@ export default function App() {
       <LiveScoreBanner matches={matches} />
 
       {/* Bandeau "wall of fame" : pronostiqueurs ayant trouvé le score exact du dernier match */}
+      <BonusPronosAnnouncement />
       <LastMatchWinnersBanner />
 
       {/* Bandeau discret : nombre de personnes en ligne */}

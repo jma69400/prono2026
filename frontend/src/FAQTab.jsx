@@ -66,7 +66,18 @@ const FAQ_DATA = {
         {
           q: 'Comment sont calculés les points ?',
           tag: 'how-points',
-          a: 'Score exact (ex: 2-1 et tu as misé 2-1) = 5 points. Bon vainqueur + bonne différence de buts (ex: 3-2 et tu as misé 2-1) = 3 points. Bon vainqueur seulement = 1 point. Mauvaise prédiction = 0 point.',
+          a: `📊 SCORE PRINCIPAL :
+• Score exact (ex: 2-1 et tu as misé 2-1) = 5 points
+• Bon vainqueur + bonne différence de buts (ex: 3-2 et tu as misé 2-1) = 3 points
+• Bon vainqueur seulement = 1 point
+• Mauvaise prédiction = 0 point
+
+🎁 BONUS PRONOS (optionnels, +2 points chacun si correct) :
+• Plus/Moins 2,5 buts : tu prédis si le match aura 3 buts ou plus (Plus) ou 2 buts ou moins (Moins)
+• Les 2 équipes marquent : tu prédis si les 2 équipes marqueront au moins 1 but
+
+💡 Score maximum par match : 5 + 2 + 2 = 9 points
+ℹ️ Les bonus sont FACULTATIFS : si tu ne réponds pas, tu gagnes 0 point sur ce bonus (pas de pénalité).`,
         },
         {
           q: 'Qu\'est-ce que la prédiction IA ?',
@@ -425,7 +436,18 @@ Une fois leader, va dans l'onglet **"Mon Groupe"** pour créer ton groupe (nom, 
         {
           q: 'How are points calculated?',
           tag: 'how-points',
-          a: 'Exact score (e.g., 2-1 predicted, 2-1 actual) = 5 points. Right winner + right goal difference (e.g., 3-2 actual, 2-1 predicted) = 3 points. Right winner only = 1 point. Wrong prediction = 0 points.',
+          a: `📊 MAIN SCORE:
+• Exact score (e.g., 2-1 predicted, 2-1 actual) = 5 points
+• Right winner + right goal difference (e.g., 3-2 actual, 2-1 predicted) = 3 points
+• Right winner only = 1 point
+• Wrong prediction = 0 points
+
+🎁 BONUS PREDICTIONS (optional, +2 points each if correct):
+• Over/Under 2.5 goals: predict if the match will have 3+ goals (Over) or 2 or fewer (Under)
+• Both teams score: predict if both teams will score at least once
+
+💡 Max score per match: 5 + 2 + 2 = 9 points
+ℹ️ Bonuses are OPTIONAL: if you don't pick, you get 0 points on that bonus (no penalty).`,
         },
         {
           q: 'What is AI prediction?',
@@ -778,7 +800,18 @@ Once a leader, go to the **"My Group"** tab to create your group (name, logo, de
         {
           q: '¿Cómo se calculan los puntos?',
           tag: 'how-points',
-          a: 'Resultado exacto (ej: 2-1 pronosticado y real) = 5 puntos. Ganador correcto + diferencia correcta (ej: 3-2 real, 2-1 pronosticado) = 3 puntos. Solo ganador correcto = 1 punto. Pronóstico incorrecto = 0 puntos.',
+          a: `📊 PUNTUACIÓN PRINCIPAL:
+• Resultado exacto (ej: 2-1 pronosticado y real) = 5 puntos
+• Ganador correcto + diferencia correcta (ej: 3-2 real, 2-1 pronosticado) = 3 puntos
+• Solo ganador correcto = 1 punto
+• Pronóstico incorrecto = 0 puntos
+
+🎁 PRONÓSTICOS BONUS (opcionales, +2 puntos cada uno si correcto):
+• Más/Menos 2,5 goles: predice si el partido tendrá 3+ goles (Más) o 2 o menos (Menos)
+• Ambos equipos marcan: predice si los 2 equipos marcarán al menos 1 gol
+
+💡 Puntuación máx por partido: 5 + 2 + 2 = 9 puntos
+ℹ️ Los bonus son OPCIONALES: si no eliges, ganas 0 puntos en ese bonus (sin penalización).`,
         },
         {
           q: '¿Qué es la predicción IA?',
