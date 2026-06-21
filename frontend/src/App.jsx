@@ -450,7 +450,7 @@ function LastMatchWinnersBanner() {
 // - Invitation a laisser un pourboire (compliance Stripe : "pourboire", pas "don")
 // =====================================================
 function LoginSummaryModal({ user, onClose, onGoToDonate }) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
   const [data, setData] = useState(null)
   const [shown, setShown] = useState(false)
 
@@ -464,11 +464,11 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
     let cancelled = false
     api.meLoginSummary().then(r => {
       if (cancelled) return
-      // On n'affiche QUE s'il y a des matchs joues depuis la derniere fois
-      // (sinon on spammerait des utilisateurs qui ouvrent l'app plusieurs fois par jour)
-      if (r && r.matches_count > 0) {
+      // On affiche TOUJOURS la modale au login (meme si 0 match recent)
+      // L'objectif : valoriser le rang actuel + inviter au pourboire.
+      // Si pas de match recent, on a quand meme current_rank + current_total_points.
+      if (r) {
         setData(r)
-        // Petit delai pour laisser l'UI se charger
         setTimeout(() => setShown(true), 1000)
         try { sessionStorage.setItem('login_summary_shown_v1', '1') } catch {}
       }
@@ -510,6 +510,13 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
           ✕
         </button>
 
+        {/* Logo United Pronos (cohérent avec le header — branding pour partage social) */}
+        <div className="text-center mb-4">
+          <div className="inline-block text-lg font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent tracking-tight">
+            United Pronos
+          </div>
+        </div>
+
         {/* Header avec gros emoji */}
         <div className="text-center mb-5">
           <div className="text-6xl mb-3" style={{ animation: 'kop-slide-up 600ms ease-out 200ms both' }}>
@@ -520,12 +527,21 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
           </h2>
         </div>
 
-        {/* Stats principales */}
+        {/* Stats principales : Points + Rang TOUJOURS, meme si 0 match recent */}
         <div className="grid grid-cols-2 gap-3 mb-5">
-          {/* Points gagnes */}
+          {/* Points : gagnes recemment (ou total si 0 match) */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
-            <div className="text-3xl font-black text-sport-400">+{points_won}</div>
-            <div className="text-xs text-white/60 mt-1">{t('summary.pointsWon')}</div>
+            {matches_count > 0 ? (
+              <>
+                <div className="text-3xl font-black text-sport-400">+{points_won}</div>
+                <div className="text-xs text-white/60 mt-1">{t('summary.pointsWon')}</div>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl font-black text-sport-400">{data.current_total_points}</div>
+                <div className="text-xs text-white/60 mt-1">{t('summary.totalPoints')}</div>
+              </>
+            )}
           </div>
           {/* Rang actuel */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
@@ -534,37 +550,39 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
           </div>
         </div>
 
-        {/* Mini-stats : exacts / gagnants / faux */}
-        <div className="flex items-center justify-center gap-4 mb-5 text-sm">
-          {exact_count > 0 && (
-            <div className="flex flex-col items-center">
-              <span className="text-xl">🎯</span>
-              <span className="font-bold text-white">{exact_count}</span>
-              <span className="text-[10px] text-white/50">{t('summary.exactScores')}</span>
-            </div>
-          )}
-          {winner_count > 0 && (
-            <div className="flex flex-col items-center">
-              <span className="text-xl">✅</span>
-              <span className="font-bold text-white">{winner_count}</span>
-              <span className="text-[10px] text-white/50">{t('summary.winnerOnly')}</span>
-            </div>
-          )}
-          {miss_count > 0 && (
-            <div className="flex flex-col items-center">
-              <span className="text-xl">😬</span>
-              <span className="font-bold text-white">{miss_count}</span>
-              <span className="text-[10px] text-white/50">{t('summary.misses')}</span>
-            </div>
-          )}
-        </div>
+        {/* Mini-stats : SEULEMENT si matchs recents */}
+        {matches_count > 0 && (exact_count > 0 || winner_count > 0 || miss_count > 0) && (
+          <div className="flex items-center justify-center gap-4 mb-5 text-sm">
+            {exact_count > 0 && (
+              <div className="flex flex-col items-center">
+                <span className="text-xl">🎯</span>
+                <span className="font-bold text-white">{exact_count}</span>
+                <span className="text-[10px] text-white/50">{t('summary.exactScores')}</span>
+              </div>
+            )}
+            {winner_count > 0 && (
+              <div className="flex flex-col items-center">
+                <span className="text-xl">✅</span>
+                <span className="font-bold text-white">{winner_count}</span>
+                <span className="text-[10px] text-white/50">{t('summary.winnerOnly')}</span>
+              </div>
+            )}
+            {miss_count > 0 && (
+              <div className="flex flex-col items-center">
+                <span className="text-xl">😬</span>
+                <span className="font-bold text-white">{miss_count}</span>
+                <span className="text-[10px] text-white/50">{t('summary.misses')}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Highlight : meilleur prono (score exact) */}
         {best_pred && (
           <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-400/30 rounded-xl p-3 mb-5 text-center">
             <div className="text-xs text-yellow-300 mb-1">🏆 {t('summary.bestPred')}</div>
             <div className="font-bold text-white">
-              {best_pred.home_team} {best_pred.score} {best_pred.away_team}
+              {teamName(best_pred.home_team, lang)} {best_pred.score} {teamName(best_pred.away_team, lang)}
             </div>
           </div>
         )}
@@ -574,6 +592,7 @@ function LoginSummaryModal({ user, onClose, onGoToDonate }) {
           {mood === 'celebrate' && t('summary.msgCelebrate')}
           {mood === 'positive' && t('summary.msgPositive')}
           {mood === 'encourage' && t('summary.msgEncourage')}
+          {mood === 'no_matches' && t('summary.msgNoMatches')}
         </p>
 
         {/* Invitation pourboire (compliance Stripe : pas "don") */}
@@ -733,6 +752,13 @@ function MatchResultModal({ user }) {
           ✕
         </button>
 
+        {/* Logo United Pronos (branding pour partage social) */}
+        <div className="text-center mb-3">
+          <div className="inline-block text-lg font-black bg-gradient-to-r from-orange-400 to-pink-500 bg-clip-text text-transparent tracking-tight">
+            United Pronos
+          </div>
+        </div>
+
         {/* Header festif */}
         <div className="text-center mb-5">
           <div className="text-6xl mb-3" style={{ animation: 'kop-slide-up 600ms ease-out 200ms both' }}>
@@ -743,10 +769,10 @@ function MatchResultModal({ user }) {
           </h2>
         </div>
 
-        {/* Score : ton prono vs vrai score */}
+        {/* Score : ton prono vs vrai score (avec NOMS COMPLETS des equipes) */}
         <div className="bg-black/30 border border-white/10 rounded-xl p-4 mb-4">
-          <div className="text-xs text-white/50 uppercase tracking-wide mb-2 text-center">
-            {current.home_team} vs {current.away_team}
+          <div className="text-sm text-white/70 uppercase tracking-wide mb-3 text-center font-semibold">
+            {teamName(current.home_team, lang)} vs {teamName(current.away_team, lang)}
           </div>
           <div className="flex items-center justify-center gap-4 text-center">
             {/* Ton prono */}
