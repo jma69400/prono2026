@@ -291,20 +291,6 @@ def init_db():
             # Index pour filtrer rapidement les injections admin
             db.execute("CREATE INDEX IF NOT EXISTS idx_predictions_source ON predictions(source)")
 
-    # === MIGRATION : ajouter colonne 'admin_override' à matches ===
-    # 0 = score géré par l'API Football-Data.org (cas normal)
-    # 1 = score forcé manuellement par admin (l'API ne doit PAS écraser ce match)
-    #
-    # USE-CASE : si l'API renvoie un mauvais score pour un match précis, l'admin
-    # peut saisir le bon score via /admin/matches/{id}/score, et le worker API
-    # va alors ignorer ce match lors des prochaines synchros.
-    # Pour réautoriser la synchro API, l'admin utilise reset-score qui remet le flag à 0.
-    with get_db() as db:
-        match_cols = {row[1] for row in db.execute("PRAGMA table_info(matches)").fetchall()}
-        if "admin_override" not in match_cols:
-            print("[MIGRATION] Ajout de admin_override à matches")
-            db.execute("ALTER TABLE matches ADD COLUMN admin_override INTEGER DEFAULT 0")
-
     # === MIGRATION : ajouter colonnes admin_reply, replied_at à contact_messages ===
     with get_db() as db:
         contact_cols = {row[1] for row in db.execute("PRAGMA table_info(contact_messages)").fetchall()}
@@ -2712,15 +2698,12 @@ def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
         if not m:
             raise HTTPException(404, "Match introuvable")
 
-        # 1. Mise à jour du score + statut + flag admin_override
-        # admin_override=1 indique que ce match est désormais GÉRÉ MANUELLEMENT.
-        # Le worker API va l'ignorer (pas d'écrasement involontaire en cas
-        # de score erroné côté Football-Data.org).
+        # 1. Mise à jour du score + statut
         db.execute(
-            "UPDATE matches SET home_score=?, away_score=?, status='finished', admin_override=1 WHERE id=?",
+            "UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?",
             (data.home_score, data.away_score, match_id),
         )
-        log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score} (admin_override=1)", db=db)
+        log_action(user["id"], "set_score", f"match={match_id} {data.home_score}-{data.away_score}", db=db)
 
         # 2. Recalcul des points DANS LA MÊME TRANSACTION
         preds = db.execute("SELECT id, home_score, away_score FROM predictions WHERE match_id=?", (match_id,)).fetchall()
@@ -2740,20 +2723,16 @@ def admin_set_score(match_id: int, data: ScoreIn, user=Depends(require_admin)):
 
 @app.post("/api/admin/matches/{match_id}/reset-score")
 def admin_reset_score(match_id: int, user=Depends(require_admin)):
-    """Annule un score saisi : remet le match en 'scheduled' et points=0 pour tous les pronos.
-
-    IMPORTANT : remet aussi admin_override=0 → ré-autorise le worker API à
-    mettre à jour ce match automatiquement lors des prochaines synchros.
-    """
+    """Annule un score saisi : remet le match en 'scheduled' et points=0 pour tous les pronos."""
     with get_db() as db:
         m = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         if not m:
             raise HTTPException(404, "Match introuvable")
         db.execute(
-            "UPDATE matches SET home_score=NULL, away_score=NULL, status='scheduled', admin_override=0 WHERE id=?",
+            "UPDATE matches SET home_score=NULL, away_score=NULL, status='scheduled' WHERE id=?",
             (match_id,),
         )
-        log_action(user["id"], "reset_score", f"match={match_id} (admin_override=0)", db=db)
+        log_action(user["id"], "reset_score", f"match={match_id}", db=db)
     recalc_match_points(match_id)  # remet points=0
     cache_invalidate("matches:")
     cache_invalidate("leaderboard:")
@@ -3758,18 +3737,6 @@ def fetch_match_results() -> dict:
             ).fetchone()
 
             new_status = "finished" if status in ("FINISHED", "AWARDED") else "live"
-
-            # === PROTECTION admin_override ===
-            # Si admin a force un score manuellement (admin_override=1), on NE TOUCHE PAS
-            # a ce match. Empêche l'API de réécraser un score corrigé manuellement
-            # (par ex. si Football-Data.org renvoie un score erroné).
-            # Pour réautoriser la synchro API, admin doit faire reset-score.
-            if current.get("admin_override") if isinstance(current, dict) else (
-                "admin_override" in current.keys() and current["admin_override"]
-            ):
-                stats["skipped"] += 1
-                stats["details"].append(f"⚠ {home_name}-{away_name} : skip (admin_override=1)")
-                continue
 
             # Sécurité : ne pas écraser un match qui était déjà marqué FINISHED en BDD
             # avec un nouveau statut "live" (l'API peut être en retard)
