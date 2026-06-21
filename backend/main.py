@@ -1299,10 +1299,13 @@ def shutdown_cleanup():
                 print(f"[SHUTDOWN] Lock workers libéré (pid={os.getpid()})")
     except Exception as e:
         print(f"[SHUTDOWN] Erreur cleanup lock : {e}")
-    if os.environ.get("FOOTBALL_DATA_API_KEY"):
-        print("⚽ Fetch automatique des résultats : ACTIVÉ")
+    has_fd = bool(os.environ.get("FOOTBALL_DATA_API_KEY"))
+    has_af = bool(os.environ.get("APIFOOTBALL_KEY"))
+    provider = os.environ.get("MATCH_API_PROVIDER", "footballdata")
+    if has_fd or has_af:
+        print(f"⚽ Fetch automatique des résultats : ACTIVÉ (provider={provider})")
     else:
-        print("⚠️  FOOTBALL_DATA_API_KEY non défini — fetch automatique désactivé")
+        print("⚠️  Aucune cle API configuree (FOOTBALL_DATA_API_KEY / APIFOOTBALL_KEY) — fetch désactivé")
     print("=" * 60)
 
 
@@ -3668,15 +3671,15 @@ def find_match_in_db(home_team_api: str, away_team_api: str, db) -> Optional[dic
     return None
 
 
-def fetch_match_results() -> dict:
-    """Appelle l'API Football-Data.org pour la World Cup et met à jour les scores
-    des matchs terminés dans notre BDD. Recalcule automatiquement les points.
-    Retourne un dict avec les statistiques (matches_updated, errors, ...)."""
+def _fetch_footballdata():
+    """Appel a Football-Data.org (le provider historique).
+
+    Retourne (matches_list, error_msg).
+    matches_list est au format Football-Data natif.
+    """
     api_key = os.environ.get("FOOTBALL_DATA_API_KEY")
     if not api_key:
-        return {"ok": False, "error": "FOOTBALL_DATA_API_KEY non défini"}
-
-    stats = {"checked": 0, "updated": 0, "skipped": 0, "errors": 0, "details": []}
+        return [], "FOOTBALL_DATA_API_KEY non défini"
     try:
         req = urllib.request.Request(
             "https://api.football-data.org/v4/competitions/WC/matches",
@@ -3687,26 +3690,152 @@ def fetch_match_results() -> dict:
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json_lib.loads(resp.read().decode('utf-8'))
-            api_matches = data.get("matches", [])
+            return data.get("matches", []), None
     except urllib.error.HTTPError as e:
-        return {"ok": False, "error": f"HTTP {e.code}: {e.reason}"}
+        return [], f"HTTP {e.code}: {e.reason}"
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return [], str(e)
 
-    with get_db() as db:
-        for m in api_matches:
-            stats["checked"] += 1
-            status = m.get("status")
-            # On ne traite que les matchs FINISHED ou IN_PLAY/PAUSED (pour scores live)
-            if status not in ("FINISHED", "IN_PLAY", "PAUSED", "AWARDED"):
-                continue
 
-            home_name = m.get("homeTeam", {}).get("name") or ""
-            away_name = m.get("awayTeam", {}).get("name") or ""
-            score = m.get("score", {})
-            full_time = score.get("fullTime", {})
-            home_score = full_time.get("home")
-            away_score = full_time.get("away")
+def _fetch_apifootball():
+    """Appel a API-Football (v3.football.api-sports.io).
+
+    Endpoint utilise : /fixtures?league=1&season=2026
+    - league=1 : FIFA World Cup
+    - season=2026 : edition Mondial 2026 USA/Canada/Mexique
+
+    Le format de reponse est tres different de Football-Data. On le normalise
+    vers le format historique pour que le reste du code (fetch_match_results)
+    ne change pas.
+
+    NOTE : API-Football limite a 100 req/jour en free tier, 7500/jour en Pro.
+    Avec un polling toutes les minutes, on est a ~1440/jour : OK avec Pro.
+    """
+    api_key = os.environ.get("APIFOOTBALL_KEY")
+    if not api_key:
+        return [], "APIFOOTBALL_KEY non défini"
+    try:
+        req = urllib.request.Request(
+            "https://v3.football.api-sports.io/fixtures?league=1&season=2026",
+            headers={
+                "x-apisports-key": api_key,
+                "User-Agent": "PRONO2026/1.0",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json_lib.loads(resp.read().decode('utf-8'))
+
+        # API-Football repond : {"response": [...]}, on extrait
+        api_fixtures = data.get("response", [])
+
+        # Normaliser au format Football-Data pour ne pas casser le reste du code.
+        # Format Football-Data attendu :
+        # { "status": "FINISHED|IN_PLAY|PAUSED",
+        #   "homeTeam": {"name": "..."},
+        #   "awayTeam": {"name": "..."},
+        #   "score": {"fullTime": {"home": X, "away": Y}, "duration": "..."},
+        #   "minute": "...",
+        # }
+        normalized = []
+        for fx in api_fixtures:
+            fixture = fx.get("fixture", {})
+            status_info = fixture.get("status", {})
+            api_short = (status_info.get("short") or "").upper()
+
+            # Mapping des statuts API-Football vers Football-Data
+            # NS=Not Started, 1H=First Half, HT=Half Time, 2H=Second Half,
+            # ET=Extra Time, P=Penalty, FT=Full Time, AET=After Extra Time,
+            # PEN=After Penalty, LIVE=In Play, BT=Break Time, SUSP=Suspended,
+            # PST=Postponed, CANC=Cancelled, ABD=Abandoned, AWD=Awarded
+            if api_short in ("FT", "AET", "PEN", "AWD"):
+                norm_status = "FINISHED"
+            elif api_short == "HT":
+                norm_status = "PAUSED"
+            elif api_short in ("1H", "2H", "ET", "P", "LIVE", "BT"):
+                norm_status = "IN_PLAY"
+            else:
+                norm_status = api_short or "SCHEDULED"
+
+            teams = fx.get("teams", {})
+            goals = fx.get("goals", {})
+
+            # Duration pour aligner avec Football-Data
+            if api_short == "ET":
+                duration = "EXTRA_TIME"
+            elif api_short == "P":
+                duration = "PENALTY_SHOOTOUT"
+            else:
+                duration = "REGULAR"
+
+            normalized.append({
+                "status": norm_status,
+                "homeTeam": {"name": (teams.get("home") or {}).get("name", "")},
+                "awayTeam": {"name": (teams.get("away") or {}).get("name", "")},
+                "score": {
+                    "fullTime": {
+                        "home": goals.get("home"),
+                        "away": goals.get("away"),
+                    },
+                    "duration": duration,
+                },
+                "minute": fixture.get("status", {}).get("elapsed"),
+            })
+
+        return normalized, None
+    except urllib.error.HTTPError as e:
+        return [], f"HTTP {e.code}: {e.reason}"
+    except Exception as e:
+        return [], str(e)
+
+
+def _fetch_matches_from_provider():
+    """Recupere les matchs depuis l'API configuree dans MATCH_API_PROVIDER.
+
+    Architecture multi-provider pour permettre un switch en 1 ligne dans .env :
+    - MATCH_API_PROVIDER=footballdata (default) : Football-Data.org
+    - MATCH_API_PROVIDER=apifootball             : API-Football (paid, plus rapide)
+
+    Returns : (matches_list, error_msg, provider_used)
+        matches_list : liste normalisee au format Football-Data
+        error_msg    : message d'erreur ou None
+        provider_used: 'footballdata' ou 'apifootball' (pour logging)
+    """
+    provider = os.environ.get("MATCH_API_PROVIDER", "footballdata").lower().strip()
+
+    if provider == "apifootball":
+        matches, err = _fetch_apifootball()
+        return matches, err, "apifootball"
+    else:
+        # Par defaut on garde Football-Data (compatibilite retro)
+        matches, err = _fetch_footballdata()
+        return matches, err, "footballdata"
+
+
+def fetch_match_results() -> dict:
+    """Appelle l'API configuree (Football-Data ou API-Football) pour la World Cup
+    et met à jour les scores des matchs terminés dans notre BDD.
+    Recalcule automatiquement les points.
+    Retourne un dict avec les statistiques (matches_updated, errors, ...)."""
+    api_matches, error, provider_used = _fetch_matches_from_provider()
+    if error:
+        return {"ok": False, "error": error, "provider": provider_used}
+
+    stats = {"checked": 0, "updated": 0, "skipped": 0, "errors": 0, "details": [], "provider": provider_used}
+    try:
+        with get_db() as db:
+            for m in api_matches:
+                stats["checked"] += 1
+                status = m.get("status")
+                # On ne traite que les matchs FINISHED ou IN_PLAY/PAUSED (pour scores live)
+                if status not in ("FINISHED", "IN_PLAY", "PAUSED", "AWARDED"):
+                    continue
+
+                home_name = m.get("homeTeam", {}).get("name") or ""
+                away_name = m.get("awayTeam", {}).get("name") or ""
+                score = m.get("score", {})
+                full_time = score.get("fullTime", {})
+                home_score = full_time.get("home")
+                away_score = full_time.get("away")
 
             # Récupération de la minute en cours et de la période (pour affichage live)
             # API renvoie : minute (ex: '23', '45+2') et period (FIRST_HALF, HALF_TIME, SECOND_HALF...)
@@ -3837,6 +3966,10 @@ def fetch_match_results() -> dict:
                     "UPDATE predictions SET points=0 WHERE match_id=?",
                     (db_match["id"],),
                 )
+    except Exception as e:
+        # Filet de securite : si une exception survient pendant le traitement
+        # des matches, on retourne l'erreur plutot que de crasher.
+        return {"ok": False, "error": f"Erreur traitement matches: {e}", "provider": provider_used}
 
     # Invalide les caches après fetch
     if stats["updated"] > 0:
@@ -3855,13 +3988,17 @@ def results_worker():
     - Sinon : refresh toutes les 5 minutes
     - Couvre aussi la fenêtre +/- 15 min autour d'un match prévu pour ne rien rater
 
-    Économise l'API Football-Data (10 req/min en free) en ne sollicitant fort
-    que quand c'est nécessaire.
+    Économise l'API en ne sollicitant fort que quand c'est nécessaire.
+    Compatible Football-Data ET API-Football (selon MATCH_API_PROVIDER).
     """
-    if not os.environ.get("FOOTBALL_DATA_API_KEY"):
-        print("[RESULTS] Worker désactivé (FOOTBALL_DATA_API_KEY non défini)")
+    # Le worker est actif si AU MOINS UNE des deux cles est configuree
+    has_football_data = bool(os.environ.get("FOOTBALL_DATA_API_KEY"))
+    has_api_football = bool(os.environ.get("APIFOOTBALL_KEY"))
+    if not has_football_data and not has_api_football:
+        print("[RESULTS] Worker désactivé (FOOTBALL_DATA_API_KEY et APIFOOTBALL_KEY non définis)")
         return
-    print("[RESULTS] Worker démarré — fréquence adaptative (30s si live, 5min sinon)")
+    provider = os.environ.get("MATCH_API_PROVIDER", "footballdata")
+    print(f"[RESULTS] Worker démarré (provider={provider}) — fréquence adaptative (30s si live, 5min sinon)")
 
     def is_live_or_imminent():
         """True si au moins un match est en cours OU démarre dans <15 min OU vient de finir."""
