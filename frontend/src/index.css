@@ -428,3 +428,31 @@ nav .overflow-x-auto {
     animation: none;
   }
 }
+
+/* ============================================================
+   DOUBLE SCROLL — barre de defilement EN HAUT du tableau pronos groupe
+   Plus large + couleur claire pour bien voir qu'on peut scroller
+   ============================================================ */
+.double-scroll-top::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+.double-scroll-top::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.double-scroll-top::-webkit-scrollbar-thumb {
+  background: linear-gradient(to right, rgba(251, 146, 60, 0.6), rgba(236, 72, 153, 0.6));
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.05);
+}
+.double-scroll-top::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to right, rgba(251, 146, 60, 0.9), rgba(236, 72, 153, 0.9));
+}
+
+/* Firefox */
+.double-scroll-top {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(251, 146, 60, 0.6) rgba(255, 255, 255, 0.05);
+}

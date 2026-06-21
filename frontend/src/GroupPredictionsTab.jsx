@@ -19,7 +19,7 @@
  * - Gris        : 0 point ou match en cours (pas encore de score officiel)
  * - Bleu        : match pas encore terminé (status != finished)
  */
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Trophy, Users, Calendar, RefreshCw, Crown, Heart } from 'lucide-react'
 import { api } from './api'
 import { Flag, teamName } from './teams.jsx'
@@ -179,11 +179,90 @@ export default function GroupPredictionsTab({ groupId, currentUserId }) {
 }
 
 // =====================================================
+// DOUBLE SCROLL WRAPPER — barre de defilement EN HAUT + EN BAS, synchronisees
+// 
+// Pourquoi ? Quand un tableau a beaucoup de colonnes (ex: groupe avec 20 membres),
+// la scrollbar du navigateur est uniquement en bas. Sur un grand ecran PC, c'est
+// PEU PRATIQUE car il faut scroller tout en bas pour voir la barre.
+//
+// Solution : on duplique la barre en haut. Le scroll des 2 barres est synchronise
+// (event listeners 'scroll' reciproques avec garde anti-boucle).
+//
+// La barre du HAUT est rendue plus VISIBLE (plus haute, couleur claire) pour
+// suggerer clairement qu'on peut scroller horizontalement.
+// =====================================================
+function DoubleScrollWrapper({ children, className = '' }) {
+  const topScrollRef = useRef(null)
+  const contentScrollRef = useRef(null)
+  const [contentWidth, setContentWidth] = useState(0)
+
+  // Mesure la largeur du contenu (pour dimensionner le faux contenu de la barre du haut)
+  useEffect(() => {
+    if (!contentScrollRef.current) return
+    const measure = () => {
+      if (contentScrollRef.current) {
+        // scrollWidth = largeur totale du contenu (incluant la partie cachee)
+        setContentWidth(contentScrollRef.current.scrollWidth)
+      }
+    }
+    measure()
+    // Re-mesurer si la fenetre change de taille ou si le contenu change
+    const ro = new ResizeObserver(measure)
+    ro.observe(contentScrollRef.current)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [children])
+
+  // Synchroniser scroll : barre du haut --> contenu
+  const isSyncing = useRef(false)
+  const onTopScroll = () => {
+    if (isSyncing.current || !contentScrollRef.current) return
+    isSyncing.current = true
+    contentScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft
+    // Reset le flag au prochain frame (apres que l'event 'scroll' contenu se soit propage)
+    requestAnimationFrame(() => { isSyncing.current = false })
+  }
+  const onContentScroll = () => {
+    if (isSyncing.current || !topScrollRef.current) return
+    isSyncing.current = true
+    topScrollRef.current.scrollLeft = contentScrollRef.current.scrollLeft
+    requestAnimationFrame(() => { isSyncing.current = false })
+  }
+
+  return (
+    <div className={className}>
+      {/* BARRE DU HAUT : faux contenu de meme largeur que le vrai pour generer la scrollbar */}
+      <div
+        ref={topScrollRef}
+        onScroll={onTopScroll}
+        className="overflow-x-auto overflow-y-hidden double-scroll-top"
+        style={{ height: '14px' }}
+      >
+        <div style={{ width: contentWidth, height: '1px' }} />
+      </div>
+
+      {/* CONTENU REEL */}
+      <div
+        ref={contentScrollRef}
+        onScroll={onContentScroll}
+        className="overflow-x-auto"
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+
+// =====================================================
 // VUE PAR MATCH — tableau matrice (lignes = matchs, colonnes = membres)
 // =====================================================
 function ByMatchView({ members, matches, predictions, currentUserId, t, lang }) {
   return (
-    <div className="overflow-x-auto border border-white/10 rounded-xl">
+    <DoubleScrollWrapper className="border border-white/10 rounded-xl overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-white/5">
           <tr>
@@ -234,7 +313,7 @@ function ByMatchView({ members, matches, predictions, currentUserId, t, lang }) 
           })}
         </tbody>
       </table>
-    </div>
+    </DoubleScrollWrapper>
   )
 }
 
