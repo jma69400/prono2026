@@ -3752,8 +3752,11 @@ def fetch_match_results() -> dict:
                 continue
 
             # Vérifier si on doit vraiment update (score, statut, minute OU period change)
+            # IMPORTANT : on selectionne aussi admin_override pour pouvoir verifier le verrou
+            # admin juste apres. Sans cette colonne dans la SELECT, le check ci-dessous
+            # leverait une KeyError silencieuse et l'API ecraserait quand meme le score.
             current = db.execute(
-                "SELECT home_score, away_score, status, minute, period FROM matches WHERE id=?",
+                "SELECT home_score, away_score, status, minute, period, admin_override FROM matches WHERE id=?",
                 (db_match["id"],),
             ).fetchone()
 
